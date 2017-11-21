@@ -10,7 +10,9 @@ Code is currently available for three survey instruments:
 
 	-Tanzania National Panel Survey (TNPS) Wave 4, 2014/15 (LSMS-ISA)		
 		
-Code for additional waves of survey data from each of these three countries will be added to this repository as it is available.		
+Code for additional waves of survey data from each of these three countries will be added to this repository as it is available.
+
+If you use or modify our code, please cite us using the provided citation.
 		
 This repository includes a separate folder for each country. Each of these folders includes master Stata .do files with all of the code used to generate the final set of indicators from the raw survey data for a given survey wave. The raw survey data files are available for download free of charge from the World Bank LSMS-ISA website from the following links:
 
