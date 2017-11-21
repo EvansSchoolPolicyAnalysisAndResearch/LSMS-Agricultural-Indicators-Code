@@ -1,6 +1,6 @@
 # 335_Agricultural-Indicator-Curation
 
-This repository includes Stata do.files developed by the Evans School Policy Analysis & Research Group (EPAR) for the construction of a set of agricultural development indicators using data from the Living Standards Measurement Study - Integrated Surveys on Agriculture (LSMS-ISA) surveys.		
+This repository includes Stata do.files developed by the Evans School Policy Analysis & Research Group (EPAR) for the construction of a set of agricultural development indicators using data from the Living Standards Measurement Study - Integrated Surveys on Agriculture (LSMS-ISA) surveys. These files were developed as part of the EPAR Agricultural Development Indicator Curation project: https://evans.uw.edu/policy-impact/epar/research/agricultural-development-indicator-curation
 		
 Code is currently available for three survey instruments:
 
@@ -24,4 +24,6 @@ Each .do file takes as inputs the raw data files organized according to how the 
 		
 The .do file processes the data and stores created data sets in the folder "Final DTA files". Three final data sets are created at the household, individual, and plot levels with labelled variables, which can be used to estimate sumary statistics for the indicators and for a variety of intermediate variables. At the end of the .do file, a set of commands outputs summary statistics restricted to rural households only to an excel file also in the folder "Final DTA files". The code for generating summary statistics may be modified as needed, or users may conduct analyses directly from the final created datasets.		
 		
-We also have prepared a document outlining the general construction decisions for each indicator across survey instruments, which are reflected in the coding of the .do files. We have attempted to follow the same construction approach across instruments, but note any situations where differences in the instruments made this impossible. A final document outlines general principles and considerations for contructing these indicators.		
+We also have prepared a document outlining the general construction decisions for each indicator across survey instruments, which are reflected in the coding of the .do files. We have attempted to follow the same construction approach across instruments, but note any situations where differences in the instruments made this impossible. The document focuses on coding decsison for the Ethiopia ESS Wave 3 (2015-16), Nigeria GHSP Wave 3 (2015-16), and Tanzania NPS Wave 4 (2014-15), as well as for two surveys that are not yet publicly available: the Ethiopia Agricultural Commercialization Cluster (ACC) Survey (2016) and the India Rice Monitoring Survey (RMS) (2016). We have compiled a set of summary statistics for the final indicators restricted to rural households only in an excel spreadsheet for these five instruments, available on the EPAR website: https://evans.uw.edu/policy-impact/epar/research/agricultural-development-indicator-curation
+
+A final document outlines general principles and considerations for contructing agricultural development indicators.
