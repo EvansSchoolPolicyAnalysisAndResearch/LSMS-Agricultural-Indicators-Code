@@ -1,16 +1,30 @@
 Guide to using this GitHub repository:
 
+Contents:
+A. Copying this repository to your computer
+B. Accessing the raw data to run the .do files
+
+A. Copying this repository to your computer
+
 More advanced GitHub users may choose to clone this repository to their computers, and can work with the files on a separate repository branch from there.
 
-Other users can access and manipulate the files in this repository by downloading a .zip file with the contents of this repository. To do this: 
+Other users can access and manipulate the files in this repository by downloading a .zip file with the contents of this repository. To do this, either:
+
+a) Click on the green "Clone or Download" button and choose "Download zip"; or
+
+b) Download the latest release of the repository:
 	1) Go to the releases tab of the repository (above the list of files and folders). 
 	2) You will see the list of previous releases. 
 	3) Identify the release labeled "Latest release". 
 	4) Under that release, you will see a link to download either a zip or tar.gz file with the contents of the repository. 
 	5) Click on that link to download all of the repository files. 
-	6) Move the zipped file to the desired location on your computer.
-	7) Unzip the file.
-	8) You will then have a duplicate of the contents of our repository.
+
+After downloading the .zip file of the repository,
+	1) Move the zipped file to the desired location on your computer.
+	2) Unzip the file.
+	3) You will then have a duplicate of the contents of our repository.
+
+B. Accessing the raw data to run the .do files
 
 After you have duplicated the 335_Agricultural-Indicator-Curation repository to your computer, you will be able to open Stata to view and edit the .do files for each instrument, as well as the provided final .dta files with the constructed and intermediate variables for each instrument. 
 
