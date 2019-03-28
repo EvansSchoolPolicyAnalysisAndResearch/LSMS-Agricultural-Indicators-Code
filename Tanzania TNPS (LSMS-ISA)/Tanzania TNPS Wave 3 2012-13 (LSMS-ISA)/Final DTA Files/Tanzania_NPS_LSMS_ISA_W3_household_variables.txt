@@ -1,0 +1,2 @@
+The household variable dta file for Tanzania LSMS wave 3 exceeds GitHub's maximum file size. To get the household variable wave 3
+file, download our wave 3 do file and run it using the raw data files obtained from the World Bank's website.

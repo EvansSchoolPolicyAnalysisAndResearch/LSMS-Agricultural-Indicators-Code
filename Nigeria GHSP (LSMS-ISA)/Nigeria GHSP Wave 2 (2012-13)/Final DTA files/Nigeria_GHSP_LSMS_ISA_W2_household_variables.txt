@@ -1,0 +1,2 @@
+Household variables for Nigeria wave 2 are larger than the maximum allowable size for GitHub.
+In order to access them, please download the data from the World Bank and run our do files. 
