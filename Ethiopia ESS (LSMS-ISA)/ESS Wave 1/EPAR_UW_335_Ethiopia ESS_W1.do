@@ -142,7 +142,7 @@ set maxvar 8000
 ssc install findname  // need this user-written ado file for some commands to work	
 
 *Set location of raw data and output
-global directory 					"\\netid.washington.edu\wfs\EvansEPAR\Project\EPAR\Working Files\335 - Ag Team Data Support\Waves"
+global directory 					"CHANGE FILE PATH"
 
 //Set directories
 *These paths indicate where the raw data files are located and where the created data and final data will be stored.

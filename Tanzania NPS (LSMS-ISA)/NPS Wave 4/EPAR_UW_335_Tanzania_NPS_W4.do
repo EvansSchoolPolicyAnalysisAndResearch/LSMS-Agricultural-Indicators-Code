@@ -171,7 +171,7 @@ set maxvar 8000
 ssc install findname  // need this user-written ado file for some commands to work
 
 *Set location of raw data and output
-global directory				"\\netid.washington.edu\wfs\EvansEPAR\Project\EPAR\Working Files\335 - Ag Team Data Support\Waves"
+global directory				"CHANGE FILE PATH"
 
 //set directories: These paths correspond to the folders where the raw data files are located and where the created data and final data will be stored.
 global TZA_W4_raw_data 			"$directory\Tanzania NPS\Tanzania NPS Wave 4\Raw DTA files"

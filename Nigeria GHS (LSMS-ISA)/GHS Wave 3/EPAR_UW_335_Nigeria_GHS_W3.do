@@ -159,7 +159,7 @@ set maxvar 10000
 
 
 *Set location of raw data and output
-global directory			"\\netid.washington.edu\wfs\EvansEPAR\Project\EPAR\Working Files\335 - Ag Team Data Support\Waves"
+global directory			"CHANGE FILE PATH"
 
 //set directories
 *Nigeria General HH survey (NG LSMS)  Wave 3
