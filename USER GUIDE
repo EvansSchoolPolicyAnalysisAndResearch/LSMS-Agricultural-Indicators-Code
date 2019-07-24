@@ -1,0 +1,48 @@
+Guide to using this GitHub repository:
+
+Contents:
+A. Copying this repository to your computer
+B. Accessing the raw data to run the .do files
+
+A. Copying this repository to your computer
+
+More advanced GitHub users may choose to clone this repository to their computers, and can work with the files on a separate repository branch from there.
+
+Other users can access and manipulate the files in this repository by downloading a .zip file with the contents of this repository. To do this, either:
+
+a) Click on the green "Clone or Download" button and choose "Download zip"; or
+
+b) Download the latest release of the repository:
+	1) Go to the releases tab of the repository (above the list of files and folders). 
+	2) You will see the list of previous releases. 
+	3) Identify the release labeled "Latest release". 
+	4) Under that release, you will see a link to download either a zip or tar.gz file with the contents of the repository. 
+	5) Click on that link to download all of the repository files. 
+
+After downloading the .zip file of the repository,
+	1) Move the zipped file to the desired location on your computer.
+	2) Unzip the file.
+	3) You will then have a duplicate of the contents of our repository.
+
+B. Accessing the raw data to run the .do files
+
+After you have duplicated the 335_Agricultural-Indicator-Curation repository to your computer, you will be able to open Stata to view and edit the .do files for each instrument, as well as the provided final .dta files with the constructed and intermediate variables for each instrument. 
+
+To run the .do file for a given instrument, you will first need to download the raw data for that instrument. The raw survey data files are available for download free of charge from the World Bank LSMS-ISA website from the following links:
+	-Ethiopia: http://econ.worldbank.org/WBSITE/EXTERNAL/EXTDEC/EXTRESEARCH/EXTLSMS/0,,contentMDK:23635542~pagePK:64168445~piPK:64168309~theSitePK:3358997,00.html
+	-Nigeria: http://econ.worldbank.org/WBSITE/EXTERNAL/EXTDEC/EXTRESEARCH/EXTLSMS/0,,contentMDK:23635560~pagePK:64168445~piPK:64168309~theSitePK:3358997,00.html
+	-Tanzania: http://econ.worldbank.org/WBSITE/EXTERNAL/EXTDEC/EXTRESEARCH/EXTLSMS/0,,contentMDK:23635561~pagePK:64168445~piPK:64168309~theSitePK:3358997,00.html
+
+	1) Go to the appropriate country website.
+	2) From the appropriate country website, find the section labeled "Access Policy:"
+	3) Click on the "Available for free download" link next to the appropriate year/survey wave. 
+	4) This will direct you to the World Bank microdata catalog. 
+	5) There you can access related materials for the instrument (including many that we provide in the repository "Instrument and Resources folders").
+	6) Click on the "Get Microdata" link. 
+	7) You will be asked to log in or register before you can access the files. Do so.
+	8) After logging in, you will be able to download the files in a variety of formats. 
+	9) Our code uses Stata, so you should download the "Data in Stata" zipped file using the provided link. (Note, these files are several MBs, and may take some time to download depending on your connection speed).
+	10) After you have downloaded the raw zipped Stata data files, copy the zipped folder to the appropriate "Raw DTA files" folder for the instrument you are working with (i.e., Nigeria GHSP (LSMS-ISA)\Raw DTA files\Wave 3 (2015-16)) - where there is a file noting that you should "Save unzipped raw .dta files in this folder". 
+	11) After copying the zipped data folder into this directory, unzip the folder to extract the raw data in this location. Do not change how the data are organized.
+
+Once you have copied over and unzipped the raw data files into the appropriate folder, you will be able to run the .do file for that instrument.
