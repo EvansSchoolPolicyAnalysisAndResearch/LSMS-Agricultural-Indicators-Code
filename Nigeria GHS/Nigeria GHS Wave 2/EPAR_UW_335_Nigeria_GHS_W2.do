@@ -4624,14 +4624,14 @@ foreach v of global wins_var_top1_bott1_2 {
 		replace w_`v'_`c' = r(r1) if w_`v'_`c' < r(r1)   &  w_`v'_`c'!=0 
 		replace w_`v'_`c' = r(r2) if (w_`v'_`c' > r(r2) & w_`v'_`c' !=.)  		
 		local l`v'_`c'  : var lab `v'_`c'
-		lab var  w_`v'_`c' "`l`v'_`c'' - Winzorized top and bottom 1%"	
+		lab var  w_`v'_`c' "`l`v'_`c'' - Winzorized top and bottom 5%"	
 		* now use pctile from area for all to trim gender/inter/pure area
 		foreach g of global allyield {
 			gen w_`v'_`g'_`c'=`v'_`g'_`c'
 			replace w_`v'_`g'_`c' = r(r1) if w_`v'_`g'_`c' < r(r1) &  w_`v'_`g'_`c'!=0 
 			replace w_`v'_`g'_`c' = r(r2) if (w_`v'_`g'_`c' > r(r2) & w_`v'_`g'_`c' !=.)  	
 			local l`v'_`g'_`c'  : var lab `v'_`g'_`c'
-			lab var  w_`v'_`g'_`c' "`l`v'_`g'_`c'' - Winzorized top and bottom 1%"
+			lab var  w_`v'_`g'_`c' "`l`v'_`g'_`c'' - Winzorized top and bottom 5%"
 		}
 	}
 }
@@ -4864,12 +4864,12 @@ foreach i in yield_pl yield_hv{
 	gen w_`i'_`c'=`i'_`c'
 	replace  w_`i'_`c' = r(r1) if  w_`i'_`c' > r(r1) &  w_`i'_`c'!=.
 	local w_`i'_`c' : var lab `i'_`c'
-	lab var  w_`i'_`c'  "`w_`i'_`c'' - Winzorized top 1%"
+	lab var  w_`i'_`c'  "`w_`i'_`c'' - Winzorized top 5%"
 	foreach g of global allyield  {
 		gen w_`i'_`g'_`c'= `i'_`g'_`c'
 		replace  w_`i'_`g'_`c' = r(r1) if  w_`i'_`g'_`c' > r(r1) &  w_`i'_`g'_`c'!=.
 		local w_`i'_`g'_`c' : var lab `i'_`g'_`c'
-		lab var  w_`i'_`g'_`c'  "`w_`i'_`g'_`c'' - Winzorized top 1%"
+		lab var  w_`i'_`g'_`c'  "`w_`i'_`g'_`c'' - Winzorized top 5%"
 		}
 	}
 }
