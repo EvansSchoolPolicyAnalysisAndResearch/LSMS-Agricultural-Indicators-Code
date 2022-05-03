@@ -1,17 +1,17 @@
 
 /*
 -----------------------------------------------------------------------------------------------------------------------------------------------------
-*Title/Purpose 	: This do.file was developed by the Evans School Policy Analysis & Research Group (EPAR) 
-				  for the construction of a set of agricultural development indicators 
-				  using the Uganda National Panel Survey (UNPS) LSMS-ISA Wave 8 (2019-20).
-*Author(s)		: Didier Alia, Andrew Tomes, Rebecca Hsu, & 
-				  C. Leigh Anderson
+*Title/Purpose: This do.file was developed by the Evans School Policy Analysis & Research Group (EPAR) 
+		  for the construction of a set of agricultural development indicators 
+		  using the Uganda National Panel Survey (UNPS) LSMS-ISA Wave 8 (2019-20).
+*Author(s): Didier Alia, Andrew Tomes, Rebecca Hsu, & C. Leigh Anderson
 
 *Acknowledgments: We acknowledge the helpful contributions of Pierre Biscaye, David Coomes, Jack Knauer, Josh Merfeld, Isabella Sun, Chelsea Sweeney, Emma Weaver, Ayala Wineman, Travis Reynolds members of the World Bank's LSMS-ISA team, the FAO's RuLIS team, IFPRI, IRRI, 
-				  and the Bill & Melinda Gates Foundation Agricultural Development Data and Policy team in discussing indicator construction decisions. 
+		  and the Bill & Melinda Gates Foundation Agricultural Development Data and Policy team in discussing indicator construction decisions. 
 				  
-				  All coding errors remain ours alone.
-*Date			: This  Version - 18 April 2022 // update
+		  All coding errors remain ours alone.
+
+*Date: 18 April 2022
 ----------------------------------------------------------------------------------------------------------------------------------------------------*/
 
 
