@@ -3,9 +3,11 @@
 *Title/Purpose 	: This do.file was developed by the Evans School Policy Analysis & Research Group (EPAR) 
 				  for the construction of a set of agricultural development indicators 
 				  using the Nigeria General Household Survey (GHS) LSMS-ISA Wave 1 (2010-11)
-*Author(s)		: Didier Alia & C. Leigh Anderson
+*Author(s)		: Didier Alia, Andrew Tomes, & C. Leigh Anderson
 
-*Acknowledgments: We acknowledge the helpful contributions of Pierre Biscaye, David Coomes, Jack Knauer, Josh Merfeld, Isabella Sun, Chelsea Sweeney, Emma Weaver, Ayala Wineman, Travis Reynolds, Lucero Marquez, the members of the World Bank's LSMS-ISA team, the FAO's RuLIS team, IFPRI, IRRI, and the Bill & Melinda Gates Foundation Agricultural Development Data and Policy team in discussing indicator construction decisions. 
+*Acknowledgments: We acknowledge the helpful contributions of Lucero Marquez, Pierre Biscaye, David Coomes, Jack Knauer, Josh Merfeld, Isabella Sun, Chelsea Sweeney, Emma Weaver, 
+				  Ayala Wineman, Travis Reynolds, the members of the World Bank's LSMS-ISA team, the FAO's RuLIS team, IFPRI, IRRI, 
+				  and the Bill & Melinda Gates Foundation Agricultural Development Data and Policy team in discussing indicator construction decisions. 
 				  All coding errors remain ours alone.
 *Date			: This  Version - 15 April 2022
 ----------------------------------------------------------------------------------------------------------------------------------------------------*/
