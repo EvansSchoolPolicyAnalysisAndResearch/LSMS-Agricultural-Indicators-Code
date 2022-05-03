@@ -6,9 +6,11 @@ Code is currently available for three survey instruments:
 
 	-Ethiopia Socioeconomic Survey (ESS) Wave 3 (2015/16), Wave 2 (2013/14), and Wave 1 (2011/12) (LSMS-ISA)
 
-	-Nigeria General Household Survey-Panel (GHS) Wave 3 (2015/16), Wave 2 (2012/13), and Wave 1 (2010/11) (LSMS-ISA)
+	-Nigeria General Household Survey-Panel (GHS) Wave 4 (2018/19), Wave 3 (2015/16), Wave 2 (2012/13), and Wave 1 (2010/11) (LSMS-ISA)
 
-	-Tanzania National Panel Survey (NPS) Wave 4 (2014/15), Wave 3 (2012/13), Wave 2 (2010/11), and Wave 1 (2008/09) (LSMS-ISA)		
+	-Tanzania National Panel Survey (NPS) Wave 4 (2014/15), Wave 3 (2012/13), Wave 2 (2010/11), and Wave 1 (2008/09) (LSMS-ISA)	
+	
+	-Uganda National Panel Survey (UNPS) Wave 8 (2019/2020), Wave 5 (2015/16), and Wave 3 (2011/12) (LSMS-ISA)
 		
 If you use or modify our code, please cite us using the provided citation.
 		
