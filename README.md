@@ -1,8 +1,8 @@
 # 335_Agricultural-Indicator-Curation
 
-This repository includes Stata do.files developed by the Evans School Policy Analysis & Research Group (EPAR) for the construction of a set of agricultural development indicators using data from the World Bank's Living Standards Measurement Study - Integrated Surveys on Agriculture (LSMS-ISA) surveys. These files were developed as part of the EPAR Agricultural Development Indicator Curation project: https://evans.uw.edu/policy-impact/epar/research/agricultural-development-indicator-curation
+This repository includes Stata do.files developed by the Evans School Policy Analysis & Research Group (EPAR) for the construction of a set of agricultural development indicators using data from the World Bank's Living Standards Measurement Study - Integrated Surveys on Agriculture (LSMS-ISA) surveys and produced in partnership with country National Bureau of Statistics. These files were developed as part of the EPAR Agricultural Development Indicator Curation project: https://evans.uw.edu/policy-impact/epar/research/agricultural-development-indicator-curation
 		
-Code is currently available for three survey instruments:
+Code is currently available for five countries:
 
 	-Ethiopia Socioeconomic Survey (ESS) Wave 3 (2015/16), Wave 2 (2013/14), and Wave 1 (2011/12) (LSMS-ISA)
 
