@@ -5781,6 +5781,6 @@ The code for outputting the summary statistics is in a separare dofile that is c
 */ 
 *Parameters
 
-global list_instruments  "Nigeria_GHS_W3"
-do "\\netid.washington.edu\wfs\EvansEPAR\Project\EPAR\Working Files\335 - Ag Team Data Support\Waves\_Summary_statistics\EPAR_UW_335_SUMMARY_STATISTICS_01.17.2020_alt.do" 
+//global list_instruments  "Nigeria_GHS_W3"
+//do "\\netid.washington.edu\wfs\EvansEPAR\Project\EPAR\Working Files\335 - Ag Team Data Support\Waves\_Summary_statistics\EPAR_UW_335_SUMMARY_STATISTICS_01.17.2020_alt.do" 
 

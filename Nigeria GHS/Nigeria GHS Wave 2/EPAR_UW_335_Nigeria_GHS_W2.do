@@ -5665,5 +5665,5 @@ The summary statistics are outputted only for the sub_population of households, 
 The code for outputting the summary statistics is in a separare dofile that is called here
 */ 
 *Parameters
-global list_instruments  "Nigeria_GHS_W2"
-do "${directory}\_Summary_Statistics\EPAR_UW_335_SUMMARY_STATISTICS_01.17.2020_alt.do" 
+//global list_instruments  "Nigeria_GHS_W2"
+//do "${directory}\_Summary_Statistics\EPAR_UW_335_SUMMARY_STATISTICS_01.17.2020_alt.do" 

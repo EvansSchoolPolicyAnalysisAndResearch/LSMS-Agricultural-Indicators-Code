@@ -9,7 +9,7 @@
 				  Ayala Wineman, Travis Reynolds, the members of the World Bank's LSMS-ISA team, the FAO's RuLIS team, IFPRI, IRRI, 
 				  and the Bill & Melinda Gates Foundation Agricultural Development Data and Policy team in discussing indicator construction decisions. 
 				  All coding errors remain ours alone.
-*Date			: This  Version - 15 April 2022
+*Date			: This  Version - 03 February 2023
 ----------------------------------------------------------------------------------------------------------------------------------------------------*/
 
 
@@ -27,7 +27,7 @@
 *Summary of Executing the Master do.file
 *-----------
 *This Master do.file constructs selected indicators using the Nigeria General Household Survey (NG LSMS) data set.
-*Using data files from within the "Nigeria GHS Wave 1" folder within the "Raw DTA files" folder, 
+*Using data files from within the "Nigeria GHS Wave 1" folder within the "Raw DTA files" folder (NB: we assume all the raw data files are in the same folder), 
 *the do.file first constructs common and intermediate variables, saving dta files when appropriate 
 *in the folder "\Nigeria GHS Wave 1\created_data" within the "Final DTA files" folder.
 *These variables are then brought together at the household, plot, or individual level, saving dta files at each level when available 
@@ -43,7 +43,65 @@
 *"EPAR_UW_335_Indicator Construction Summary Tables" and "EPAR_UW_335_General Considerations and Principles for Indicator Construction.docx" within the folder "Supporting documents".
 
 
-/*
+
+/*OUTLINE OF THE DO.FILE
+Below are the list of the main files created by running this Master do.file
+ 					
+*INTERMEDIATE FILES					MAIN FILES CREATED
+*-------------------------------------------------------------------------------------
+*HOUSEHOLD IDS						Nigeria_GHS_W1_hhids.dta
+*INDIVIDUAL IDS						Nigeria_GHS_W1_person_ids.dta
+*HOUSEHOLD SIZE						Nigeria_GHS_W1_hhsize.dta
+*HEAD OF HOUSEHOLD					Nigeria_GHS_W1_male_head.dta
+*PARCEL AREAS						Nigeria_GHS_W1_plot_areas.dta
+*PLOT-CROP DECISION MAKERS			Nigeria_GHS_W1_plot_decision_makers.dta
+*PLOT-CROP PLANTING/HARVEST DATA	Nigeria_GHS_W1_all_plots.dta
+*GROSS CROP REVENUE					Nigeria_GHS_W1_cropsales_value.dta
+									Nigeria_GHS_W1_hh_crop_values_production.dta
+									Nigeria_GHS_W1_hh_crop_production.dta
+*CROP EXPENSES						Nigeria_GHS_W1_hh_cost_labor.dta
+									Nigeria_GHS_W1_plot_cost_inputs_long.dta 	*Long-formatted plot vars
+									Nigeria_GHS_W1_plot_cost_inputs.dta 		*Plot (wide)
+									Nigeria_GHS_W1_hh_cost_inputs.dta 			*Household (wide)
+*TLU (Tropical Livestock Units)		Nigeria_GHS_W1_TLU_Coefficients.dta
+									Nigeria_GHS_W1_herd_characteristics.dta
+*LIVESTOCK INCOME					Nigeria_GHS_W1_livestock_expenses.dta
+									Nigeria_GHS_W1_hh_livestock_products.dta
+									Nigeria_GHS_W1_livestock_sales.dta
+									Nigeria_GHS_W1_livestock_income.dta
+*FISH INCOME						Nigeria_GHS_W3_fish_income.dta							
+*SELF-EMPLOYMENT INCOME				Nigeria_GHS_W1_self_employment_income.dta
+									Nigeria_GHS_W1_agproduct_income.dta
+*WAGE INCOME						Nigeria_GHS_W1_wage_income.dta
+									Nigeria_GHS_W1_agwage_income.dta
+*OTHER INCOME						Nigeria_GHS_W1_remittance_income.dta
+									Nigeria_GHS_W1_other_income.dta
+									Nigeria_GHS_W1_land_rental_income.dta
+*FARM SIZE / LAND SIZE				Nigeria_GHS_W1_land_size.dta
+									Nigeria_GHS_W1_farmsize_all_agland.dta
+									Nigeria_GHS_W1_land_size_all.dta
+*FARM LABOR							Nigeria_GHS_W1_farmlabor_postplanting.dta
+									Nigeria_GHS_W1_farmlabor_postharvest
+									Nigeria_GHS_W1_family_hired_labor.dta
+*VACCINE USAGE						Nigeria_GHS_W1_farmer_vaccine.dta
+*ANIMAL HEALTH						Nigeria_GHS_W1_livestock_diseases
+*INPUT USE BY MANAGERS/HOUSEHOLDS	Nigeria_GHS_W1_farmer_fert_use.dta
+									Nigeria_GHS_W1_input_use.dta
+*REACHED BY AG EXTENSION			Nigeria_GHS_W1_any_ext.dta
+*MOBILE PHONE OWNERSHIP				Nigeria_GHS_W1_mobile_own.dta
+*USE OF FORMAL FINANACIAL SERVICES	Nigeria_GHS_W1_fin_serv.dta
+*LIVESTOCK PRODUCTIVITY				Nigeria_GHS_W1_milk_animals.dta
+									Nigeria_GHS_W1_egg_animals.dta
+*CROP PRODUCTION COSTS PER HECTARE	Nigeria_GHS_W1_cropcosts.dta
+*FERTILIZER APPLICATION RATES		Nigeria_GHS_W1_fertilizer_application.dta 
+*HOUSEHOLD'S DIET DIVERSITY SCORE	Nigeria_GHS_W1_household_diet.dta
+*WOMEN'S CONTROL OVER INCOME		Nigeria_GHS_W1_control_income.dta
+*WOMEN'S AG DECISION-MAKING			Nigeria_GHS_W1_make_ag_decision.dta
+*WOMEN'S ASSET OWNERSHIP			Nigeria_GHS_W1_make_ownasset.dta
+*SHANNON DIVERSITY INDEX			Nigeria_GHS_W1_shannon_diversity_index
+*CONSUMPTION						Nigeria_GHS_W1_consumption.dta 
+*ASSETS								Nigeria_GHS_W1_hh_assets.dta
+*GENDER PRODUCTIVITY GAP 			Nigeria_GHS_W1_gender_productivity_gap.dta
 
 *FINAL FILES CREATED
 *-------------------------------------------------------------------------------------
@@ -5430,6 +5488,6 @@ The summary statistics are outputted only for the sub_population of households, 
 The code for outputting the summary statistics is in a separare dofile that is called here
 */ 
 *Parameters
-ssc install findname
-global list_instruments  "Nigeria_GHS_W1"
-do "${directory}\_Summary_Statistics\EPAR_UW_335_SUMMARY_STATISTICS_01.17.2020_alt.do" 
+//ssc install findname
+//global list_instruments  "Nigeria_GHS_W1"
+//do "${directory}\_Summary_Statistics\EPAR_UW_335_SUMMARY_STATISTICS_01.17.2020_alt.do" 

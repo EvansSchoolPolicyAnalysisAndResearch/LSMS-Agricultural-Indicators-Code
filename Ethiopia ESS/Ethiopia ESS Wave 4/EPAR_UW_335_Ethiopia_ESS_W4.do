@@ -3,13 +3,13 @@
 *Title/Purpose 	: This do.file was developed by the Evans School Policy Analysis & Research Group (EPAR) 
 				  for the construction of a set of agricultural development indicators 
 				  using the Ethiopia Socioeconomic Survey (ESS) LSMS-ISA Wave 4 (2018-19)
-*Author(s)		: Didier Alia, Helen Ippolito, Andrew Tomes, Kelsey Figone, Rebecca Toole, & C. Leigh Anderson
+*Author(s)		: Didier Alia, Andrew Tomes, & C. Leigh Anderson
 
-*Acknowledgments: We acknowledge the helpful contributions of David Coomes, Jack Knauer, Josh Merfeld, Isabella Sun, Emma Weaver, Ayala Wineman, 
+*Acknowledgments: We acknowledge the helpful contributions of David Coomes, Kelsey Figone, Helen Ippolito, Jack Knauer, Josh Merfeld, Isabella Sun, Rebecca Toole, Emma Weaver, Ayala Wineman, 
 				  Pierre Biscaye, Travis Reynolds and members of the World Bank's LSMS-ISA team, the FAO's RuLIS team, IFPRI, IRRI, 
 				  and the Bill & Melinda Gates Foundation Agricultural Development Data and Policy team in discussing indicator construction decisions. 
 				  All coding errors remain ours alone.
-*Date			: This  Version - 18 July 2022
+*Date			: This  Version - 03 Feb 2023
 ----------------------------------------------------------------------------------------------------------------------------------------------------*/
 
 *Data source

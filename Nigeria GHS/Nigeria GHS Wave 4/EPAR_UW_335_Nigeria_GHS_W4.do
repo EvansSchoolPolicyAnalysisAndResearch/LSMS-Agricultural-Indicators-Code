@@ -9,7 +9,7 @@
 				  Travis Reynolds, the World Bank's LSMS-ISA team, the FAO's RuLIS team, IFPRI, IRRI, and the Bill & Melinda Gates Foundation Agricultural Development Data and Policy team in discussing indicator construction decisions. 
 				  
 				  All coding errors remain ours alone.
-*Date			: This  Version - 15 April 2022
+*Date			: This  Version - 03 February 2023
 ----------------------------------------------------------------------------------------------------------------------------------------------------*/
 
 *Data source
@@ -23,7 +23,7 @@
 *Throughout the do-file, we sometimes use the shorthand LSMS to refer to the Nigeria General Household Survey .
 
 *IMPORTANT NOTE: This update includes code to calculate childhood nutritional Z scores based on the WHO "iGrowUp" script and data. It can be downloaded for free at https://github.com/unicef-drp/igrowup_update. 
-*Update the path on line XXX with your path to the Stata do file. If the iGrowUp script is missing, the code will continue to execute without computing these statistics.
+*Update the path on line 141 with your path to the Stata do file. If the iGrowUp script is missing, the code will continue to execute without computing these statistics.
 
 
 *Summary of Executing the Master do.file
@@ -62,8 +62,9 @@ Below are the list of the main files created by running this Master do.file
 									Nigeria_GHS_W4_hh_crop_values_production.dta
 									Nigeria_GHS_W4_hh_crop_production.dta
 *CROP EXPENSES						Nigeria_GHS_W4_hh_cost_labor.dta
-									Nigeria_GHS_W4_plot_cost_inputs.dta *Plot
-									Nigeria_GHS_W4_hh_cost_inputs.dta *Household
+									Nigeria_GHS_W4_plot_cost_inputs_long.dta 	*Long-formatted plot vars
+									Nigeria_GHS_W4_plot_cost_inputs.dta 		*Plot (wide)
+									Nigeria_GHS_W4_hh_cost_inputs.dta 			*Household (wide)
 *TLU (Tropical Livestock Units)		Nigeria_GHS_W4_TLU_Coefficients.dta
 									Nigeria_GHS_W4_herd_characteristics.dta
 *LIVESTOCK INCOME					Nigeria_GHS_W4_livestock_expenses.dta
@@ -137,7 +138,8 @@ global Nigeria_GHS_W4_raw_data			"${directory}/Nigeria GHS/Nigeria GHS Wave 4/Ra
 global Nigeria_GHS_W4_created_data 		"${directory}/Nigeria GHS/Nigeria GHS Wave 4/Final DTA Files_AT/created_data"
 global Nigeria_GHS_W4_final_data  		"${directory}/Nigeria GHS/Nigeria GHS Wave 4/Final DTA Files_AT/final_data"
 
-
+//WHO iGrowUp file path
+global dofilefold "//netid.washington.edu/wfs/EvansEPAR/Project/EPAR/Working Files/335 - Ag Team Data Support/Various Requests/WHO Child Malnutrition Macro/igrowup_update-master"
 
 *DYA.11.1.2020 Re-scaling survey weights to match population estimates
 *https://databank.worldbank.org/source/world-development-indicators#
@@ -286,11 +288,12 @@ lab var weight_pop_rururb "Survey weight - adjusted to match rural and urban pop
 drop weight_pop_rur weight_pop_urb
 save "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_hhsize.dta", replace
 //ALT: Brief bit of code to test the effect of rescaling to rururb weights on the whole shebang
+/*
 merge 1:1 hhid using "${Nigeria_GHS_W4_created_data}\Nigeria_GHS_W4_weights.dta", nogen
 replace weight=weight_pop_rururb
 keep hhid zone state lga ea weight rural
 save "${Nigeria_GHS_W4_created_data}\Nigeria_GHS_W4_weights.dta", replace
-
+*/
 ********************************************************************************
 *HEAD OF HOUSEHOLD *
 ********************************************************************************
@@ -308,7 +311,7 @@ save "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_male_head.dta", replace
 * PLOT AREAS *
 ********************************************************************************
 *starting with planting
-//ALT 02.09.22: I know we should consider 
+//ALT IMPORTANT NOTE: As of W4, the implied area conversions for farmer estimated units (including hectares) are markedly different from previous waves. I recommend excluding plots that do not have GPS measured areas from any area-based productivity estimates.
 use "${Nigeria_GHS_W4_raw_data}/sect11a1_plantingw4.dta", clear
 *merging in planting section to get cultivated status
 merge 1:1 hhid plotid using "${Nigeria_GHS_W4_raw_data}/sect11b1_plantingw4.dta", nogen
@@ -667,10 +670,11 @@ use "${Nigeria_GHS_W4_raw_data}/secta3ii_harvestW4.dta", clear
 	ren sa3iiq1c unit
 	ren sa3iiq1d size
 	ren sa3iiq6 value
-	merge m:1 hhid using "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_weights.dta", nogen keepusing(weight) keep(1 3)
+	merge m:1 hhid using "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_weights.dta", nogen keepusing(weight) keep(3)
 	//ren cropcode crop_code
 	gen price_unit = value/qty
 	gen obs=price_unit!=.
+	keep if obs==1
 	foreach i in zone state lga ea hhid {
 		preserve
 		bys `i' cropcode unit size condition : egen obs_`i'_price = sum(obs)
@@ -699,7 +703,8 @@ use "${Nigeria_GHS_W4_raw_data}/secta3ii_harvestW4.dta", clear
 	gen qty_kg = qty*conv_fact 
 	drop if qty_kg==. //34 dropped; largely basin and bowl.
 	gen price_kg = value/qty_kg
-	gen obs=1
+	gen obs=price_kg !=.
+	keep if obs == 1
 	foreach i in zone state lga ea hhid {
 		preserve
 		bys `i' cropcode : egen obs_`i'_pkg = sum(obs)
@@ -736,7 +741,6 @@ use "${Nigeria_GHS_W4_raw_data}/sect11f_plantingW4.dta", clear
 	gen ha_harvest = ha_planted if sa3iq4b ==2 | sa3iiiq7==1 //Was area planted less than area harvested? 2=No / In the last 12 months, has your household harvested any <Tree Crop>? They don't ask for area harvested, so I assume that the whole area is harvested (not true for some crops)
 	replace ha_harvest=ha_planted*sa3iq5/100 if ha_harvest==.
 	replace ha_harvest = 0 if ha_harvest==.
-	
 	/*gen month_planted = s11fq3a+(s11fq3b-2014)*12
 	gen month_harvested = sa3iq4a1 + (sa3iq4a2-2014)*12
 	gen months_grown = month_harvested-month_planted if s11fc5==1 //Ignoring permanent crops that may be grown multiple seasons
@@ -781,8 +785,6 @@ use "${Nigeria_GHS_W4_raw_data}/sect11f_plantingW4.dta", clear
 	gen percent_field=ha_planted/field_size
 *Generating total percent of purestand and monocropped on a field
 	bys hhid plot_id: egen total_percent = total(percent_field)
-//about 60% of plots have a total intercropped sum greater than 1
-//about 3% of plots have a total monocropped sum greater than 1
 //Dealing with crops which have monocropping larger than plot size or monocropping that fills plot size and still has intercropping to add
 	replace percent_field = percent_field/total_percent if total_percent>1 & purestand==0
 	replace percent_field = 1 if percent_field>1 & purestand==1
@@ -814,13 +816,23 @@ use "${Nigeria_GHS_W4_raw_data}/sect11f_plantingW4.dta", clear
 	replace quant_harv_kg = quantity_harvested * sa3iiiq13_conv if quant_harv_kg == .
 	replace quant_harv_kg = quantity_harvested * conv_fact if quant_harv_kg == .
 	//gen quant_harv_kg= quantity_harvested*conv_fact
-	ren sa3iq6a value_harvest
-	replace value_harvest = sa3iiiq14 if value_harvest==.
-	gen val_unit = value_harvest/quantity_harvested
-	gen val_kg = value_harvest/quant_harv_kg
+	ren sa3iq6a val_harvest_est
+	replace val_harvest_est = sa3iiiq14 if val_harvest_est==.
+	//ALT 09.28.22: I'm going to keep the grower-estimated valuation in here even though it's likely inaccurate for comparison purposes.
+	gen val_unit_est = val_harvest_est/quantity_harvested
+	gen val_kg_est = val_harvest_est/quant_harv_kg
 	merge m:1 hhid using "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_weights.dta", nogen keep(1 3)
 	gen plotweight = ha_planted*weight
+	//IMPLAUSIBLE ENTRIES - at least 100x the typical yield
+	foreach var in quantity_harvested quant_harv_kg val_harvest_est val_unit_est val_kg_est {
+	replace `var' = . if (hhid == 299005 & plot_id == 2 & cropcode == 1020) | /* 2000 heaps of cassava on 0.003 ha 
+	*/ (hhid == 339038 & plot_id == 2 & cropcode == 2190) | /* 5 tons of pumpkins on 0.0075 ha, an area smaller than my apartment
+	*/ (hhid == 229068 & plot_id == 2 & cropcode == 1121) | /* 17 tons of yams on 0.144 ha
+	*/ (hhid == 120058 & plot_id == 3 & cropcode == 1121) //14 tons of yams on 0.1 ha.
+	}
 	gen obs=quantity_harvested>0 & quantity_harvested!=.
+//ALT 09.28.22: I don't think median estimated valuations were particularly useful (or internally valid); we'll keep them only for the growers that made them.	
+/*
 	foreach i in zone state lga ea hhid {
 preserve
 	bys cropcode `i' : egen obs_`i'_kg = sum(obs)
@@ -834,59 +846,92 @@ collapse (median) val_kg_country = val_kg (sum) obs_country_kg=obs [aw=plotweigh
 tempfile val_kg_country_median
 save `val_kg_country_median'
 restore
-
+*/
 foreach i in zone state lga ea hhid {
-preserve
+/*preserve
 	bys `i' cropcode unit : egen obs_`i'_unit = sum(obs)
 	collapse (median) val_unit_`i'=val_unit [aw=plotweight], by (`i' unit size condition cropcode obs_`i'_unit)
 	tempfile val_unit_`i'_median
 	save `val_unit_`i'_median'
 restore
+*/
 	merge m:1 `i' unit size condition cropcode using `price_unit_`i'_median', nogen keep(1 3)
-	merge m:1 `i' unit size condition cropcode using `val_unit_`i'_median', nogen keep(1 3)
+	*merge m:1 `i' unit size condition cropcode using `val_unit_`i'_median', nogen keep(1 3)
 	merge m:1 `i' cropcode using `price_kg_`i'_median', nogen keep(1 3)
-	merge m:1 `i' cropcode using `val_kg_`i'_median', nogen keep(1 3)
+	*merge m:1 `i' cropcode using `val_kg_`i'_median', nogen keep(1 3)
 }
-preserve
+/*preserve
 collapse (median) val_unit_country = val_unit (sum) obs_country_unit=obs [aw=plotweight], by(cropcode unit size condition)
 tempfile val_unit_country_median
 save `val_unit_country_median'
 restore
+*/
 merge m:1 unit size condition cropcode using `price_unit_country_median', nogen keep(1 3)
-merge m:1 unit size condition cropcode using `val_unit_country_median', nogen keep(1 3)
+*merge m:1 unit size condition cropcode using `val_unit_country_median', nogen keep(1 3)
 merge m:1 cropcode using `price_kg_country_median', nogen keep(1 3)
-merge m:1 cropcode using `val_kg_country_median', nogen keep(1 3)
+*merge m:1 cropcode using `val_kg_country_median', nogen keep(1 3)
 
 //We're going to prefer observed prices first
+//ALT 09.25.22: WHY ARE THERE STILL MISSINMG VALUES IN HERE?!
+gen price_unit = . 
+gen price_kg = .
 foreach i in country zone state lga ea {
-	replace val_unit = price_unit_`i' if obs_`i'_price>9
-	replace val_kg = price_kg_`i' if obs_`i'_pkg>9
+	replace price_unit = price_unit_`i' if obs_`i'_price>9 & obs_`i'_price != .
+	replace price_kg = price_kg_`i' if obs_`i'_pkg>9 & obs_`i'_price != .
 }
-	gen val_missing_unit = val_unit==. 
-	gen val_missing_kg = val_kg==.
- 	replace val_unit = price_unit_hhid if price_unit_hhid!=.
-	replace val_kg = price_kg_hhid if price_kg_hhid!=. 
-	
+ 	//replace val_unit = price_unit_hhid if price_unit_hhid!=. 
+	//replace val_kg = price_kg_hhid if price_kg_hhid!=. 
+//ALT 09.25.22: 	
+	//gen val_missing_unit = val_unit==. 
+	//gen val_missing_kg = val_kg==.
+
+/*	
 foreach i in country zone state lga ea {
 	replace val_unit = val_unit_`i' if obs_`i'_unit > 9 & val_missing_unit==1
     replace val_kg = val_kg_`i' if obs_`i'_kg > 9 & val_missing_kg == 1
 }
-	
-	replace val_unit = val_unit_hhid if val_unit_hhid!=.  //Preferring household values where available.
-	replace val_kg = val_kg_hhid if val_kg_hhid!=. & val_unit==.
+	*/
+	//replace val_unit = val_unit_hhid if val_unit_hhid!=.  //Preferring household values where available.
+	//replace val_kg = val_kg_hhid if val_kg_hhid!=. & val_unit==.
 //All that for these two lines:
-	replace value_harvest=val_unit*quantity_harvested if value_harvest==.
-	replace value_harvest=val_kg*quant_harv_kg if value_harvest==.
-//167 real changes total. But note we can also subsitute local values for households with weird prices, which might work better than winsorizing.
+	gen value_harvest = price_unit * quantity_harvested
+/*
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+value_harv~t |      9,210    63378.53    192444.3   272.7273    7500000
+val_harves~t |     11,739     54432.8      156671          1    7000000
+
+*/	
+	
+	replace value_harvest = price_kg * quant_harv_kg if value_harvest == .
+/* 
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+value_harv~t |     11,378    57716.91    217123.9   22.51745   1.33e+07
+val_harves~t |     11,735    54260.04    156072.4          1    7000000
+*/	
+	replace value_harvest = val_harvest_est if value_harvest == .
+/*
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+value_harv~t |     11,829    56602.66    213841.5   22.51745   1.33e+07
+val_harves~t |     11,735    54260.04    156072.4          1    7000000
+*/
+//A few situations (mainly cocoa) where the grower estimated price is substantially below the area median.	
+
 	//Replacing conversions for unknown units
-	replace val_unit = value_harvest/quantity_harvested if val_unit==.
+	replace val_unit_est = value_harvest/quantity_harvested if val_unit_est==.
+	replace val_kg_est = value_harvest/quant_harv_kg if val_kg_est == .
+
 preserve
-	collapse (mean) val_kg conv_fact, by(hhid cropcode)
+//ALT note to double check and see if the changes to valuation mess this up.
+	collapse (mean) val_kg=price_kg conv_fact, by(hhid cropcode)
 	save "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_hh_crop_prices_kg.dta", replace //Backup for s-e income.
 restore
 preserve
 	//ALT 02.10.22: NOTE: This should be changed to ensure we get all household values rather than just ones with recorded harvests (although I imagine the number of households that paid in a crop they did not harvest is small)
-	collapse (mean) val_unit, by (hhid cropcode unit size condition)
+	collapse (mean) val_unit=price_unit, by (hhid cropcode unit size condition)
 	drop if unit == .
 	ren val_unit hh_price_mean
 	lab var hh_price_mean "Average price reported for this crop-unit in the household"
@@ -897,43 +942,61 @@ restore
 
 	//ALT 05.12.21: I feel like we should include the expected harvest.
 	//Addendum 10.14: Unfortunately we can only reliably do this for annual crops because the question for tree crops was asked in the planting survey; estimates are probably not reliable.
+	//Addendum to addendum 9.28.22: The plant survey also asks about temporary crops, not just tree crops. This was causing estimated harvests to be far too high.
 	replace sa3iq6d1 = . if sa3iq6d1 > 19000 //This corrects two plots, one where the household anticipates harvesting 20,000 paint rubbers of peppers (2000x current harvest) and another that anticipates 722,500 bags of rice.
-	drop unit size condition conv_fact quantity_harvested conv_fact
+	drop unit size condition quantity_harvested
 	ren sa3iq6d2 unit
 	ren sa3iq6d4 size
 	ren sa3iq6d2a condition
 	ren sa3iq6d1 quantity_harvested
-	//ALT 02.10.22: Need to add expected harvest of tree crops
-	replace unit = s11fq12b if unit==.
-	replace size = s11fq12c if size==.
-	replace condition = s11fq12d if condition == .
-	replace quantity_harvested = s11fq12a if quantity_harvested==.
-	replace quantity_harvested = . if hhid == 220016 & plot_id==2 & crop_code_master==1120 //One obs of 2000 pickups on a quarter of a hectare.
-	merge m:1 cropcode unit size condition using "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_cf.dta", nogen keep(1 3)
-	//ALT 02.11.22
+	replace quantity_harvested = . if hhid == 220016 & plot_id==2 & crop_code_master==1120 //One obs of 2000 pickups on a quarter of a hectare. Planting estimate was 1 pickup; likely a unit typo. 
 	gen quant_harv_kg2 = quantity_harvested * sa3iq6d_conv
-	replace quant_harv_kg2= quantity_harvested*conv_fact if quant_harv_kg2 ==.
+	replace quant_harv_kg2 = quantity_harvested * conv_fact if same_unit == 1
+	drop conv_fact
+	merge m:1 cropcode unit size condition using "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_cf.dta", nogen keep(1 3)
+	replace quant_harv_kg2= quantity_harvested*conv_fact if quant_harv_kg2 == .
 	gen val_harv2 = 0
 	recode quant_harv_kg2 quantity_harvested value_harvest (.=0) //ALT 02.10.22: This is causing people with "still to harvest" values getting missing where they should have something.
-foreach i in country zone state lga ea {
-	replace val_harv2=quantity_harvested*val_unit_`i' if same_unit==1 & obs_`i'_unit>9 & val_unit_`i'!=.
-	replace val_harv2=quant_harv_kg2*val_kg_`i' if same_unit==0 & obs_`i'_kg >9 & val_kg_`i'!=.
-}
-	replace val_harv2=quantity_harvested*val_unit_hhid if same_unit==1 & val_unit_hhid!=.
-	replace val_harv2=quant_harv_kg2*val_kg_hhid if same_unit==0 & val_kg_hhid != . 
-//The few that don't have the same units are in somewhat suspicious units. (I'm pretty sure you can't measure bananas in liters)
-	recode quant_harv* (.=0)
-	replace quant_harv_kg = quant_harv_kg+quant_harv_kg2
-	replace value_harvest = value_harvest+val_harv2
+
+	replace val_harv2=quantity_harvested*price_unit if same_unit==1
+	gen missing_unit =val_harv2 == 0
 	
-	//Affects 1,122 obs
+foreach i in country zone state lga ea {
+	replace val_harv2=quant_harv_kg2*price_kg_`i' if missing_unit==1 & obs_`i'_pkg > 9 & price_kg_`i'!=. 
+}
+drop missing_unit
+	//replace val_harv2=quantity_harvested*val_unit_hhid if same_unit==1 & val_unit_hhid!=.
+	//replace val_harv2=quant_harv_kg2*val_kg_hhid if same_unit==0 & val_kg_hhid != . 
+	
+//The few that don't have the same units are in somewhat suspicious units. (I'm pretty sure you can't measure bananas in liters)
+	replace quant_harv_kg = quant_harv_kg+quant_harv_kg2 //Affects 1,081 obs
+	replace value_harvest = value_harvest+val_harv2 // Affects 3,466 obs. That's odd.
+	/*At this point: 
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+value_harv~t |     15,098    55117.49    203162.9          0   1.33e+07
+
+if ~ != 0
+
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+value_harv~t |     14,217    58533.01    208885.5   31.52444   1.33e+07
+
+	*/
+
 	drop val_harv2 quant_harv_kg2 val_* obs*
 
-	collapse (sum) quant_harv_kg value_harvest ha_planted ha_harvest number_trees_planted percent_field /*(max) months_grown*/, by(zone state lga sector ea hhid plot_id crop_code_master purestand relay field_size gps_meas)
+	
+	//drop val_* obs*
+
+	collapse (sum) quant_harv_kg value_harvest /*val_harvest_est*/ ha_planted ha_harvest number_trees_planted percent_field /*(max) months_grown*/, by(zone state lga sector ea hhid plot_id crop_code_master purestand relay field_size gps_meas)
 	bys hhid plot_id : egen percent_area = sum(percent_field)
 	bys hhid plot_id : gen percent_inputs = percent_field/percent_area
 	drop percent_area //Assumes that inputs are +/- distributed by the area planted. Probably not true for mixed tree/field crops, but reasonable for plots that are all field crops
 	//Labor should be weighted by growing season length, though. 
+	recode ha_planted (0=.) //A few obs where the plantation area isn't given and the presence of other crops on the plot prevents us from inferring area.
 	merge m:1 hhid plot_id using "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_plot_decision_makers.dta", nogen keep(1 3) keepusing(dm_gender)
 	save "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_all_plots.dta",replace
 
@@ -1039,6 +1102,7 @@ ren value_harvest value_crop_production
 lab var value_crop_production "Gross value of crop production, summed over main and short season"
 lab var value_crop_sales "Value of crops sold so far, summed over main and short season"
 save "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_hh_crop_values_production.dta", replace 
+
 //Legacy code 
 collapse (sum) value_crop_production value_crop_sales, by (hhid)
 lab var value_crop_production "Gross value of crop production for this household"
@@ -1267,6 +1331,7 @@ save "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_hh_cost_labor.dta", replace
 	* SEED, LAND, ANIMALS, MACHINES, CHEMICALS, AND FERTILIZERS	*
 	*************************************************************
 	***Seeds***
+**# Bookmark #2
 use "${Nigeria_GHS_W4_raw_data}/sect11e1_plantingw4.dta", clear
 ren s11eq21 valseedexp
 gen improved = mod(seedid, 2)==1 //All "improved" codes end in 1
@@ -1277,6 +1342,12 @@ use "${Nigeria_GHS_W4_raw_data}/sect11f_plantingw4.dta", clear
 ren plotid plot_id 
 gen improved=s11fq3b==1
 replace improved = s11fq7a==1 if s11fq3b==.
+preserve //This is for the monocropped thing; need to integrate it overall.
+keep hhid plot_id cropcode improved
+//ren cropcode crop_code 
+tempfile imprv_seeds
+save `imprv_seeds'
+restore
 preserve
 replace cropcode=1120 if inrange(cropcode, 1121,1124)
 	label define CROPCODE 1120 "1120. YAM", add
@@ -1490,6 +1561,7 @@ use "${Nigeria_GHS_W4_raw_data}/secta11c2_harvestw4.dta", clear
 gen qtyherb=s11c2q11a*s11c2q11_conv 
 gen qtypest=s11c2q2a*s11c2q2_conv 
 gen qtynpk_fert=s11c2q37a*s11c2q37a_conv 
+
 gen qtyurea = s11c2q38a*s11c2q38a_conv
 gen qtyorgfert = s11dq37a*s11c2q37_conv //This looks wrong but it isn't
 gen qtyother_fert=s11c2q39a*s11c2q39a_conv 
@@ -1500,6 +1572,7 @@ ren s11c2q38b uniturea
 ren s11c2q39b unitother_fert
 ren s11dq37b unitorgfert
 ren plotid plot_id 
+replace qtyurea = . if uniturea == 12 & s11c2q38a > 1000
 preserve
 collapse (sum) qty*, by(hhid)
 merge 1:1 hhid using `hhqty'
@@ -1543,7 +1616,19 @@ gen valexp = val*exp_ratio
 gen valimp = val-valexp
 gen unitimp = unit
 gen unitexp = unit
+//Fertilizer units
+preserve
+//We can estimate how many nutrient units were applied for most fertilizers; dry urea is 46% N and NPK is either 20-10-10 or 15-15-15. I arbitrarily choose triple 15. 
+gen n_units = qty*strmatch(input, "npk_fert")*0.15 + qty*strmatch(input, "urea")*0.46
+gen p_units = qty*strmatch(input, "npk_fert")*0.15
+gen k_units = qty*strmatch(input, "npk_fert")*0.15
+gen n_units_org = qty*strmatch(input,"orgfert")*0.01
+collapse (sum) *_units*, by(ea hhid plot_id)
+tempfile fert_units
+save `fert_units'
+restore
 keep zone state lga ea hhid plot_id input *exp *imp
+
 reshape long qty val unit, i(zone state lga ea hhid plot_id input) j(exp) string
 replace input = "inorg" if strmatch(input,"npk_fert") | strmatch(input,"urea") | strmatch(input, "other_fert")
 
@@ -1604,6 +1689,8 @@ ren val val_
 reshape wide val_, i(hhid plot_id exp dm_gender) j(input) string
 ren val* val*_
 reshape wide val*, i(hhid plot_id dm_gender) j(exp) string
+tempfile hh_inputs_wide
+save `hh_inputs_wide'
 gen dm_gender2 = "male" if dm_gender==1
 replace dm_gender2 = "female" if dm_gender==2
 replace dm_gender2 = "mixed" if dm_gender==3
@@ -1652,6 +1739,9 @@ egen cost_total_hh = rowtotal(val*)
 drop val*
 save "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_hh_cost_inputs.dta", replace
 
+**
+
+
 ********************************************************************************
 * MONOCROPPED PLOTS *
 ********************************************************************************
@@ -1660,6 +1750,46 @@ save "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_hh_cost_inputs.dta", replace
 use "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_all_plots.dta", clear
 	keep if purestand==1 & relay!=1 //For now, omitting relay crops.
 	ren crop_code_master cropcode
+	//preserve 
+	merge 1:1 hhid plot_id using `hh_inputs_wide', nogen keep(3)
+	merge 1:1 ea hhid plot_id using `fert_units', nogen keep(1 3)
+	merge 1:1 hhid plot_id cropcode using `imprv_seeds', nogen keep(1 3)
+	ren plot_id plotid
+	merge 1:1 hhid plotid using "${Nigeria_GHS_W4_raw_data}\nga_plotgeovariables_y4", nogen keep(3)
+	merge 1:1 hhid plotid using "${Nigeria_GHS_W4_raw_data}\sect11b1_plantingw4.dta", nogen keep(3)
+
+	drop s11b1q2-s11b1q37b 
+	ren s11b1q39 irrigation 	
+	drop s11b1q40-s11b1q43_os
+	ren s11b1q44 soil_type
+	drop s11b1q44_os 
+	ren s11b1q45 soil_quality
+	ren s11b1q46 slope
+	ren s11b1q47 erosion
+	drop s11b1q48_1-s11b1q48_os
+	ren s11b1q49 erosion_control
+	drop s11b1q50_1 - s11b1q27 
+	ren s11b1q11a mech_landprep
+	drop s11b1q11b s11b1q11b_os
+	recode *units* improved irrigation mech_landprep erosion_control erosion (. 2=0)
+	foreach i in val_anml val_feedanml val_herb val_inorg val_labor val_mech val_orgfert val_pest val_plotrent val_seed {
+		recode `i'_exp `i'_imp (.=0)
+		gen `i' = (`i'_exp+`i'_imp)/field_size
+		drop `i'_exp `i'_imp
+	}
+	replace n_units = n_units/field_size
+	replace p_units = p_units/field_size
+	replace k_units = k_units/field_size
+	replace n_units_org = n_units_org/field_size
+	gen kg_ha = quant_harv_kg/field_size 
+	gen yield_unit_n = kg_ha/n_units
+	la var n_units "Nitrogen kg/ha"
+	la var p_units "Phosphorus kg/ha"
+	la var k_units "Potassium kg/ha"
+	la var n_units_org "Kg/ha of manure nitrogen applied, estimated"
+	la var yield_unit_n "Kg of yield per kg of N per ha"
+**# Bookmark #3
+	save "${Nigeria_GHS_W4_created_data}/nga_plots_for_regression.dta", replace
 	//merge 1:1 hhid plot_id using "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_plot_cost_inputs.dta", nogen keep(1 3)
 	/*Easy way, starting from previous line
 	merge 1:1 hhid plot_id using "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_plot_cost_inputs_wide.dta", nogen keep(1 3) //If we want to keep identities of all inputs
@@ -1773,13 +1903,15 @@ save "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_livestock_expenses.dta", rep
 //use "${Nigeria_GHS_W4_raw_data}/sect11k1_plantingw4.dta", clear //ALT: This file has dung and services. Do we need them?
 use "${Nigeria_GHS_W4_raw_data}/sect11k2_plantingw4.dta", clear
 append using "${Nigeria_GHS_W4_raw_data}/sect11k3_plantingw4.dta"
-
+//ren s11k2q4 milk_animals
+//ren s11k3q4 poultry_owned 
 gen produced_milkeggs = s11k2q1
 replace produced_milkeggs = s11k3q1 if produced_milkeggs==.
 drop if produced_milkeggs !=1
 ren s11k2q2 months_producedmilk
 recode months_producedmilk (.=0)
 ren s11k2q4 qty_animals
+replace qty_animals = s11k3q4 if qty_animals == .
 ren s11k2q3 days_producedmilk
 ren s11k2q5 quantity_daymilk
 gen quantity_producedmilk = qty_animals*days_producedmilk*quantity_daymilk //*months_producedmilk ALT 01.05.20: Looks like this should be qty/month rather than qty/season
@@ -1818,7 +1950,7 @@ label define PROD_CD 1 milk 2 eggs
 label values prod_cd PROD_CD
 gen price_unit = earnings_sales/quantity_sold_season
 //ALT 01.05.20: TODO get labels defined for units, resolve issue with processed milk v raw milk for unit price.
-keep hhid livestock_cd prod_cd months_produced quantity_produced unit quantity_sold_season earnings_sales price_unit
+keep hhid livestock_cd prod_cd months_produced quantity_produced unit quantity_sold_season earnings_sales price_unit qty_animals
 recode months_produced quantity_produced quantity_sold_season earnings_sales (.=0)
 save "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_hh_livestock_products.dta", replace
 
@@ -2939,7 +3071,10 @@ use "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_hh_livestock_products", clear
 keep if livestock_cd == 1 & quantity_produced!=0
 gen milk_quantity_produced = quantity_produced
 gen milk_months_produced = months_produced
-collapse (sum) milk_months_produced milk_quantity_produced , by (hhid)
+collapse (sum) milk_months_produced milk_quantity_produced qty_animals, by (hhid)
+ren qty_animals milk_animals
+gen liters_milk_produced = milk_quantity_produced * milk_months_produced
+la var liters_milk_produced "Amount of milk produced per year"
 la var milk_months_produced "Number of months that the household produced milk"		
 la var milk_quantity_produced "Average quantity of milk produced per month - liters"		 
 drop if milk_months_produced==0 | milk_quantity_produced==0
@@ -2953,7 +3088,8 @@ use "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_hh_livestock_products", clear
 keep if livestock_cd==5 & quantity_produced!=0
 gen eggs_quantity_produced = quantity_produced
 gen eggs_months_produced = months_produced
-collapse (sum) eggs_months_produced eggs_quantity_produced, by (hhid)
+collapse (sum) eggs_months_produced eggs_quantity_produced qty_animals, by (hhid)
+ren qty_animals poultry_owned 
 drop if eggs_months_produced==0 | eggs_quantity_produced==0
 la var eggs_months_produced "Number of months that the household produced eggs"		
 la var eggs_quantity_produced "Average number of eggs produced per month"
@@ -5932,7 +6068,7 @@ save "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_food_dep.dta", replace
 	*********************************
 /* This section uses a stata module developed by the WHO to compare child anthropometry to a reference population to determine stunting/malnourishment. The module must be downloaded from https://www.who.int/toolkits/child-growth-standards/software
 for this section to run. Be sure to update the paths to the ado and data files. The code automatically checks to see if there's a file at the specified location before continuing and will not construct the final poverty index if the data are not present; you can still refer to the final output file for the other subscores. */
-global dofilefold "//netid.washington.edu/wfs/EvansEPAR/Project/EPAR/Working Files/335 - Ag Team Data Support/Various Requests/WHO Child Malnutrition Macro/igrowup_update-master"
+
 capture confirm file "${dofilefold}/igrowup_restricted.ado"
 if !_rc {
 	adopath + "$dofilefold"
@@ -6065,7 +6201,7 @@ foreach i in male female mixed{
 	}
 }
 //drop rental_cost_land* cost_seed* value_fertilizer* cost_trans_fert* value_herbicide* value_pesticide* value_manure_purch* cost_trans_manure*
-drop val_anml* val_mech* val_labor* val_herb* val_inorg* val_orgfert* val_plotrent* val_seed* /*val_transfert* val_seedtrans* */ //
+//drop val_anml* val_mech* val_labor* val_herb* val_inorg* val_orgfert* val_plotrent* val_seed* /*val_transfert* val_seedtrans* */ //
 *Land rights
 merge 1:1 hhid using  "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_land_rights_hh.dta", nogen keep(1 3)
 la var formal_land_rights_hh "Household has documentation of land rights (at least one plot)"
@@ -6183,7 +6319,7 @@ merge 1:1 hhid using  "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_hhsize.dta"
 merge 1:1 hhid using "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_vaccine.dta", nogen keep(1 3)
 merge 1:1 hhid using "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_input_use.dta", nogen keep(1 3)
 //merge 1:1 hhid using "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_improvedseed_use.dta", nogen keep(1 3)
-merge 1:1 hhid using "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_imprv_seed_by_crop.dta"
+merge 1:1 hhid using "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_imprv_seed_by_crop.dta", nogen keep(1 3)
 merge 1:1 hhid using "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_any_ext.dta", nogen keep(1 3)
 merge 1:1 hhid using "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_fin_serv.dta", nogen keep(1 3)
 ren use_imprv_seed imprv_seed_use //ALT 02.03.22: Should probably fix code to align this with other inputs.
@@ -6201,21 +6337,16 @@ gen costs_dairy = .
 gen costs_dairy_percow = .
 la var costs_dairy "Dairy production cost (explicit)"
 la var costs_dairy_percow "Dairy production cost (explicit) per cow"
-gen liters_per_cow = . 
+gen liters_per_cow = milk_months_produced * milk_quantity_produced/milk_animals
 gen liters_per_buffalo = . 
 gen share_imp_dairy = . 
-gen milk_animals = . 
-global empty_vars $empty_vars *costs_dairy* *costs_dairy_percow* share_imp_dairy *liters_per_cow *liters_per_buffalo milk_animals
+global empty_vars $empty_vars *costs_dairy* *costs_dairy_percow* share_imp_dairy *liters_per_buffalo
 
 *Egg productivity
 merge 1:1 hhid using "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_egg_animals.dta", nogen keep(1 3)
-gen liters_milk_produced = milk_months_produced * milk_quantity_produced
-lab var liters_milk_produced "Total quantity (liters) of milk per year (household)"
 gen eggs_total_year =eggs_quantity_produced * eggs_months_produced
+gen egg_poultry_year = eggs_total_year/poultry_owned
 lab var eggs_total_year "Total number of eggs that was produced (household)"
-gen egg_poultry_year = . 
-gen poultry_owned = .
-global empty_vars $empty_vars *egg_poultry_year poultry_owned
 
 *Costs of crop production per hectare
 merge 1:1 hhid using "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_cropcosts.dta", nogen keep(1 3)
@@ -6922,7 +7053,7 @@ label values instrument instrument
 saveold "${Nigeria_GHS_W4_final_data}/Nigeria_GHS_W4_household_variables.dta", replace
 
 
-*Stop // ALT: This came out of nowhere and was in the W3 file, too. I think it's gremlins. // CJS 10.21 adding back in for consistency with other waves (summary stats are not always needed_
+
 ********************************************************************************
 *INDIVIDUAL-LEVEL VARIABLES
 ********************************************************************************
@@ -7272,6 +7403,6 @@ The summary statistics are outputted only for the sub_population of households, 
 The code for outputting the summary statistics is in a separare dofile that is called here
 */ 
 *Parameters
-global list_instruments  "Nigeria_GHS_W4"
+//global list_instruments  "Nigeria_GHS_W4"
 
-do "${directory}/_Summary_Statistics/EPAR_UW_335_SUMMARY_STATISTICS_01.17.2020_alt.do"
+//do "${directory}/_Summary_Statistics/EPAR_UW_335_SUMMARY_STATISTICS_01.17.2020_alt.do"

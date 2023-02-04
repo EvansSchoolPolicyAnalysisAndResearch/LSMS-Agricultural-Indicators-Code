@@ -3,12 +3,10 @@
 *Title/Purpose 	: This do.file was developed by the Evans School Policy Analysis & Research Group (EPAR) at the University of Washington
 				  for the construction of a set of agricultural development indicators 
 				  using the Tanzania National Panel Survey (TNPS-LSMS-ISA) Wave 1 (2008-09)
-*Author(s)		: Didier Alia, Pierre Biscaye, David Coomes, Jack Knauer, Josh Merfeld,  
-				  Isabella Sun, Chelsea Sweeney, Emma Weaver, Ayala Wineman, 
-				  C. Leigh Anderson, &  Travis Reynolds
+*Author(s)		: Didier Alia, Andrew Tomes, & C. Leigh Anderson
 
-*Acknowledgments: We acknowledge the helpful contributions of members of the World Bank's LSMS-ISA team, the FAO's RuLIS team, IFPRI, IRRI, 
-				  and the Bill & Melinda Gates Foundation Agricultural Development Data and Policy team in discussing indicator construction decisions. 
+*Acknowledgments: We acknowledge the helpful contributions of Pierre Biscaye, David Coomes, Jack Knauer, Josh Merfeld, Isabella Sun, Chelsea Sweeney, Emma Weaver, Ayala Wineman, 
+				  Travis Reynolds, the World Bank's LSMS-ISA team, the FAO's RuLIS team, IFPRI, IRRI, and the Bill & Melinda Gates Foundation Agricultural Development Data and Policy team in discussing indicator construction decisions. 
 				  All coding errors remain ours alone.
 *Date			: This  Version - 18 September 2019
 ----------------------------------------------------------------------------------------------------------------------------------------------------*/
