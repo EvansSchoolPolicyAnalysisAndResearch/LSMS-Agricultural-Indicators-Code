@@ -153,7 +153,7 @@ global drop_unmeas_plots 1 //If not 0, this variable will result in all plots no
 global Nigeria_GHS_W4_exchange_rate 199.04975		// https://www.bloomberg.com/quote/USDETB:CURR
 global Nigeria_GHS_W4_gdp_ppp_dollar 115.9778	// https://data.worldbank.org/indicator/PA.NUS.PPP
 global Nigeria_GHS_W4_cons_ppp_dollar 112.0983276		// https://data.worldbank.org/indicator/PA.NUS.PRVT.P
-global Nigeria_GHS_W4_inflation -0.199167
+global Nigeria_GHS_W4_infl_adj = 1.249 //267.5/214.2
 	
 global Nigeria_GHS_W4_pound_exchange 476.5
 global Nigeria_GHS_W4_euro_exchange 418.7
@@ -163,7 +163,7 @@ global Nigeria_GHS_W4_euro_exchange 418.7
 //Per W3, we convert WB's international poverty threshold to 2011$ using the PA.NUS.PRVT.PP WB info then inflate to the last year of the survey using CPI
 global Nigeria_GHS_W4_poverty_threshold (1.90*79.531*(1+(267.512-110.84)/110.84)) //~365 N
 global Nigeria_GHS_W4_poverty_nbs 376.52 //ALT 06.18.2020: Nigeria's NBS defines poverty as living below 376 N/day. Included for comparison purposes.
-global Nigeria_GHS_W4_poverty_215 2.15*$Nigeria_GHS_W4_inflation * $Nigeria_GHS_W4_cons_ppp_dollar  //New 2023 WB poverty threshold, works out to 273 N - a substantial drop largely because inflation was about 100% between 2011 and 2017
+global Nigeria_GHS_W4_poverty_215 2.15*$Nigeria_GHS_W4_infl_adj * $Nigeria_GHS_W4_cons_ppp_dollar  //New 2023 WB poverty threshold, works out to 273 N - a substantial drop largely because inflation was about 100% between 2011 and 2017
 
 //These values from Bai, Y., et al. (2021) Cost and affordability of nutritious diets at retail prices: Evidence from 177 countries. Food Policy 99. doi:https://doi.org/10.1016/j.foodpol.2020.101983
 //CoCA is cost of a calorically adequate diet in PPP$ (minimum number of calories needed for survival); CoNA is cost of a nutritionally adequate diet, i.e., the minimum expenditure required to get RDIs of macro and micronutrients. 
@@ -7245,13 +7245,13 @@ gen poverty_under_1_9 = (daily_percap_cons<$Nigeria_GHS_W4_poverty_threshold)
 la var poverty_under_1_9 "Household has a per capita conumption of under $1.90 in 2018 $ PPP)"
 */
 //ALT Update START
-gen ccf_loc = (1+$Nigeria_GHS_W4_inflation) 
+gen ccf_loc = (1/$Nigeria_GHS_W4_infl_adj) 
 lab var ccf_loc "currency conversion factor - 2017 $NGN"
-gen ccf_usd = (1+$Nigeria_GHS_W4_inflation) /$Nigeria_GHS_W4_exchange_rate 
+gen ccf_usd = ccf_loc/$Nigeria_GHS_W4_exchange_rate 
 lab var ccf_usd "currency conversion factor - 2017 $USD"
-gen ccf_1ppp = (1+$Nigeria_GHS_W4_inflation) /$Nigeria_GHS_W4_cons_ppp_dollar
+gen ccf_1ppp = ccf_loc/$Nigeria_GHS_W4_cons_ppp_dollar
 lab var ccf_1ppp "currency conversion factor - 2017 $Private Consumption PPP"
-gen ccf_2ppp = (1+$Nigeria_GHS_W4_inflation) /$Nigeria_GHS_W4_gdp_ppp_dollar
+gen ccf_2ppp = ccf_loc/$Nigeria_GHS_W4_gdp_ppp_dollar
 lab var ccf_2ppp "currency conversion factor - 2017 $GDP PPP"
 
 gen poverty_under_1_9 = (daily_percap_cons < $Nigeria_GHS_W4_poverty_threshold)
@@ -7554,20 +7554,20 @@ foreach v of varlist  plot_productivity  plot_labor_prod {
 *Convert monetary values to USD and PPP
 global monetary_val plot_value_harvest plot_productivity  plot_labor_prod 
 foreach p of global monetary_val {
-	gen `p'_1ppp = (1 + $Nigeria_GHS_W4_inflation) * `p' / $Nigeria_GHS_W4_cons_ppp_dollar
-	gen `p'_2ppp = (1 + $Nigeria_GHS_W4_inflation) * `p' / $Nigeria_GHS_W4_gdp_ppp_dollar
-	gen `p'_usd = (1 + $Nigeria_GHS_W4_inflation) * `p' / $Nigeria_GHS_W4_exchange_rate
-	gen `p'_loc = (1 + $Nigeria_GHS_W4_inflation) * `p'
+	gen `p'_1ppp = (1 + $Nigeria_GHS_W4_infl_adj) * `p' / $Nigeria_GHS_W4_cons_ppp_dollar
+	gen `p'_2ppp = (1 + $Nigeria_GHS_W4_infl_adj) * `p' / $Nigeria_GHS_W4_gdp_ppp_dollar
+	gen `p'_usd = (1 + $Nigeria_GHS_W4_infl_adj) * `p' / $Nigeria_GHS_W4_exchange_rate
+	gen `p'_loc = (1 + $Nigeria_GHS_W4_infl_adj) * `p'
 	local l`p' : var lab `p' 
 	lab var `p'_1ppp "`l`p'' (2016 $ Private Consumption PPP)"
 	lab var `p'_2ppp "`l`p'' (2016 $ GDP PPP)"
 	lab var `p'_usd "`l`p'' (2016 $ USD)"
 	lab var `p'_loc "`l`p'' (2016 NGN)" 
 	lab var `p' "`l`p'' (NGN)"  
-	gen w_`p'_1ppp = (1 + $Nigeria_GHS_W4_inflation) * w_`p' / $Nigeria_GHS_W4_cons_ppp_dollar
-	gen w_`p'_2ppp = (1 + $Nigeria_GHS_W4_inflation) * w_`p' / $Nigeria_GHS_W4_gdp_ppp_dollar
-	gen w_`p'_usd = (1 + $Nigeria_GHS_W4_inflation) * w_`p' / $Nigeria_GHS_W4_exchange_rate
-	gen w_`p'_loc = (1 + $Nigeria_GHS_W4_inflation) * w_`p' 
+	gen w_`p'_1ppp = (1 + $Nigeria_GHS_W4_infl_adj) * w_`p' / $Nigeria_GHS_W4_cons_ppp_dollar
+	gen w_`p'_2ppp = (1 + $Nigeria_GHS_W4_infl_adj) * w_`p' / $Nigeria_GHS_W4_gdp_ppp_dollar
+	gen w_`p'_usd = (1 + $Nigeria_GHS_W4_infl_adj) * w_`p' / $Nigeria_GHS_W4_exchange_rate
+	gen w_`p'_loc = (1 + $Nigeria_GHS_W4_infl_adj) * w_`p' 
 	local lw_`p' : var lab w_`p'
 	lab var w_`p'_1ppp "`lw_`p'' (2016 $ Private Consumption PPP)"
 	lab var w_`p'_2ppp "`lw_`p'' (2016 $ GDP PPP)"
@@ -7577,14 +7577,15 @@ foreach p of global monetary_val {
 }
 */
 
-gen ccf_loc = (1+$Nigeria_GHS_W4_inflation) 
+gen ccf_loc = (1/$Nigeria_GHS_W4_infl_adj) 
 lab var ccf_loc "currency conversion factor - 2017 $NGN"
-gen ccf_usd = (1+$Nigeria_GHS_W4_inflation) /$Nigeria_GHS_W4_exchange_rate 
+gen ccf_usd = ccf_loc/$Nigeria_GHS_W4_exchange_rate 
 lab var ccf_usd "currency conversion factor - 2017 $USD"
-gen ccf_1ppp = (1+$Nigeria_GHS_W4_inflation) /$Nigeria_GHS_W4_cons_ppp_dollar
+gen ccf_1ppp = ccf_loc/$Nigeria_GHS_W4_cons_ppp_dollar
 lab var ccf_1ppp "currency conversion factor - 2017 $Private Consumption PPP"
-gen ccf_2ppp = (1+$Nigeria_GHS_W4_inflation) /$Nigeria_GHS_W4_gdp_ppp_dollar
+gen ccf_2ppp = ccf_loc/$Nigeria_GHS_W4_gdp_ppp_dollar
 lab var ccf_2ppp "currency conversion factor - 2017 $GDP PPP"
+
 
 global monetary_val plot_value_harvest plot_productivity  plot_labor_prod 
 foreach p of global monetary_val {
