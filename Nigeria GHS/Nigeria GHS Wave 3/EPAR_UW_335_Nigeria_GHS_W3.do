@@ -136,11 +136,10 @@ global Nigeria_GHS_W3_final_data  		"$directory/Nigeria GHS/Nigeria GHS Wave 3/F
 *EXCHANGE RATE AND INFLATION FOR CONVERSION IN USD
 ********************************************************************************
 global Nigeria_GHS_W3_exchange_rate 199.04975  	// https://www.bloomberg.com/quote/USDETB:CUR
-//global Nigeria_GHS_W3_gdp_ppp_dollar 93.915   	// https://data.worldbank.org/indicator/PA.NUS.PPP
-//global Nigeria_GHS_W3_cons_ppp_dollar 123.639 	// https://data.worldbank.org/indicator/PA.NUS.PRVT.PP?locations=NG
-global Nigeria_GHS_W3_gdp_ppp_dollar 105.374 //Trying with 2016 value
-global Nigeria_GHS_W3_cons_ppp_dollar 101.908 //Should be 2016.
-global Nigeria_GHS_W3_inflation 0
+//ALT 03.09.23: Updating to 2017 values to align with WB's changes to the WB poverty line
+global Nigeria_GHS_W3_gdp_ppp_dollar 105.374 
+global Nigeria_GHS_W3_cons_ppp_dollar 101.908 
+global Nigeria_GHS_W3_inflation 1 //ALT: Base year = 1
 
 
 ********************************************************************************
@@ -5364,14 +5363,16 @@ gen bottom_40_peraeq = 0
 replace bottom_40_peraeq = 1 if r(r1) > w_daily_peraeq_cons & rural==1
 
 ****Currency Conversion Factors***
-gen ccf_loc = 1 
-lab var ccf_loc "currency conversion factor - 2016 $NGN"
-gen ccf_usd = 1/$Nigeria_GHS_W3_exchange_rate 
-lab var ccf_usd "currency conversion factor - 2016 $USD"
-gen ccf_1ppp = 1/ $Nigeria_GHS_W3_cons_ppp_dollar
-lab var ccf_1ppp "currency conversion factor - 2016 $Private Consumption PPP"
-gen ccf_2ppp = 1/ $Nigeria_GHS_W3_gdp_ppp_dollar
-lab var ccf_2ppp "currency conversion factor - 2016 $GDP PPP"
+gen ccf_loc = (1/$Nigeria_GHS_W3_inflation) 
+lab var ccf_loc "currency conversion factor - 2017 $NGN"
+gen ccf_usd = ccf_loc/$Nigeria_GHS_W3_exchange_rate 
+lab var ccf_usd "currency conversion factor - 2017 $USD"
+gen ccf_1ppp = ccf_loc/$Nigeria_GHS_W3_cons_ppp_dollar
+lab var ccf_1ppp "currency conversion factor - 2017 $Private Consumption PPP"
+gen ccf_2ppp = ccf_loc/$Nigeria_GHS_W3_gdp_ppp_dollar
+lab var ccf_2ppp "currency conversion factor - 2017 $GDP PPP"
+
+gen poverty_under_2_15 = daily_percap_cons < 2.15/ccf_1ppp
 
 *generating clusterid and strataid
 gen clusterid=ea
@@ -5599,8 +5600,9 @@ foreach v of varlist  plot_productivity  plot_labor_prod {
 	replace  w_`v' = r(r1) if  w_`v' > r(r1) &  w_`v'!=.
 	local l`v' : var lab `v'
 	lab var  w_`v'  "`l`v'' - Winzorized top 1%"
-}	
-	
+}
+
+/* ALT Update 03.20.23
 *Convert monetary values to USD and PPP
 global monetary_val plot_value_harvest plot_productivity  plot_labor_prod 
 foreach p of global monetary_val {
@@ -5623,6 +5625,40 @@ foreach p of global monetary_val {
 	lab var w_`p'_2ppp "`lw_`p'' (2016 $ GDP PPP)"
 	lab var w_`p'_usd "`lw_`p'' (2016 $ USD)"
 	lab var w_`p'_loc "`lw_`p'' 2106 (NGN)"
+	lab var w_`p' "`lw_`p'' (NGN)" 
+}
+*/
+
+gen ccf_loc = (1/$Nigeria_GHS_W3_inflation) 
+lab var ccf_loc "currency conversion factor - 2017 $NGN"
+gen ccf_usd = ccf_loc/$Nigeria_GHS_W3_exchange_rate 
+lab var ccf_usd "currency conversion factor - 2017 $USD"
+gen ccf_1ppp = ccf_loc/$Nigeria_GHS_W3_cons_ppp_dollar
+lab var ccf_1ppp "currency conversion factor - 2017 $Private Consumption PPP"
+gen ccf_2ppp = ccf_loc/$Nigeria_GHS_W3_gdp_ppp_dollar
+lab var ccf_2ppp "currency conversion factor - 2017 $GDP PPP"
+
+global monetary_val plot_value_harvest plot_productivity  plot_labor_prod 
+foreach p of global monetary_val {
+	gen `p'_1ppp = `p' * ccf_1ppp
+	gen `p'_2ppp = `p' * ccf_2ppp
+	gen `p'_usd = `p' * ccf_usd 
+	gen `p'_loc =  `p' * ccf_loc 
+	local l`p' : var lab `p' 
+	lab var `p'_1ppp "`l`p'' (2017 $ Private Consumption PPP)"
+	lab var `p'_2ppp "`l`p'' (2017 $ GDP PPP)"
+	lab var `p'_usd "`l`p'' (2017$ USD)"
+	lab var `p'_loc "`l`p'' (2017 NGN)" 
+	lab var `p' "`l`p'' (NGN)"  
+	gen w_`p'_1ppp = w_`p' * ccf_1ppp
+	gen w_`p'_2ppp = w_`p' * ccf_2ppp
+	gen w_`p'_usd = w_`p' * ccf_usd
+	gen w_`p'_loc = w_`p' * ccf_loc
+	local lw_`p' : var lab w_`p'
+	lab var w_`p'_1ppp "`lw_`p'' (2017 $ Private Consumption PPP)"
+	lab var w_`p'_2ppp "`lw_`p'' (2017 $ GDP PPP)"
+	lab var w_`p'_usd "`lw_`p'' (2017 $ USD)"
+	lab var w_`p'_loc "`lw_`p'' (2017 NGN)" 
 	lab var w_`p' "`lw_`p'' (NGN)" 
 }
 
@@ -5781,6 +5817,6 @@ The code for outputting the summary statistics is in a separare dofile that is c
 */ 
 *Parameters
 
-//global list_instruments  "Nigeria_GHS_W3"
-//do "\\netid.washington.edu\wfs\EvansEPAR\Project\EPAR\Working Files\335 - Ag Team Data Support\Waves\_Summary_statistics\EPAR_UW_335_SUMMARY_STATISTICS_01.17.2020_alt.do" 
+global list_instruments  "Nigeria_GHS_W3"
+do "\\netid.washington.edu\wfs\EvansEPAR\Project\EPAR\Working Files\335 - Ag Team Data Support\Waves\_Summary_statistics\EPAR_UW_335_SUMMARY_STATISTICS_03.23.23.do" 
 
