@@ -168,13 +168,10 @@ set maxvar 8000
 // set directories
 * These paths correspond to the folders where the raw data files are located 
 * and where the created data and final data will be stored.
-local root_folder "//netid.washington.edu/wfs/EvansEPAR/Project/EPAR/Working Files/378 - LSMS Burkina Faso, Malawi, Uganda/uganda-wave2-2010-11"
-global root_folder "/Volumes/wfs/Project/EPAR/Working Files/378 - LSMS Burkina Faso, Malawi, Uganda/uganda-wave2-2010-11"
 global root_folder "R:/Project/EPAR/Working Files/378 - LSMS Burkina Faso, Malawi, Uganda/uganda-wave2-2010-11"
-
-global UGA_W2_raw_data "`root_folder'/raw_data"
-global UGA_W2_final_data "`root_folder'/outputs"
-global UGA_W2_created_data "`root_folder'/temp"
+global UGA_W2_raw_data "$root_folder/raw_data"
+global UGA_W2_final_data "$root_folder/outputs"
+global UGA_W2_created_data "$root_folder/temp"
 
 *Re-scaling survey weights to match population estimates
 *https://databank.worldbank.org/source/world-development-indicators#

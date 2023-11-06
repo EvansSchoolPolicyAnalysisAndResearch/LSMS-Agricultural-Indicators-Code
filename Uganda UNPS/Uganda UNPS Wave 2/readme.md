@@ -4,7 +4,7 @@ CODING STATUS: Fully completed, still under active review and expansion
 ## Prerequisites
 * Download the raw data from [https://microdata.worldbank.org/index.php/catalog/3557](https://microdata.worldbank.org/index.php/catalog/2166)
 * Extract the files to the "Raw DTA Files" folder in the cloned directory
-* Update the paths on lines 131 and 136-139 with the correct paths to the raw data and output files.
+* Update the paths on lines 171-174 with the correct paths to the raw data and output files.
 
 ## Table of Contents
 ### Globals
@@ -15,7 +15,7 @@ CODING STATUS: Fully completed, still under active review and expansion
     * UGA_NPS_W2_pop_rur - Rural population in 2011 (World Bank)
     * UGA_NPS_W2_pop_urb - Urban population in 2011 (World Bank)
   * Species
-    * label defines species as large ruminants, small ruminants, pigs, equines and poultry (including rabbits) 
+    * Livestock species categories: large ruminants (bovids), small ruminants (sheep, goats), pigs, equines (horses, donkeys), and poultry (including rabbits) 
   * Exchange Rates
     * NPS_LSMS_ISA_W2_exchange_rate - USD-Uganda shilling conversion
     * NPS_LSMS_ISA_W2_gdp_ppp_dollar - GDP-based purchasing power parity conversion, World Bank Indicator PA.NUS.PPP
@@ -47,6 +47,7 @@ CODING STATUS: Fully completed, still under active review and expansion
 * Created hectares planted across household, plot, parcel, crop and season.
 ### All Plots
 * Generates plot production statistics, including kilograms harvested, sales prices, imputed values, and cropping style
+* To smooth over some of the variability inherent in the by-observation nonstandard unit conversions, we have developed a file of regional medians across all Uganda waves. These files are present in the "temp" folder. 
 ### Gross Crop Revenue
 * Total value of crops sold
 * Don't have year or planting dates so can't create time variables in this wave.
@@ -130,7 +131,7 @@ Land size in hectares and cultivated parcels
 ### Food Security
 * Food security by household
 ### Food Provision
-* Not able to follow this section because the raw data doesn't have months of food insecurity. Instrad this is a measure of total number of households with people who reported being food insecure in the past 12 months.
+* This is is a measure of total number of households with people who reported being food insecure in the past 12 months.
 ### Household Assets
 * Reported value of assets owned (see questionnaire household section 5 for types of assets)
 ### Distance to Agro Dealers
