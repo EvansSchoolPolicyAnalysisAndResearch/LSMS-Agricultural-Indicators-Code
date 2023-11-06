@@ -3357,7 +3357,7 @@ collapse (mean) milk_quant_per_animal_per_yr_l  (sum) number_cows_milked, by(hou
 lab var milk_quant_per_animal_per_yr_l "Average quantity of milk (liters) per cow per year"
 merge 1:1 household_id using "${Ethiopia_ESS_W1_created_data}/Ethiopia_ESS_W1_male_head.dta", nogen
 gen hhid=household_id
-merge 1:1 hhid using "${Ethiopia_ESS_W1_created_data}/Ethiopia_ESS_W1_SSP_Livestock_keepers.dta", nogen
+//merge 1:1 hhid using "${Ethiopia_ESS_W1_created_data}/Ethiopia_ESS_W1_SSP_Livestock_keepers.dta", nogen //ALT 11.06.23: Removing bad reference to old project
 save "${Ethiopia_ESS_W1_created_data}/Ethiopia_ESS_W1_total_milk_productivity.dta", replace
 
 ***Egg Productivity***
@@ -3395,7 +3395,7 @@ lab var eggs_per_hen_per_yr "Average number of eggs per hen per year (all hen ty
 merge 1:1 household_id using "${Ethiopia_ESS_W1_created_data}/Ethiopia_ESS_W1_male_head.dta", nogen
 merge 1:1 household_id using "${Ethiopia_ESS_W1_created_data}/Ethiopia_ESS_W1_hhids.dta", nogen
 gen hhid=household_id
-merge 1:1 hhid using "${Ethiopia_ESS_W1_created_data}/Ethiopia_ESS_W1_SSP_Livestock_keepers.dta", nogen
+merge 1:1 hhid using "${Ethiopia_ESS_W1_created_data}/Ethiopia_ESS_W1_SSP_Livestock_keepers.dta", nogen //ALT 11.06.23: Removing bad reference to old project
 save "${Ethiopia_ESS_W1_created_data}/Ethiopia_ESS_W1_total_egg_productivity.dta", replace
 
 *End revision MEK.01.20.2021
@@ -4320,8 +4320,6 @@ label define instrument 1 "Tanzania NPS Wave 1" 2 "Tanzania NPS Wave 2" 3 "Tanza
 	*/ 22 "Nigeria NIBAS AgDev (Niger)" 23 "Nigeria NIBAS AgDev (Kano)" 24 "Nigeria NIBAS AgDev (Katsina)" 
 label values instrument instrument	
 saveold "${Ethiopia_ESS_W1_final_data}/Ethiopia_ESS_W1_household_variables.dta", replace
-
-Stop
 
 **************
 *INDIVIDUAL-LEVEL VARIABLES
