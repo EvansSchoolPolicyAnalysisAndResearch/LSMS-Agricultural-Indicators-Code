@@ -517,20 +517,20 @@ clonevar condition_harv = a5aq6b
 replace condition_harv = a5bq6b if season==2
 clonevar unit_code_harv=a5aq6c
 replace unit_code_harv=a5bq6c if unit_code==.
-clonevar conv_factor_harv = a5aq6d 
-replace conv_factor_harv = a5bq6d if season==2
-replace conv_factor_harv = 1 if unit_code_harv==1
+*clonevar conv_factor_harv = a5aq6d 
+*replace conv_factor_harv = a5bq6d if season==2
+*replace conv_factor_harv = 1 if unit_code_harv==1
 *Unit of Crop Sold
 clonevar sold_unit_code =a5aq7c
 replace sold_unit_code=a5bq7c if sold_unit_code==.
 clonevar sold_value= a5aq8
 replace sold_value=a5bq8 if sold_value==. // SAW 05.05.22 It seems like the var a5aq8 "What was the value?" refers to total value of the crop sold in contrast to UG W5 that shows price unit. 
-clonevar conv_factor_sold = A5AQ7D 
-replace conv_factor_sold = A5BQ7D if season==2
-replace conv_factor_sold = 1 if sold_unit_code==1
+*clonevar conv_factor_sold = A5AQ7D 
+*replace conv_factor_sold = A5BQ7D if season==2
+*replace conv_factor_sold = 1 if sold_unit_code==1
 gen sold_qty=a5aq7a
 replace sold_qty=a5bq7a if sold_qty==.
-gen quant_sold_kg = sold_qty*conv_factor_sold 
+*gen quant_sold_kg = sold_qty*conv_factor_sold 
 
 tostring HHID, format(%18.0f) replace
 merge m:1 HHID using "${UGS_W3_created_data}/Uganda_NPS_LSMS_ISA_W3_hhids.dta", nogen keepusing(region district county subcounty parish ea weight) keep(1 3)
@@ -540,7 +540,7 @@ rename cropID crop_code
 recode crop_code  (741 742 744 = 740)  //  Same for bananas (740)
 label define cropID 740 "Bananas", modify //need to add new codes to the value label, cropID
 label values crop_code cropID //apply crop labels to crop_code_master
-
+drop if plot_id==. | parcel_id==. | crop_code==.
 **********************************
 ** Standard Conversion Factor Table **
 **********************************
@@ -556,26 +556,27 @@ merge m:1 crop_code sold_unit_code region using "${UGS_W3_created_data}/UG_Conv_
 merge m:1 crop_code sold_unit_code  using "${UGS_W3_created_data}/UG_Conv_fact_sold_table_national.dta", keep(1 3) nogen 
 
 *We create Quantity Sold (kg using standard  conversion factor table for each crop- unit and region). 
-replace s_conv_factor_sold = sn_conv_factor_sold if region!=. // We merge the national standard conversion factor for those HHID with missing regional info. 
-gen s_quant_sold_kg = sold_qty*s_conv_factor_sold
-replace s_quant_sold_kg=. if sold_qty==0 | sold_unit_code==.
-gen s_price_unit = sold_value/s_quant_sold_kg 
-gen obs1 = s_price_unit!=.
+*replace s_conv_factor_sold = sn_conv_factor_sold if region!=. // We merge the national standard conversion factor for those HHID with missing regional info. 
+replace s_conv_factor_sold = sn_conv_factor_sold if region==. // We merge the national standard conversion factor for those HHID with missing regional info. SW 11.2.23 Update 
+gen quant_sold_kg = sold_qty*s_conv_factor_sold
+replace quant_sold_kg=. if sold_qty==0 | sold_unit_code==.
+gen price_unit = sold_value/quant_sold_kg 
+gen obs1 = price_unit!=.
 
 
 // Loop for price per kg for each crop at different geographic dissagregate using Standard price per kg variable (from standard conversion factor table)
 	foreach i in region district county subcounty parish ea HHID {
 		preserve
-		bys `i' crop_code /*sold_unit_code*/ : egen s_obs_`i'_price = sum(obs1)
-		collapse (median) s_price_unit_`i' = s_price_unit [aw=weight], by /*(`i' sold_unit_code crop_code obs_`i'_price)*/ (crop_code /*sold_unit_code*/ `i' s_obs_`i'_price)
-		tempfile s_price_unit_`i'_median
-		save `s_price_unit_`i'_median'
+		bys `i' crop_code /*sold_unit_code*/ : egen obs_`i'_price = sum(obs1)
+		collapse (median) price_unit_`i' = price_unit [aw=weight], by /*(`i' sold_unit_code crop_code obs_`i'_price)*/ (crop_code /*sold_unit_code*/ `i' obs_`i'_price)
+		tempfile price_unit_`i'_median
+		save `price_unit_`i'_median'
 		restore
 	}
 	preserve
-	collapse (median) s_price_unit_country = s_price_unit (sum) s_obs_country_price = obs1 [aw=weight], by(crop_code /*sold_unit_code*/)
-	tempfile s_price_unit_country_median
-	save `s_price_unit_country_median'
+	collapse (median) price_unit_country = price_unit (sum) obs_country_price = obs1 [aw=weight], by(crop_code /*sold_unit_code*/)
+	tempfile price_unit_country_median
+	save `price_unit_country_median'
 	restore
 
 ***We merge Crop Harvested Conversion Factor at the crop-unit-regional ***
@@ -590,9 +591,9 @@ merge m:1 crop_code unit_code using "${UGS_W3_created_data}/UG_Conv_fact_harvest
 *From Conversion factor section to calculate medians
 clonevar quantity_harv=a5aq6a
 replace quantity_harv=a5bq6a if quantity_harv==.
-gen quant_harv_kg = quantity_harv*conv_factor_harv 
-replace s_conv_factor_harv = sn_conv_factor_harv if region!=. // We merge the national standard conversion factor for those HHID with missing regional info.
-gen s_quant_harv_kg = quantity_harv*s_conv_factor_harv 
+*gen quant_harv_kg = quantity_harv*conv_factor_harv 
+replace s_conv_factor_harv = sn_conv_factor_harv if region==. // We merge the national standard conversion factor for those HHID with missing regional info.
+gen quant_harv_kg = quantity_harv*s_conv_factor_harv 
 
 *By using the standard conversion factor we calculate -On average - a higher quantity harvested in kg  that using the WB conversion factors -though there are many cases that standard qty harvested is smaller than the WB qty harvested. 
 *Notes: Should we winsorize the sold qty ($) prior to calculating the price per kg giventhis variable is also driving the variation and has many outliers. Though, it won't affect themedian price per kg it will affect the  price per unit for all the observations that do have sold harvested affecting the value of harvest. 
@@ -615,13 +616,14 @@ format harv_end %tm
 label var harv_end "Harvest end date"
 
 *Create Price unit for converted sold quantity (kgs)
-gen price_unit=sold_value/(quant_sold_kg)
+*gen price_unit=sold_value/(quant_sold_kg)
 label var price_unit "Average sold value per kg of harvest sold"
 gen obs = price_unit!=.
 *Checking price_unit mean and sd for each type of crop ->  bys crop_code: sum price_unit
 save "${UGS_W3_created_data}/Uganda_NPS_LSMS_ISA_W3_crop_value.dta", replace 
 *We collapse to get to a unit of analysis at the HHID, parcel, plot, season level instead of ... plot, season, condition and unit of crop harvested*/
 
+/*
 //This loop below creates a value for the price of each crop at the given regional levels seen in the first line. It stores this in temporary storage to allow for cleaner, simpler code, but could be stored permanently if you want.
 	foreach i in region district county subcounty parish ea HHID {
 		preserve
@@ -638,7 +640,7 @@ save "${UGS_W3_created_data}/Uganda_NPS_LSMS_ISA_W3_crop_value.dta", replace
 	tempfile price_unit_country_median
 	save `price_unit_country_median'
 	restore
-
+SW 11/2/23 This becomes irrelevant since know we only use the standardized version of conversion factors sold/harvested methodology. */
 **********************************
 ** [Harvest and Sold] Crop Unit Conversion Factors  **
 **********************************
@@ -677,8 +679,7 @@ gen plant_date = ym(year_planted,month_planted)
 format plant_date %tm
 label var plant_date "Plantation start date"
 clonevar crop_code =  crop_code_master 
-
-gen perm_tree = 1 if inlist(crop_code_master, 460, 630, 700, 710, 720, 740, 750, 760, 770, 780, 810, 820, 830, 870) //dodo, cassava, oranges, pawpaw, pineapple, bananas, mango, jackfruit, avocado, passion fruit, coffee, cocoa, tea, and vanilla, in that order SAW everythins works except for 740 banana that is still 741 742 and 744
+gen perm_tree = 1 if inlist(crop_code_master, 460, 630, 700, 710, 720, 741, 742, 744, 740, 750, 760, 770, 780, 810, 820, 830, 870) //dodo, cassava, oranges, pawpaw, pineapple, bananas, mango, jackfruit, avocado, passion fruit, coffee, cocoa, tea, and vanilla, in that order SAW everythins works except for 740 banana that is still 741 742 and 744
 replace perm_tree = 0 if perm_tree == .
 lab var perm_tree "1 = Tree or permanent crop" // JHG 1_14_22: what about perennial, non-tree crops like cocoyam (which I think is also called taro)?
 duplicates drop HHID parcel_id plot_id crop_code season, force
@@ -745,19 +746,20 @@ gen months_grown = harv_date - plant_date if perm_tree==0
 **********************************
 ** Crop Harvest Value **
 **********************************
-*Update Incorporating median price per kg to calculate Value of Harvest ($) -using WB Conversion factors 
+*Update Incorporating median price per kg to calculate Value of Harvest ($) - Using Standard Conversion Factors
 foreach i in  region district county subcounty parish ea HHID {	
 	merge m:1 `i' /*unit_code*/ crop_code using `price_unit_`i'_median', nogen keep(1 3)
-	merge m:1 /*unit_code*/ crop_code using `price_unit_country_median', nogen keep(1 3)
 }
+	merge m:1 /*unit_code*/ crop_code using `price_unit_country_median', nogen keep(1 3)
 rename price_unit val_unit
 
-*SAW 7/24/23 Update: Incorporating median standard price per kg to calculate Value of Harvest ($) - Using Standard Conversion Factors 
+/*SAW 7/24/23 Update: Incorporating median standard price per kg to calculate Value of Harvest ($) - Using Standard Conversion Factors 
 foreach i in  region district county subcounty parish ea HHID {	
 	merge m:1 `i' /*unit_code*/ crop_code using `s_price_unit_`i'_median', nogen keep(1 3)
-	merge m:1 /*unit_code*/ crop_code using `s_price_unit_country_median', nogen keep(1 3)
 }
+	merge m:1 /*unit_code*/ crop_code using `s_price_unit_country_median', nogen keep(1 3)
 rename s_price_unit s_val_unit
+ SW 11/2/23 This becomes irrelevant since know we only use the standardized version of conversion factors sold/harvested methodology. */
 
 *Generate a definitive list of value variables
 // We're going to prefer observed prices first, starting at the highest level (country) and moving to the lowest level (ea, I think - need definitive ranking of these geographies)
@@ -769,7 +771,7 @@ foreach i in country region district county subcounty parish ea {
 	replace val_unit = price_unit_HHID if price_unit_HHID != .
 gen value_harvest = val_unit*quant_harv_kg 
 
-*  Generate a definitive list of value variables: Same as above but using the standard price per kg instead of the wb price per kg
+/*  Generate a definitive list of value variables: Same as above but using the standard price per kg instead of the wb price per kg
 recode s_obs_* (.=0) //ALT 
 foreach i in country region district county subcounty parish ea {
 	replace s_val_unit = s_price_unit_`i' if s_obs_`i'_price > 9
@@ -778,6 +780,7 @@ foreach i in country region district county subcounty parish ea {
 	replace s_val_unit = s_price_unit_HHID if s_price_unit_HHID != .
 
 gen s_value_harvest = s_val_unit*s_quant_harv_kg 
+SW 11/2/23 This becomes irrelevant since know we only use the standardized version of conversion factors sold/harvested methodology. */
 
 
 preserve
@@ -814,14 +817,17 @@ keep adm* HHID parcel_id plot_id crop /*plot_area_reported*/ plot_area_measured 
 save "${UGS_W3_created_data}/Uganda_NPS_LSMS_ISA_W3_all_plots_date.dta", replace
 restore
 	*/
-
+*Combining Banana crops in one category. Update
+recode crop_code  (741 742 744 = 740)  //  Same for bananas (740)
+label define cropID 740 "Bananas", modify //need to add new codes to the value label, cropID
+label values crop_code cropID //apply crop labels to crop_code_master
 *AgQuery+
-	collapse (sum) quant_harv_kg value_harvest ha_planted percent_field s_quant_harv_kg s_value_harvest (max) months_grown plant_date harv_date harv_end, by(region district county subcounty parish ea HHID parcel_id plot_id season crop_code_master purestand field_size /*month_planted month_harvest*/)
+	collapse (sum) quant_harv_kg value_harvest ha_planted percent_field /*s_quant_harv_kg s_value_harvest*/ (max) months_grown plant_date harv_date harv_end, by(region district county subcounty parish ea HHID parcel_id plot_id season crop_code purestand field_size /*month_planted month_harvest*/)
 	bys HHID parcel_id plot_id season : egen percent_area = sum(percent_field)
 	bys HHID parcel_id plot_id season : gen percent_inputs = percent_field / percent_area
 	drop percent_area //Assumes that inputs are +/- distributed by the area planted. Probably not true for mixed tree/field crops, but reasonable for plots that are all field crops
 	//Labor should be weighted by growing season length, though. 
-	merge m:1 HHID parcel_id plot_id season using "${UGS_W3_created_data}/Uganda_NPS_LSMS_ISA_W3_plot_decision_makers.dta", nogen keep(1 3) keepusing(dm_gender)
+	merge m:1 HHID parcel_id plot_id season using "${UGS_W3_created_data}/Uganda_NPS_LSMS_ISA_W3_plot_decision_makers.dta", nogen  keep(1 3) keepusing(dm_gender)
 	save "${UGS_W3_created_data}/Uganda_NPS_LSMS_ISA_W3_all_plots.dta", replace
 
 ********************************************************************************
@@ -838,7 +844,7 @@ append using "${UGS_W3_raw_data}/AGSEC5B.dta"
 rename parcelID parcel_id
 rename plotID plot_id
 ren cropID crop_code 
-recode crop_code  (741 742 744 = 740) //740 is bananas, which is being reduced from different types to just bananas. Same for peas (220).
+*recode crop_code  (741 742 744 = 740) //740 is bananas, which is being reduced from different types to just bananas. Same for peas (220).
 drop if plot_id == . 
 ren a5aq8 value_sold
 replace value_sold = a5bq8 if value_sold == . 
@@ -850,28 +856,29 @@ replace sold_unit_code=a5bq7c if sold_unit_code==.
 tostring HHID, format(%18.0f) replace
 merge m:1 HHID using "${UGS_W3_created_data}/Uganda_NPS_LSMS_ISA_W3_hhids.dta", nogen keepusing(region district county subcounty parish ea weight) keep(1 3)
 ***We merge Crop Sold Conversion Factor at the crop-unit-regional level***
-merge m:1 crop_code sold_unit_code region using "${UGS_W3_created_data}/UG_Conv_fact_sold_table.dta", keep(1 3) nogen 
+merge m:1 crop_code sold_unit_code region using "${UGS_W3_created_data}/UG_Conv_fact_sold_table_update.dta", keep(1 3) nogen 
 
 ***We merge Crop Sold Conversion Factor at the crop-unit-national level***
 *This is for HHID with missiong regional information. 
-merge m:1 crop_code sold_unit_code  using "${UGS_W3_created_data}/UG_Conv_fact_sold_table_national.dta", keep(1 3) nogen 
+merge m:1 crop_code sold_unit_code  using "${UGS_W3_created_data}/UG_Conv_fact_sold_table_national_update.dta", keep(1 3) nogen 
  
 *We create Quantity Sold (kg using standard  conversion factor table for each crop- unit and region). 
-replace s_conv_factor_sold = sn_conv_factor_sold if region!=. //  We merge the national standard conversion factor for those HHID with missing regional info. 
+replace s_conv_factor_sold = sn_conv_factor_sold if region==. //  We merge the national standard conversion factor for those HHID with missing regional info. 
 gen kgs_sold = qty_sold*s_conv_factor_sold
+recode crop_code  (741 742 744 = 740) //740 is bananas, which is being reduced from different types to just bananas. Same for peas (220).
 collapse (sum) value_sold kgs_sold, by (HHID crop_code)
 lab var value_sold "Value of sales of this crop"
 save "${UGS_W3_created_data}/Uganda_NPS_LSMS_ISA_W3_cropsales_value.dta", replace
 
 use "${UGS_W3_created_data}/Uganda_NPS_LSMS_ISA_W3_all_plots.dta", clear
-ren crop_code_master crop_code
-collapse (sum) s_value_harvest s_quant_harv_kg quant_harv_kg , by (HHID crop_code) // Update: SW We start using the standarized version of value harvested and kg harvested
+*ren crop_code_master crop_code
+collapse (sum) value_harvest quant_harv_kg  , by (HHID crop_code) // Update: SW We start using the standarized version of value harvested and kg harvested
 merge 1:1 HHID crop_code using "${UGS_W3_created_data}/Uganda_NPS_LSMS_ISA_W3_cropsales_value.dta"
-replace s_value_harvest = value_sold if value_sold>s_value_harvest & value_sold!=. /* In a few cases, sales value reported exceeds the estimated value of crop harvest */
+replace value_harvest = value_sold if value_sold>value_harvest & value_sold!=. /* In a few cases, sales value reported exceeds the estimated value of crop harvest */
 ren value_sold value_crop_sales 
-recode  s_value_harvest value_crop_sales  (.=0)
-collapse (sum) s_value_harvest value_crop_sales kgs_sold s_quant_harv_kg quant_harv_kg, by (HHID crop_code)
-ren s_value_harvest value_crop_production
+recode  value_harvest value_crop_sales  (.=0)
+collapse (sum) value_harvest value_crop_sales kgs_sold quant_harv_kg, by (HHID crop_code)
+ren value_harvest value_crop_production
 lab var value_crop_production "Gross value of crop production, summed over main and short season"
 lab var value_crop_sales "Value of crops sold so far, summed over main and short season"
 save "${UGS_W3_created_data}/Uganda_NPS_LSMS_ISA_W3_hh_crop_values_production.dta", replace
@@ -1523,17 +1530,17 @@ save "${UGS_W3_created_data}/Uganda_NPS_LSMS_ISA_W3_hh_cost_inputs.dta", replace
 //Setting things up for AgQuery first
 use "${UGS_W3_created_data}/Uganda_NPS_LSMS_ISA_W3_all_plots.dta", replace
 keep if purestand == 1 //1 = monocropped
-ren crop_code_master cropcode
+ren crop_code cropcode
 save "${UGS_W3_created_data}/Uganda_NPS_LSMS_ISA_W3_monocrop_plots.dta", replace
 
 use "${UGS_W3_created_data}/Uganda_NPS_LSMS_ISA_W3_all_plots.dta", replace
 keep if purestand == 1 //1 = monocropped //File now has 6801 unique entries - it should be noted that some these were grown in mixed plots.
 
-merge 1:1 HHID parcel_id plot_id season using "${UGS_W3_created_data}/Uganda_NPS_LSMS_ISA_W3_plot_decision_makers.dta", nogen keep(1 3) keepusing(dm_gender)
-ren crop_code_master cropcode
+*merge 1:1 HHID parcel_id plot_id season using "${UGS_W3_created_data}/Uganda_NPS_LSMS_ISA_W3_plot_decision_makers.dta", nogen keep(1 3) keepusing(dm_gender)
+ren crop_code cropcode
 ren ha_planted monocrop_ha
-ren s_quant_harv_kg kgs_harv_mono // SAW: We use Kilogram harvested using standard units table (across all waves) and price per kg methodology
-ren s_value_harvest val_harv_mono // SAW: We use Kilogram harvested using standard units table (across all waves) and price per kg methodology
+ren quant_harv_kg kgs_harv_mono // SAW: We use Kilogram harvested using standard units table (across all waves) and price per kg methodology
+ren value_harvest val_harv_mono // SAW: We use Kilogram harvested using standard units table (across all waves) and price per kg methodology
 *This loop creates 17 values using the nb_topcrops global (as that is the number of priority crops), then generates two .dtas for each priority crop that contains household level variables (split by season). You can change which priority crops it uses by adjusting the priority crops global section near the top of this code.
 forvalues k = 1(1)$nb_topcrops  {		
 preserve	
@@ -2919,8 +2926,8 @@ foreach i in inorg_fert org_fert pest /*herb*/ {
 	ren `i'_rate use_`i'
 }
 collapse (max) use_*, by(HHID parcel_id plot_id) // SAW If in at least one season it used any of i it is coded as 1. 
-merge 1:m HHID parcel_id plot_id using "${UGS_W3_created_data}/Uganda_NPS_LSMS_ISA_W3_all_plots.dta", nogen keep(1 3) keepusing(crop_code_master)
-ren crop_code_master crop_code
+merge 1:m HHID parcel_id plot_id using "${UGS_W3_created_data}/Uganda_NPS_LSMS_ISA_W3_all_plots.dta", nogen keep(1 3) keepusing(crop_code)
+*ren crop_code_master crop_code
 collapse (max) use*, by(HHID parcel_id plot_id crop_code)
 merge 1:1 HHID parcel_id plot_id crop_code using `imprv_seed',nogen keep(1 3)
 recode use* (.=0)
@@ -3485,10 +3492,10 @@ save "${UGS_W3_created_data}/Uganda_NPS_LSMS_ISA_W3_ag_wage.dta", replace
                           * CROP YIELDS *
 ********************************************************************************
 use "${UGS_W3_created_data}/Uganda_NPS_LSMS_ISA_W3_all_plots.dta", replace
-ren crop_code_master crop_code
+*ren crop_code_master crop_code
 //Legacy stuff- agquery gets handled above.
 replace dm_gender = 3 if dm_gender==.
-collapse (sum) /*area_harv_=ha_harvest*/ area_plan_=ha_planted harvest_=s_quant_harv_kg, by(HHID dm_gender purestand crop_code)
+collapse (sum) /*area_harv_=ha_harvest*/ area_plan_=ha_planted harvest_=quant_harv_kg, by(HHID dm_gender purestand crop_code)
 gen mixed = "inter" if purestand==0
 replace mixed="pure" if purestand==1
 gen dm_gender2="male"
@@ -3533,7 +3540,7 @@ foreach i in harvest area {
 gen total_planted_area_ = area_plan_
 *gen total_harv_area_ = area_harv_ 
 gen kgs_harvest_ = harvest_
-drop crop_code kgs_sold s_quant_harv_kg quant_harv_kg  // SAW 1.9.23 need to drop this 2 vars to make reshape possible
+drop crop_code kgs_sold quant_harv_kg  // SAW 1.9.23 need to drop this 2 vars to make reshape possible
 unab vars : *_
 reshape wide `vars', i(HHID) j(crop_name) string
 *merge 1:1 HHID using "${Nigeria_GHS_W3_created_data}/Nigeria_GHS_W3_trees.dta"
@@ -4930,7 +4937,7 @@ saveold "${UGS_W3_final_data}/Uganda_NPS_LSMS_ISA_W3_individual_variables.dta", 
 
 *GENDER PRODUCTIVITY GAP
 use "${UGS_W3_created_data}/Uganda_NPS_LSMS_ISA_W3_all_plots.dta", replace
-collapse (sum) plot_value_harvest = s_value_harvest, by(HHID parcel_id plot_id season) // SAW 10.10.23 Usiing Standarized version of value harvested
+collapse (sum) plot_value_harvest = value_harvest, by(HHID parcel_id plot_id season) // SAW 10.10.23 Usiing Standarized version of value harvested
 tempfile crop_values 
 save `crop_values' // season level
 
