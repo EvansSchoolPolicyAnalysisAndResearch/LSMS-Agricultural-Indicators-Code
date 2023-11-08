@@ -63,8 +63,8 @@ global directory			    "\\netid.washington.edu\wfs\EvansEPAR\Project\EPAR\Workin
 
 *These paths correspond to the folders where the raw data files are located and where the created data and final data will be stored.
 global Tanzania_NPS_W3_raw_data 			"$directory/Tanzania NPS/Tanzania NPS Wave 3/Raw DTA Files/TZA_2012_NPS-R3_v01_M_STATA8_English_labels" 
-global Tanzania_NPS_W3_created_data 		"$directory/Tanzania NPS/Tanzania NPS Wave 3/Final DTA files_ALT/created_data" 
-global Tanzania_NPS_W3_final_data  		"$directory/Tanzania NPS/Tanzania NPS Wave 3/Final DTA files_ALT/final_data"
+global Tanzania_NPS_W3_created_data 		"$directory/Tanzania NPS/Tanzania NPS Wave 3/Final DTA files - AQP/created_data" 
+global Tanzania_NPS_W3_final_data  		"$directory/Tanzania NPS/Tanzania NPS Wave 3/Final DTA files - AQP/final_data"
 
 
 ********************************************************************************
@@ -6430,7 +6430,6 @@ label define instrument 1 "Tanzania NPS Wave 1" 2 "Tanzania NPS Wave 2" 3 "Tanza
 label values instrument instrument	
 saveold "${Tanzania_NPS_W3_final_data}/Tanzania_NPS_W3_household_variables.dta", replace
 
-stop
 
 ********************************************************************************
 *INDIVIDUAL-LEVEL VARIABLES
@@ -6503,7 +6502,7 @@ gen geography = "Tanzania"
 gen survey = "LSMS-ISA"
 gen year = "2012-13"
 gen instrument = 3
-label define instrument 1 "Tanzania NPS Wave 1" 2 "Tanzania NPS Wave 2" 3 "Tanzania NPS Wave 3" 4 "Tanzania NPS Wave 4" /*
+capture label define instrument 1 "Tanzania NPS Wave 1" 2 "Tanzania NPS Wave 2" 3 "Tanzania NPS Wave 3" 4 "Tanzania NPS Wave 4" /*
 	*/ 5 "Ethiopia ESS Wave 1" 6 "Ethiopia ESS Wave 2" 7 "Ethiopia ESS Wave 3" /*
 	*/ 8 "Nigeria GHS Wave 1" 9 "Nigeria GHS Wave 2" 10 "Nigeria GHS Wave 3" /*
 	*/ 11 "Tanzania TBS AgDev (Lake Zone)" 12 "Tanzania TBS AgDev (Northern Zone)" 13 "Tanzania TBS AgDev (Southern Zone)" /*
@@ -6730,7 +6729,7 @@ gen plot_labor_weight= w_labor_total*weight
 
 //////////Identifier Variables ////////
 *Add variables and ren household id so dta file can be appended with dta files from other instruments
-ren y3_hhid hhid 
+//ren y3_hhid hhid 
 gen hhid_panel = y2_hhid if hh_split==1 // if this is the original household, use the old hhid
 bys y2_hhid: gen household = _n
 egen hhid_new = concat(y2_hhid household), punct(-)  
@@ -6749,7 +6748,7 @@ gen geography = "Tanzania"
 gen survey = "LSMS-ISA"
 gen year = "2012-13"
 gen instrument = 3
-label define instrument 1 "Tanzania NPS Wave 1" 2 "Tanzania NPS Wave 2" 3 "Tanzania NPS Wave 3" 4 "Tanzania NPS Wave 4" /*
+capture label define instrument 1 "Tanzania NPS Wave 1" 2 "Tanzania NPS Wave 2" 3 "Tanzania NPS Wave 3" 4 "Tanzania NPS Wave 4" /*
 	*/ 5 "Ethiopia ESS Wave 1" 6 "Ethiopia ESS Wave 2" 7 "Ethiopia ESS Wave 3" /*
 	*/ 8 "Nigeria GHS Wave 1" 9 "Nigeria GHS Wave 2" 10 "Nigeria GHS Wave 3" /*
 	*/ 11 "Tanzania TBS AgDev (Lake Zone)" 12 "Tanzania TBS AgDev (Northern Zone)" 13 "Tanzania TBS AgDev (Southern Zone)" /*
