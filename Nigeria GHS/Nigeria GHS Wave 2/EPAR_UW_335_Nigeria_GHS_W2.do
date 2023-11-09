@@ -126,21 +126,43 @@ global directory			"\\netid.washington.edu\wfs\EvansEPAR\Project\EPAR\Working Fi
 
 //set directories
 *Nigeria General HH survey (NG LSMS)  Wave 2
-global Nigeria_GHS_W2_raw_data "$directory/Nigeria GHS/Nigeria GHS Wave 2/Raw DTA Files/v02_all_one_folder"
-global Nigeria_GHS_W2_created_data  "$directory/Nigeria GHS/Nigeria GHS Wave 2/Final DTA Files - ALT/created_data"
-global Nigeria_GHS_W2_final_data  "$directory/Nigeria GHS/Nigeria GHS Wave 2/Final DTA Files - ALT/final_data" 
+*global Nigeria_GHS_W2_raw_data "$directory/Nigeria GHS/Nigeria GHS Wave 2/Raw DTA Files/v02_all_one_folder"
+*global Nigeria_GHS_W2_created_data  "$directory/Nigeria GHS/Nigeria GHS Wave 2/Final DTA Files - ALT/created_data"
+*global Nigeria_GHS_W2_final_data  "$directory/Nigeria GHS/Nigeria GHS Wave 2/Final DTA Files - ALT/final_data"
+ 
+global Nigeria_GHS_W2_raw_data "$directory/Nigeria GHS/Nigeria GHS Wave 2/Raw DTA Files/NGA_2012_GHSP-W2_v02_M"
+*global Nigeria_GHS_W2_created_data  "$directory/Nigeria GHS/Nigeria GHS Wave 2/Final DTA Files - AGP/created_data"
+*global Nigeria_GHS_W2_final_data  "$directory/Nigeria GHS/Nigeria GHS Wave 2/Final DTA Files - AGP/final_data" 
   
-
+global Nigeria_GHS_W2_created_data  "$directory/Nigeria GHS/Nigeria GHS Wave 2/Final DTA Files/created_data"
+global Nigeria_GHS_W2_final_data  "$directory/Nigeria GHS/Nigeria GHS Wave 2/Final DTA Files/final_data" 
+  
 ********************************************************************************
 *EXCHANGE RATE AND INFLATION FOR CONVERSION IN USD
 ********************************************************************************
-global Nigeria_GHS_W2_exchange_rate 199.04975		// https://www.bloomberg.com/quote/USDETB:CUR
-//global Nigeria_GHS_W2_gdp_ppp_dollar 93.915		// https://data.worldbank.org/indicator/PA.NUS.PPP
-//global Nigeria_GHS_W2_cons_ppp_dollar 123.639		// https://data.worldbank.org/indicator/PA.NUS.PRVT.P
-global Nigeria_GHS_W2_gdp_ppp_dollar 105.374 //Trying with 2016 value
-global Nigeria_GHS_W2_cons_ppp_dollar 101.908 //Should be 2016.
-global Nigeria_GHS_W2_inflation 0.362927552		// inflation rate 2013-2016. Data was collected during 2012-2013. We want to ajhust value to 2016
+global Nigeria_GHS_W2_exchange_rate 199.04975  	// ALT: This was originally from Bloomberg in W3. I'm switching to https://fx-rate.net/NGN/?date_input=2018-06-05
+												// Because it has other conversion rates that can be used below. There's a fairly big discrepancy between fx-rate and wb (306 N/USD for WB 2018 vs 358 N/USD for fx-rate) 
+//global Nigeria_GHS_W1_pound_exchange 476.5
+//global Nigeria_GHS_W1_euro_exchange 418.7
 
+/* COMMENTING THIS OUT TEMPORARILY 
+//ALT 03.20.23: Updating to 2017 values
+global Nigeria_GHS_W2_gdp_ppp_dollar 115.1
+global Nigeria_GHS_W2_cons_ppp_dollar 112.1 
+global Nigeria_GHS_W2_inflation = 0.6298 //134.9/214.2
+*/
+
+global Nigeria_GHS_W2_exchange_rate 199.04975		// https://www.bloomberg.com/quote/USDETB:CUR
+global Nigeria_GHS_W2_gdp_ppp_dollar 115.9778	// https://data.worldbank.org/indicator/PA.NUS.PPP
+global Nigeria_GHS_W2_cons_ppp_dollar 112.0983276		// https://data.worldbank.org/indicator/PA.NUS.PRVT.P
+global Nigeria_GHS_W2_inflation 0.587791		// inflation rate 2013-2016. Data was collected during 2012-2013. We want to ajhust value to 2017
+
+
+//Poverty threshold calculation - It's probably easier to do up here than at the end of the code for ease of transparency and adjustability
+//Per W3, we convert WB's international poverty threshold to 2011$ using the PA.NUS.PRVT.PP WB info then inflate to the last year of the survey using CPI
+global Nigeria_GHS_W2_poverty_threshold (1.90*83.58) * 134.9/110.8
+global Nigeria_GHS_W2_poverty_nbs 376.52 * $Nigeria_GHS_W2_inflation //ALT: To do: adjust for inflation
+global Nigeria_GHS_W2_poverty_215 2.15*$Nigeria_GHS_W2_inflation * $Nigeria_GHS_W2_cons_ppp_dollar  //New 2023 WB poverty threshold
 
 ********************************************************************************
 *THRESHOLDS FOR WINSORIZATION
@@ -152,9 +174,9 @@ global wins_upper_thres 99							//  Threshold for winzorization at the top of t
 
 *DYA.11.1.2020 Re-scaling survey weights to match population estimates
 *https://databank.worldbank.org/source/world-development-indicators#
-global Nigeria_GHS_W2_pop_tot 167228767
-global Nigeria_GHS_W2_pop_rur 91564439
-global Nigeria_GHS_W2_pop_urb 75664328
+global Nigeria_GHS_W2_pop_tot 170075932
+global Nigeria_GHS_W2_pop_rur 93123376
+global Nigeria_GHS_W2_pop_urb 76952556
 
 
 ********************************************************************************
@@ -189,7 +211,7 @@ gen rural = (sector==2)
 lab var rural "1= Rural"
 keep hhid zone state lga ea wt_wave2 rural
 ren wt_wave2 weight
-save  "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_hhids.dta", replace
+save "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_hhsize2.dta", replace
 
 ********************************************************************************
 * WEIGHTS *
@@ -217,7 +239,7 @@ save "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_person_ids.dta", replace
 ********************************************************************************
 * HOUSEHOLD SIZE *
 ********************************************************************************
-/*
+
 use "${Nigeria_GHS_W2_raw_data}/PTrack.dta", clear
 gen hh_members = 1 
 ren sex gender
@@ -225,8 +247,8 @@ gen fhh = ((relat_w2v1==1 | relat_w2v2==1) & gender==2)
 collapse (sum) hh_members (max) fhh, by (hhid)
 lab var hh_members "Number of household members"
 lab var fhh "1= Female-headed household"
-save "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_hhsize.dta", replace
-*/
+save "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_hhsize2.dta", replace
+
 
 
 *DYA 08.12.2020 - correcting estimates of hh size following Ayala suggestion.
@@ -263,7 +285,11 @@ egen weight_pop_rururb=rowtotal(weight_pop_rur weight_pop_urb)
 total hh_members [pweight=weight_pop_rururb]  
 lab var weight_pop_rururb "Survey weight - adjusted to match rural and urban population"
 drop weight_pop_rur weight_pop_urb
+*drop hh_members
+*merge 1:1 hhid using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_hhsize2.dta", nogen
 save "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_hhsize.dta", replace
+merge 1:1 hhid using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_weights.dta", nogen
+save "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_weights.dta", replace
 *end hh_member correction
 
 //ALT: Copy paste section
@@ -379,38 +405,25 @@ save "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_gender_merge.dta", replace
 
 *Using planting data 	
 use "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_plot_areas.dta", clear 
-//Post-Planting
-*First manager 
-gen indiv = s11aq6a
-merge m:1 hhid indiv using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_gender_merge_temp.dta", gen(dm1_merge) keep(1 3) 
-gen dm1_female = female if s11aq6a!=.
-drop indiv 
-*Second manager 
-gen indiv = s11aq6b
-merge m:1 hhid indiv using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_gender_merge_temp.dta", gen(dm2_merge) keep(1 3)			
-gen dm2_female = female & s11aq6b!=.
-drop indiv 
-//Post-Harvest (only reported for "new" plot)
-*First manager 
-gen indiv = sa1q11
-merge m:1 hhid indiv using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_gender_merge_temp.dta", gen(dm4_merge) keep(1 3)			
-gen dm3_female = female & sa1q11!=.
-drop indiv 
-*Second manager 
-gen indiv = sa1q11b
-merge m:1 hhid indiv using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_gender_merge_temp.dta", gen(dm5_merge) keep(1 3)			
-gen dm4_female = female & sa1q11b!=.
-drop indiv 
-*Replace PP with PH if missing
-replace dm1_female=dm3_female if dm1_female==.
-replace dm2_female=dm4_female if dm1_female==.
-*Constructing three-part gendered decision-maker variable; male only (=1) female only (=2) or mixed (=3)
-gen dm_gender = 1 if (dm1_female==0 | dm1_female==.) & (dm2_female==0 | dm2_female==.) & !(dm1_female==. & dm2_female==.)
-replace dm_gender = 2 if (dm1_female==1 | dm1_female==.) & (dm2_female==1 | dm2_female==.) & !(dm1_female==. & dm2_female==.)
-replace dm_gender = 3 if dm_gender==. & !(dm1_female==. & dm2_female==.)
+gen indiv1 = s11aq6a
+gen indiv2 = s11aq6b
+gen indiv3 = sa1q11
+gen indiv4 = sa1q11b
+preserve
+keep hhid plot_id indiv*
+reshape long indiv, i(hhid plot_id) j(individ)
+merge m:1 hhid indiv using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_gender_merge_temp.dta", keep(3)
+collapse (mean) female, by(hhid plot_id) 
+gen dm_gender = 3
+replace dm_gender = 1 if female==0
+replace dm_gender = 2 if female==1
+tempfile dm_genders
+save `dm_genders'
+restore
+merge 1:1 hhid plot_id using `dm_genders', nogen
 la def dm_gender 1 "Male only" 2 "Female only" 3 "Mixed gender"
 *replacing observations without gender of plot manager with gender of HOH
-merge m:1 hhid using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_hhsize.dta", nogen keep(1 3)
+merge m:1 hhid using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_hhsize2.dta" //nogen keep(1 3)
 replace dm_gender=1 if fhh ==0 & dm_gender==. 
 replace dm_gender=2 if fhh ==1 & dm_gender==. 
 gen dm_male = dm_gender==1
@@ -481,19 +494,19 @@ use "${Nigeria_GHS_W2_raw_data}/secta3_harvestW2.dta", clear
 	gen dummy = _n
 	reshape long qty unit_cd value, i(zone state lga sector ea hhid cropcode dummy) j(idno)
 	drop idno dummy //not necessary
-	merge m:1 hhid using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_weights.dta", nogen keepusing(weight)
+	merge m:1 hhid using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_weights.dta", nogen keepusing(weight_pop_rururb)
 	ren cropcode crop_code
 	gen price_unit = value/qty
 	gen obs=price_unit!=.
 	foreach i in zone state lga ea hhid {
 		preserve
 		bys `i' crop_code unit_cd : egen obs_`i'_price = sum(obs)
-		collapse (median) price_unit_`i'=price_unit /*[aw=weight]*/, by (`i' unit_cd crop_code obs_`i'_price) 
+		collapse (median) price_unit_`i'=price_unit /*[aw=weight_pop_rururb]*/, by (`i' unit_cd crop_code obs_`i'_price) 
 		tempfile price_unit_`i'_median
 		save `price_unit_`i'_median'
 		restore
 	}
-	collapse (median) price_unit_country = price_unit (sum) obs_country_price=obs [aw=weight], by(crop_code unit_cd)
+	collapse (median) price_unit_country = price_unit (sum) obs_country_price=obs [aw=weight_pop_rururb], by(crop_code unit_cd)
 	tempfile price_unit_country_median
 	save `price_unit_country_median'
 
@@ -600,7 +613,7 @@ merge 1:1 hhid plotid cropid using "${Nigeria_GHS_W2_raw_data}/sect11g_plantingW
 	gen val_unit = value_harvest/quantity_harvested
 	gen val_kg = value_harvest/quant_harv_kg
 	merge m:1 hhid using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_weights.dta", nogen keep(1 3)
-	gen plotweight = ha_planted*weight
+	gen plotweight = ha_planted*weight_pop_rururb
 	gen obs=quantity_harvested>0 & quantity_harvested!=.
 	foreach i in zone state lga ea hhid {
 preserve
@@ -686,7 +699,7 @@ foreach i in country zone state lga ea {
 	drop val_harv2 quant_harv_kg2 val_* obs*
 	*/
 //AgQuery
-	collapse (sum) quant_harv_kg value_harvest ha_planted ha_harvest number_trees_planted percent_field /*(max) months_grown*/, by(zone state lga sector ea hhid plot_id crop_code_master purestand relay field_size)
+	collapse (sum) quant_harv_kg value_harvest ha_planted ha_harvest number_trees_planted percent_field /*(max) months_grown*/, by(zone state lga sector ea hhid plot_id crop_code_master purestand relay field_size gps_meas)
 	bys hhid plot_id : egen percent_area = sum(percent_field)
 	bys hhid plot_id : gen percent_inputs = percent_field/percent_area
 	drop percent_area //Assumes that inputs are +/- distributed by the area planted. Probably not true for mixed tree/field crops, but reasonable for plots that are all field crops
@@ -744,6 +757,7 @@ collapse (sum) value_crop_production value_crop_sales, by (hhid)
 lab var value_crop_production "Gross value of crop production for this household"
 lab var value_crop_sales "Value of crops sold so far"
 gen proportion_cropvalue_sold = value_crop_sales / value_crop_production
+replace proportion_cropvalue_sold = . if proportion_cropvalue_sold > 1 // HKS 4/11/23: We should not have household reporting significantly more value crop sold than value crop produced/harvested; so for now, we are eliminating the proportions that are greater than 1 for AQP
 lab var proportion_cropvalue_sold "Proportion of crop value produced that has been sold"
 save "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_hh_crop_production.dta", replace
 
@@ -834,7 +848,7 @@ reshape long number days wage /*inkind*/, i(zone state lga ea hhid plot_id gende
 	drop if wage==0 & days==0 & number==0 /*& inkind==0*/
 	replace wage = wage/number //ALT 08.16.21: The question is "How much did you pay in total per day to the hired <laborers>." For getting median wages for implicit values, we need the wage/person/day
 //	gen val = wage*days*number
-merge m:1 hhid using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_weights.dta", nogen keep(1 3) keepusing(weight)
+merge m:1 hhid using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_weights.dta", nogen keep(1 3) keepusing(weight_pop_rururb)
 merge m:1 hhid plot_id using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_plot_areas.dta", nogen keep(1 3) keepusing(field_size)
 gen plotweight = weight*field_size
 recode wage (0=.)
@@ -1115,8 +1129,9 @@ ren s11dq17 valtransfertexp2
 ren s11dq31 valtransfertexp3
 //ren s11dq41 valtransfertexp4 
 
-
-
+//ALT: 3 obs with OS, two are manure and one is 20-10-10
+replace itemcodefertimp2 = 3 if s11dq7b!=.
+replace itemcodefertimp2 = 1 if s11dq7b=="201010"
 
 keep item* qty* val* zone state lga ea sector hhid plot_id
 gen dummya=_n //Stata requires all lines in a reshape to be uniquely identifiable, even though that is not necessary for what we're doing here. Hence this dummy variable.
@@ -1238,7 +1253,7 @@ collapse (sum) val qty, by(zone state lga ea hhid sector plot_id exp input itemc
 append using `plotrents'
 append using `plot_inputs'
 append using `phys_inputs'
-merge m:1 hhid using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_weights.dta",nogen keep(1 3) keepusing(weight)
+merge m:1 hhid using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_weights.dta",nogen keep(1 3) keepusing(weight_pop_rururb)
 merge m:1 hhid plot_id using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_plot_areas.dta", nogen keep(1 3) keepusing(field_size)
 merge m:1 hhid plot_id using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_plot_decision_makers",nogen keep(1 3) keepusing(dm_gender)
 tempfile all_plot_inputs
@@ -1284,7 +1299,8 @@ replace qty = 0 if qty <0 //4 households reporting negative quantities of fertil
 recode val qty (.=0)
 drop if val==0 & qty==0 //Dropping unnecessary observations.
 replace val=qty*price if val==0
-replace input = "orgfert" if itemcode==5
+**# Bookmark #1 
+replace input = "orgfert" if itemcode==3 //ALT 06.29.23: Error, previously this was 5 to conform to wave 4; here the code is 3
 replace input = "inorg" if strmatch(input,"fert")
 preserve
 	//Need this for quantities and not sure where it should go.
@@ -1481,6 +1497,7 @@ ren tlu tlu_coefficient
 ren animal_cd lvstckid
 gen cattle=inrange(lvstckid,101,107)
 gen smallrum=inlist(lvstckid,110,  111, 119,  120)
+gen largerum = inlist(lvstckid,101,102,103,104,105,106,107) // HKS 6.16.23
 gen poultry=inrange(lvstckid,113,118)
 gen other_ls=inlist(lvstckid,108,109, 121, 122, 123)
 gen cows=inrange(lvstckid,105,105)
@@ -1495,6 +1512,7 @@ gen nb_chickens_stardseas=nb_ls_stardseas if chickens==1
 gen nb_ls_today =s11iq2
 gen nb_cattle_today=nb_ls_today if cattle==1 
 gen nb_smallrum_today=nb_ls_today if smallrum==1 
+gen nb_largerum_today=nb_ls_today if largerum==1 // HKS 6.16.23
 gen nb_poultry_today=nb_ls_today if poultry==1 
 gen nb_other_ls_today=nb_ls_today if other_ls==1 
 gen nb_cows_today=nb_ls_today if cows==1 
@@ -1513,6 +1531,7 @@ lab var nb_cows_stardseas "Number of cows owned at the begining of ag season"
 lab var nb_chickens_stardseas "Number of chickens owned at the begining of ag season"
 lab var nb_cattle_today "Number of cattle owned as of the time of survey"
 lab var nb_smallrum_today "Number of small ruminant owned as of the time of survey"
+lab var nb_largerum_today "Number of large ruminant owned as of the time of survey" // HKS 6.16.23
 lab var nb_poultry_today "Number of cattle poultry as of the time of survey"
 lab var nb_other_ls_today "Number of other livestock (dog, donkey, and other) owned as of the time of survey"
 lab var nb_cows_today "Number of cows owned as of the time of survey"
@@ -1524,7 +1543,8 @@ lab var nb_ls_stardseas  "Number of livestock owned at the begining of ag season
 lab var nb_ls_today "Number of livestock owned as of today"
 lab var nb_ls_sold "Number of total livestock sold alive this ag season"
 drop tlu_coefficient
-save "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_TLU_Coefficients.dta", replace
+*save "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_TLU_Coefficients.dta", replace
+save "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_TLU_Coefficients_wlargerum_061623.dta", replace // HKS 6.16.23
 
 
 ********************************************************************************
@@ -1566,7 +1586,7 @@ save "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_hh_livestock_products.dta", 
 use "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_hh_livestock_products", clear
 merge m:1 hhid using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_weights.dta"
 drop if _merge==2
-collapse (median) price_unit [aw=weight], by (livestock_code quantity_sold_season_unit)
+collapse (median) price_unit [aw=weight_pop_rururb], by (livestock_code quantity_sold_season_unit)
 ren price_unit price_unit_median_country
 ren quantity_sold_season_unit unit
 replace price_unit_median_country = 100 if livestock_code == 1 & unit==1 /* 1 kg per liter */
@@ -1625,14 +1645,14 @@ gen price_per_animal = income_live_sales / number_sold
 recode price_per_animal (0=.)
 merge m:1 hhid using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_weights.dta", nogen keep(1 3) 
 keep if price_per_animal !=. & price_per_animal!=0
-keep hhid weight zone state lga ea livestock_code number_sold income_live_sales number_slaughtered number_slaughtered_sold price_per_animal value_livestock_purchases
+keep hhid weight_pop_rururb zone state lga ea livestock_code number_sold income_live_sales number_slaughtered number_slaughtered_sold price_per_animal value_livestock_purchases
 save "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_hh_livestock_sales", replace
 
 *Implicit prices (based on observed sales)
 use "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_hh_livestock_sales", clear
 gen observation = 1
 bys zone state lga ea livestock_code: egen obs_ea = count(observation)
-collapse (median) price_per_animal [aw=weight], by (zone state lga ea livestock_code obs_ea)
+collapse (median) price_per_animal [aw=weight_pop_rururb], by (zone state lga ea livestock_code obs_ea)
 ren price_per_animal price_median_ea
 lab var price_median_ea "Median price per unit for this livestock in the ea"
 lab var obs_ea "Number of sales observations for this livestock in the ea"
@@ -1640,7 +1660,7 @@ save "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_livestock_prices_ea.dta", re
 use "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_hh_livestock_sales", clear
 gen observation = 1
 bys zone state lga livestock_code: egen obs_lga = count(observation)
-collapse (median) price_per_animal [aw=weight], by (zone state lga livestock_code obs_lga)
+collapse (median) price_per_animal [aw=weight_pop_rururb], by (zone state lga livestock_code obs_lga)
 ren price_per_animal price_median_lga
 lab var price_median_lga "Median price per unit for this livestock in the lga"
 lab var obs_lga "Number of sales observations for this livestock in the lga"
@@ -1648,7 +1668,7 @@ save "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_livestock_prices_lga.dta", r
 use "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_hh_livestock_sales", clear
 gen observation = 1
 bys zone state livestock_code: egen obs_state = count(observation)
-collapse (median) price_per_animal [aw=weight], by (zone state livestock_code obs_state)
+collapse (median) price_per_animal [aw=weight_pop_rururb], by (zone state livestock_code obs_state)
 ren price_per_animal price_median_state
 lab var price_median_state "Median price per unit for this livestock in the state"
 lab var obs_state "Number of sales observations for this livestock in the state"
@@ -1656,7 +1676,7 @@ save "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_livestock_prices_state.dta",
 use "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_hh_livestock_sales", clear
 gen observation = 1
 bys zone livestock_code: egen obs_zone = count(observation)
-collapse (median) price_per_animal [aw=weight], by (zone livestock_code obs_zone)
+collapse (median) price_per_animal [aw=weight_pop_rururb], by (zone livestock_code obs_zone)
 ren price_per_animal price_median_zone
 lab var price_median_zone "Median price per unit for this livestock in the zone"
 lab var obs_zone "Number of sales observations for this livestock in the zone"
@@ -1664,7 +1684,7 @@ save "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_livestock_prices_zone.dta", 
 use "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_hh_livestock_sales", clear
 gen observation = 1
 bys livestock_code: egen obs_country = count(observation)
-collapse (median) price_per_animal [aw=weight], by (livestock_code obs_country)
+collapse (median) price_per_animal [aw=weight_pop_rururb], by (livestock_code obs_country)
 ren price_per_animal price_median_country
 lab var price_median_country "Median price per unit for this livestock in the country"
 lab var obs_country "Number of sales observations for this livestock in the country"
@@ -1801,7 +1821,7 @@ ren sa9aq6 price_per_unit
 recode price_per_unit (0=.)
 merge m:1 hhid using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_weights.dta"
 drop if _merge==2
-collapse (median) price_per_unit [aw=weight], by (fish_code unit)
+collapse (median) price_per_unit [aw=weight_pop_rururb], by (fish_code unit)
 ren price_per_unit price_per_unit_median
 replace price_per_unit_median = . if fish_code==5 /* "Other */
 save "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_fish_prices_1.dta", replace /* Caught fish */
@@ -1813,7 +1833,7 @@ ren sa9aq8 price_per_unit
 recode price_per_unit (0=.)
 merge m:1 hhid using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_weights.dta"
 drop if _merge==2
-collapse (median) price_per_unit [aw=weight], by (fish_code unit)
+collapse (median) price_per_unit [aw=weight_pop_rururb], by (fish_code unit)
 ren price_per_unit price_per_unit_median
 replace price_per_unit_median = . if fish_code==5 /* "Other */
 save "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_fish_prices_2.dta", replace /* Harvested fish */
@@ -2297,9 +2317,9 @@ save "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_parcels_agland.dta", replace
 
 use "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_plot_areas.dta", clear
 merge 1:1 hhid plot_id using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_parcels_agland.dta", nogen
-merge 1:m hhid plot_id using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_planted_areas.dta", nogen	
+*merge 1:m hhid plot_id using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_planted_areas.dta", nogen	
 keep if agland==1
-replace field_size = ha_planted if field_size==. & ha_planted!=.	
+*replace field_size = ha_planted if field_size==. & ha_planted!=.	
 *14 observations changed
 collapse (sum) field_size, by (hhid)
 ren field_size farm_size_agland
@@ -2625,7 +2645,7 @@ gen all_imprv_seed_use = use_imprv_seed
 /*	collapse (max) use_*, by(hhid)
 	merge 1:1 hhid using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_weights.dta", nogen keep(3)
 	recode use* (.=0)
-	collapse (mean) use* [aw=weight] */
+	collapse (mean) use* [aw=weight_pop_rururb] */
 //Legacy files, replacing the code below.
 
 preserve
@@ -2949,8 +2969,8 @@ recode ha_planted* (0=.)
 foreach i in ha_planted fert_inorg_kg pest_kg herb_kg {
 	egen `i' = rowtotal(`i'_*)
 }
-merge m:1 hhid using  "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_hhids.dta", keep (1 3) nogen
-_pctile ha_planted [aw=weight]  if ha_planted!=0 , p($wins_lower_thres $wins_upper_thres)
+merge m:1 hhid using  "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_weights.dta", keep (1 3) nogen
+_pctile ha_planted [aw=weight_pop_rururb]  if ha_planted!=0 , p($wins_lower_thres $wins_upper_thres)
 foreach x of varlist ha_planted ha_planted_male ha_planted_female ha_planted_mixed {
 		replace `x' =r(r1) if `x' < r(r1)   & `x' !=. &  `x' !=0 
 		replace `x' = r(r2) if  `x' > r(r2) & `x' !=.    
@@ -4424,146 +4444,148 @@ egen max_fdcons = rowmax(daily_peraeq_fdcons_*)
 gen avg_fdcons = (daily_peraeq_fdcons_ph + daily_peraeq_fdcons_pp)/2
 save "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_food_dep.dta", replace
 
-********************************************************************************
-*HOUSEHOLD VARIABLES
-********************************************************************************
-global empty_vars ""
-global topcropname_area_full  "maize rice wheat sorgum millet cowpea grdnt beans yam swtptt cassav banana cocoa soy" //adding beans and wheat becuase they are not included in Nigieria
+	********************************************************************************
+	*HOUSEHOLD VARIABLES
+	********************************************************************************
+	global empty_vars ""
+	global topcropname_area_full  "maize rice wheat sorgum millet cowpea grdnt beans yam swtptt cassav banana cocoa soy" //adding beans and wheat becuase they are not included in Nigieria
 
-use "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_hhids.dta", clear
+	use "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_hhids.dta", clear
 
-*Gross crop income 
-merge 1:1 hhid using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_hh_crop_production.dta", nogen keep(1 3)
-recode value_crop_production (.=0)
+	*Gross crop income 
+	merge 1:1 hhid using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_hh_crop_production.dta", nogen keep(1 3)
+	recode value_crop_production (.=0)
 
 
-*Start DYA 9.13.2020 
-* Production by group and type of crops
-merge 1:1 hhid using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_hh_crop_values_production_grouped.dta", nogen
-merge 1:1 hhid using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_hh_crop_values_production_type_crop.dta", nogen
-recode value_pro* value_sal* (.=0)
-*End DYA 9.13.2020 
+	*Start DYA 9.13.2020 
+	* Production by group and type of crops
+	merge 1:1 hhid using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_hh_crop_values_production_grouped.dta", nogen
+	merge 1:1 hhid using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_hh_crop_values_production_type_crop.dta", nogen
+	recode value_pro* value_sal* (.=0)
+	*End DYA 9.13.2020 
 
-merge 1:1 hhid using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_hh_cost_inputs.dta", nogen
+	merge 1:1 hhid using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_hh_cost_inputs.dta", nogen
 
-*Crop costs
-//Merge in summarized crop costs:
-gen crop_production_expenses = cost_expli_hh
-gen crop_income = value_crop_production - crop_production_expenses
-lab var crop_production_expenses "Crop production expenditures (explicit)"
-lab var crop_income "Net crop revenue (value of production minus crop expenses)"
-*top crop costs by area planted
-foreach c in $topcropname_area {
-	merge 1:1 hhid using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_inputs_`c'.dta", nogen
-	merge 1:1 hhid using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_`c'_monocrop_hh_area.dta",nogen
-}
-
-foreach c in $topcropname_area {
-	recode `c'_monocrop (.=0) 
-	//egen `c'_exp = rowtotal(val_anml_`c' val_mech_`c' val_labor_`c' val_herb_`c' val_inorg_`c' val_orgfert_`c' val_plotrent_`c' val_seeds_`c' val_transfert_`c' val_seedtrans_`c') //Need to be careful to avoid including val_harv
-	//lab var `c'_exp "Crop production expenditures (explicit) - Monocropped `c' plots only"
-	//la var `c'_monocrop_ha "Total `c' monocrop hectares planted - Household" 
-
-*disaggregate by gender of plot manager
-foreach i in male female mixed hh {
-	egen `c'_exp_`i' = rowtotal(val_anml_`c'_`i' val_mech_`c'_`i' val_labor_`c'_`i' val_herb_`c'_`i' val_inorg_`c'_`i' /*val_orgfert_`c'_`i'*/ val_plotrent_`c'_`i' val_seeds_`c'_`i' val_transfert_`c'_`i' val_seedtrans_`c'_`i') //These are already narrowed to explicit costs
-	if strmatch("`i'", "hh") { 
-		ren `c'_exp_`i' `c'_exp
-		lab var `c'_exp "Crop production expenditures (explicit) - Monocropped `c' plots only"
-		la var `c'_monocrop_ha "Total `c' monocrop hectares planted - Household" 
+	*Crop costs
+	//Merge in summarized crop costs:
+	gen crop_production_expenses = cost_expli_hh
+	gen crop_income = value_crop_production - crop_production_expenses
+	lab var crop_production_expenses "Crop production expenditures (explicit)"
+	lab var crop_income "Net crop revenue (value of production minus crop expenses)"
+	*top crop costs by area planted
+	foreach c in $topcropname_area {
+		merge 1:1 hhid using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_inputs_`c'.dta", nogen
+		merge 1:1 hhid using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_`c'_monocrop_hh_area.dta",nogen
 	}
-	else lab var  `c'_exp_`i'  "Crop production expenditures (explicit) - Monocropped `c' `i' managed plots"	
-}
-replace `c'_exp = . if `c'_monocrop_ha==.			// set to missing if the household does not have any monocropped maize plots
-foreach i in male female mixed{
-	replace `c'_exp_`i' = . if `c'_monocrop_ha_`i'==.
+
+	foreach c in $topcropname_area {
+		recode `c'_monocrop (.=0) 
+		//egen `c'_exp = rowtotal(val_anml_`c' val_mech_`c' val_labor_`c' val_herb_`c' val_inorg_`c' val_orgfert_`c' val_plotrent_`c' val_seeds_`c' val_transfert_`c' val_seedtrans_`c') //Need to be careful to avoid including val_harv
+		//lab var `c'_exp "Crop production expenditures (explicit) - Monocropped `c' plots only"
+		//la var `c'_monocrop_ha "Total `c' monocrop hectares planted - Household" 
+
+	*disaggregate by gender of plot manager
+	foreach i in male female mixed hh {
+		egen `c'_exp_`i' = rowtotal(val_anml_`c'_`i' val_mech_`c'_`i' val_labor_`c'_`i' val_herb_`c'_`i' val_inorg_`c'_`i' /*val_orgfert_`c'_`i'*/ val_plotrent_`c'_`i' val_seeds_`c'_`i' val_transfert_`c'_`i' val_seedtrans_`c'_`i') //These are already narrowed to explicit costs
+		if strmatch("`i'", "hh") { 
+			ren `c'_exp_`i' `c'_exp
+			lab var `c'_exp "Crop production expenditures (explicit) - Monocropped `c' plots only"
+			la var `c'_monocrop_ha "Total `c' monocrop hectares planted - Household" 
+		}
+		else lab var  `c'_exp_`i'  "Crop production expenditures (explicit) - Monocropped `c' `i' managed plots"	
 	}
-}
-//drop rental_cost_land* cost_seed* value_fertilizer* cost_trans_fert* value_herbicide* value_pesticide* value_manure_purch* cost_trans_manure*
-drop val_anml* val_mech* val_labor* val_herb* val_inorg* /*val_orgfert**/ val_plotrent* val_seeds* val_transfert* val_seedtrans* //
-*Land rights
-merge 1:1 hhid using  "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_land_rights_hh.dta", nogen keep(1 3)
-la var formal_land_rights_hh "Household has documentation of land rights (at least one plot)"
-
-*Fish income
-merge 1:1 hhid using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_fish_income.dta", nogen keep(1 3)
-merge 1:1 hhid using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_fishing_expenses_1.dta", nogen keep(1 3)
-merge 1:1 hhid using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_fishing_expenses_2.dta", nogen keep(1 3)
-gen fish_income_fishfarm = value_fish_harvest - fish_expenses_1 - fish_expenses_2
-gen fish_income_fishing = value_fish_caught - fish_expenses_1 - fish_expenses_2
-gen fishing_income = fish_income_fishing
-recode fishing_income fish_income_fishing fish_income_fishfarm (.=0)
-lab var fish_income_fishing "Net fishing income (value of production and consumption minus expenditures)"
-lab var fish_income_fishfarm "Net fish farm income (value of production minus expenditures)"
-lab var fishing_income "Net fishing income (value of production and consumption minus expenditures)"
-
-*Livestock income
-merge 1:1 hhid using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_livestock_sales.dta", nogen keep(1 3)
-merge 1:1 hhid using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_livestock_expenses.dta", nogen keep(1 3)
-merge 1:1 hhid using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_livestock_products.dta", nogen keep(1 3)
-merge 1:1 hhid using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_TLU.dta", nogen keep(1 3)
-merge 1:1 hhid using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_herd_characteristics.dta", nogen keep(1 3)
-recode value_livestock_sales value_livestock_purchases value_milk_produced  value_eggs_produced value_other_produced fish_income_fishfarm  cost_*livestock (.=0)
-merge 1:1 hhid using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_TLU_Coefficients.dta", nogen keep(1 3)
-gen livestock_income = value_slaughtered + value_lvstck_sold - value_livestock_purchases /*
-*/ + ( value_milk_produced + value_eggs_produced + value_other_produced) /*
-*/ - ( cost_hired_labor_livestock + cost_fodder_livestock + cost_vaccines_livestock + cost_other_livestock) + fish_income_fishfarm
-recode livestock_income (.=0)
-recode value_milk_produced value_eggs_produced (0=.)
-lab var livestock_income "Net livestock income (value of production and consumption minus expenditures)"
-gen livestock_expenses = ( cost_hired_labor_livestock + cost_fodder_livestock + cost_vaccines_livestock + cost_other_livestock)
-lab var livestock_expenses "Expenditures on livestock purchases and maintenance"
-ren cost_vaccines_livestock ls_exp_vac 
-gen livestock_product_revenue = ( value_milk_produced + value_eggs_produced + value_other_produced)
-lab var livestock_product_revenue "Gross revenue from sale of livestock products"
-lab var sales_livestock_products "Value of sales of livestock products"
-lab var value_livestock_products "Value of livestock products"
-gen any_imp_herd_all = . 
-foreach v in ls_exp_vac any_imp_herd{
-foreach i in lrum srum poultry {
-	gen `v'_`i' = .
+	replace `c'_exp = . if `c'_monocrop_ha==.			// set to missing if the household does not have any monocropped maize plots
+	foreach i in male female mixed{
+		replace `c'_exp_`i' = . if `c'_monocrop_ha_`i'==.
+		}
 	}
-}
-global empty_vars $empty_vars ls_exp_vac_* any_imp_herd_* use_fin_serv_digital
+	//drop rental_cost_land* cost_seed* value_fertilizer* cost_trans_fert* value_herbicide* value_pesticide* value_manure_purch* cost_trans_manure*
+	drop val_anml* val_mech* val_labor* val_herb* val_inorg* /*val_orgfert**/ val_plotrent* val_seeds* val_transfert* val_seedtrans* //
+	*Land rights
+	merge 1:1 hhid using  "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_land_rights_hh.dta", nogen keep(1 3)
+	la var formal_land_rights_hh "Household has documentation of land rights (at least one plot)"
 
-*Self-employment income
-merge 1:1 hhid using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_self_employment_income.dta", nogen keep(1 3)
-merge 1:1 hhid using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_agproduct_income.dta", nogen keep(1 3)
-egen self_employment_income = rowtotal(profit_processed_crop_sold annual_selfemp_profit)
-recode self_employment_income (.=0)
-lab var self_employment_income "Income from self-employment (business)"
+	*Fish income
+	merge 1:1 hhid using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_fish_income.dta", nogen keep(1 3)
+	merge 1:1 hhid using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_fishing_expenses_1.dta", nogen keep(1 3)
+	merge 1:1 hhid using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_fishing_expenses_2.dta", nogen keep(1 3)
+	gen fish_income_fishfarm = value_fish_harvest - fish_expenses_1 - fish_expenses_2
+	gen fish_income_fishing = value_fish_caught - fish_expenses_1 - fish_expenses_2
+	gen fishing_income = fish_income_fishing
+	recode fishing_income fish_income_fishing fish_income_fishfarm (.=0)
+	lab var fish_income_fishing "Net fishing income (value of production and consumption minus expenditures)"
+	lab var fish_income_fishfarm "Net fish farm income (value of production minus expenditures)"
+	lab var fishing_income "Net fishing income (value of production and consumption minus expenditures)"
 
-*Wage income
-merge 1:1 hhid using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_agwage_income.dta", nogen keep(1 3)
-merge 1:1 hhid using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_wage_income.dta", nogen keep(1 3)
-recode annual_salary annual_salary_agwage (.=0)
-ren annual_salary nonagwage_income
-ren annual_salary_agwage agwage_income
+	*Livestock income
+	merge 1:1 hhid using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_livestock_sales.dta", nogen keep(1 3)
+	merge 1:1 hhid using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_livestock_expenses.dta", nogen keep(1 3)
+	merge 1:1 hhid using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_livestock_products.dta", nogen keep(1 3)
+	merge 1:1 hhid using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_TLU.dta", nogen keep(1 3)
+	merge 1:1 hhid using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_herd_characteristics.dta", nogen keep(1 3)
+	recode value_livestock_sales value_livestock_purchases value_milk_produced  value_eggs_produced value_other_produced fish_income_fishfarm  cost_*livestock (.=0)
+	*merge 1:1 hhid using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_TLU_Coefficients.dta", nogen keep(1 3)
+	merge 1:1 hhid using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_TLU_Coefficients_wlargerum_061623.dta", nogen keep (1 3) // HKS 6.16.23
 
-*Off-farm hours
-merge 1:1 hhid using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_off_farm_hours.dta", nogen keep(1 3)
+	gen livestock_income = value_slaughtered + value_lvstck_sold - value_livestock_purchases /*
+	*/ + ( value_milk_produced + value_eggs_produced + value_other_produced) /*
+	*/ - ( cost_hired_labor_livestock + cost_fodder_livestock + cost_vaccines_livestock + cost_other_livestock) + fish_income_fishfarm
+	recode livestock_income (.=0)
+	recode value_milk_produced value_eggs_produced (0=.)
+	lab var livestock_income "Net livestock income (value of production and consumption minus expenditures)"
+	gen livestock_expenses = ( cost_hired_labor_livestock + cost_fodder_livestock + cost_vaccines_livestock + cost_other_livestock)
+	lab var livestock_expenses "Expenditures on livestock purchases and maintenance"
+	ren cost_vaccines_livestock ls_exp_vac 
+	gen livestock_product_revenue = ( value_milk_produced + value_eggs_produced + value_other_produced)
+	lab var livestock_product_revenue "Gross revenue from sale of livestock products"
+	lab var sales_livestock_products "Value of sales of livestock products"
+	lab var value_livestock_products "Value of livestock products"
+	gen any_imp_herd_all = . 
+	foreach v in ls_exp_vac any_imp_herd{
+	foreach i in lrum srum poultry {
+		gen `v'_`i' = .
+		}
+	}
+	global empty_vars $empty_vars ls_exp_vac_* any_imp_herd_* use_fin_serv_digital
 
-*Other income
-merge 1:1 hhid using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_other_income.dta", nogen keep(1 3)
-merge 1:1 hhid using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_remittance_income.dta", nogen keep(1 3)
-merge 1:1 hhid using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_other_income.dta", nogen keep(1 3)
-egen transfers_income = rowtotal (remittance_income assistance_income)
-lab var transfers_income "Income from transfers including pension, remittances, and assisances)"
-egen all_other_income = rowtotal (investment_income rental_income_buildings other_income  rental_income_assets)
-lab var all_other_income "Income from other revenue streams not captured elsewhere"
-drop other_income
+	*Self-employment income
+	merge 1:1 hhid using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_self_employment_income.dta", nogen keep(1 3)
+	merge 1:1 hhid using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_agproduct_income.dta", nogen keep(1 3)
+	egen self_employment_income = rowtotal(profit_processed_crop_sold annual_selfemp_profit)
+	recode self_employment_income (.=0)
+	lab var self_employment_income "Income from self-employment (business)"
 
-*Farm size
-merge 1:1 hhid using  "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_land_size.dta", nogen keep(1 3)
-merge 1:1 hhid using  "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_land_size_all.dta", nogen keep(1 3)
-merge 1:1 hhid using  "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_farmsize_all_agland.dta", nogen keep(1 3)
-merge 1:1 hhid using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_land_size_total.dta", nogen
-recode land_size (.=0)
-recode farm_size_agland (.=0)
-gen  farm_size_0_0=farm_size_agland==0
-gen  farm_size_0_1=farm_size_agland>0 & farm_size_agland<=1
-gen  farm_size_1_2=farm_size_agland>1 & farm_size_agland<=2
-gen  farm_size_2_4=farm_size_agland>2 & farm_size_agland<=4
+	*Wage income
+	merge 1:1 hhid using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_agwage_income.dta", nogen keep(1 3)
+	merge 1:1 hhid using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_wage_income.dta", nogen keep(1 3)
+	recode annual_salary annual_salary_agwage (.=0)
+	ren annual_salary nonagwage_income
+	ren annual_salary_agwage agwage_income
+
+	*Off-farm hours
+	merge 1:1 hhid using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_off_farm_hours.dta", nogen keep(1 3)
+
+	*Other income
+	merge 1:1 hhid using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_other_income.dta", nogen keep(1 3)
+	merge 1:1 hhid using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_remittance_income.dta", nogen keep(1 3)
+	merge 1:1 hhid using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_other_income.dta", nogen keep(1 3)
+	egen transfers_income = rowtotal (remittance_income assistance_income)
+	lab var transfers_income "Income from transfers including pension, remittances, and assisances)"
+	egen all_other_income = rowtotal (investment_income rental_income_buildings other_income  rental_income_assets)
+	lab var all_other_income "Income from other revenue streams not captured elsewhere"
+	drop other_income
+
+	*Farm size
+	merge 1:1 hhid using  "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_land_size.dta", nogen keep(1 3)
+	merge 1:1 hhid using  "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_land_size_all.dta", nogen keep(1 3)
+	merge 1:1 hhid using  "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_farmsize_all_agland.dta", nogen keep(1 3)
+	merge 1:1 hhid using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_land_size_total.dta", nogen
+	recode land_size (.=0)
+	recode farm_size_agland (.=0)
+	gen  farm_size_0_0=farm_size_agland==0
+	gen  farm_size_0_1=farm_size_agland>0 & farm_size_agland<=1
+	gen  farm_size_1_2=farm_size_agland>1 & farm_size_agland<=2
+	gen  farm_size_2_4=farm_size_agland>2 & farm_size_agland<=4
 gen  farm_size_4_more=farm_size_agland>4
 lab var farm_size_0_0 "1=Household has no farm"
 lab var farm_size_0_1 "1=Household farm size > 0 Ha and <=1 Ha"
@@ -4739,7 +4761,7 @@ global wins_var_top1 /*
 
 gen wage_paid_aglabor_mixed=. //create this just to make the loop work and delete after
 foreach v of varlist $wins_var_top1 {
-	_pctile `v' [aw=weight] , p($wins_upper_thres)  
+	_pctile `v' [aw=weight_pop_rururb] , p($wins_upper_thres)  
 	gen w_`v'=`v'
 	replace  w_`v' = r(r1) if  w_`v' > r(r1) &  w_`v'!=.
 	local l`v' : var lab `v'
@@ -4756,7 +4778,7 @@ gen cost_expli = cost_expli_hh //ALT 08.04.21: Kludge til I get names fully cons
 global wins_var_top1_gender $wins_var_top1_gender cost_total cost_expli fert_inorg_kg wage_paid_aglabor
 
 foreach v of varlist $wins_var_top1_gender {
-	_pctile `v' [aw=weight] , p($wins_upper_thres)  
+	_pctile `v' [aw=weight_pop_rururb] , p($wins_upper_thres)  
 	gen w_`v'=`v'
 	replace  w_`v' = r(r1) if  w_`v' > r(r1) &  w_`v'!=.
 	local l`v' : var lab `v'
@@ -4784,7 +4806,7 @@ global wins_var_top1_bott1  /*
 */ *_monocrop_ha dist_agrodealer
 
 foreach v of varlist $wins_var_top1_bott1 {
-	_pctile `v' [aw=weight] , p($wins_lower_thres $wins_upper_thres) 
+	_pctile `v' [aw=weight_pop_rururb] , p($wins_lower_thres $wins_upper_thres) 
 	gen w_`v'=`v'
 	replace w_`v'= r(r1) if w_`v' < r(r1) & w_`v'!=. & w_`v'!=0  /* we want to keep actual zeros */
 	replace w_`v'= r(r2) if  w_`v' > r(r2)  & w_`v'!=.		
@@ -4807,7 +4829,7 @@ global allyield male female mixed inter inter_male inter_female inter_mixed pure
 global wins_var_top1_bott1_2 area_harv  area_plan harvest 
 foreach v of global wins_var_top1_bott1_2 {
 	foreach c of global topcropname_area { 
-		_pctile `v'_`c'  [aw=weight] , p(1 99)
+		_pctile `v'_`c'  [aw=weight_pop_rururb] , p(1 99)
 		gen w_`v'_`c'=`v'_`c'
 		replace w_`v'_`c' = r(r1) if w_`v'_`c' < r(r1)   &  w_`v'_`c'!=0 
 		replace w_`v'_`c' = r(r2) if (w_`v'_`c' > r(r2) & w_`v'_`c' !=.)  		
@@ -5001,7 +5023,7 @@ global wins_var_ratios_top1 /*
 */ /*DYA.10.26.2020*/  hrs_*_pc_all hrs_*_pc_any cost_per_lit_milk 
 
 foreach v of varlist $wins_var_ratios_top1 {
-	_pctile `v' [aw=weight] , p($wins_upper_thres)  
+	_pctile `v' [aw=weight_pop_rururb] , p($wins_upper_thres)  
 	gen w_`v'=`v'
 	replace  w_`v' = r(r1) if  w_`v' > r(r1) &  w_`v'!=.
 	local l`v' : var lab `v'
@@ -5021,7 +5043,7 @@ foreach v of varlist $wins_var_ratios_top1 {
 *Winsorizing crop ratios
 foreach v of global topcropname_area {
 	*first winsorizing costs per hectare
-	_pctile `v'_exp_ha [aw=weight] , p($wins_upper_thres)  
+	_pctile `v'_exp_ha [aw=weight_pop_rururb] , p($wins_upper_thres)  
 	gen w_`v'_exp_ha=`v'_exp_ha
 	replace  w_`v'_exp_ha = r(r1) if  w_`v'_exp_ha > r(r1) &  w_`v'_exp_ha!=.
 	local l`v'_exp_ha : var lab `v'_exp_ha
@@ -5035,7 +5057,7 @@ foreach v of global topcropname_area {
 	}
 
 	*winsorizing cost per kilogram
-	_pctile `v'_exp_kg [aw=weight] , p($wins_upper_thres)  
+	_pctile `v'_exp_kg [aw=weight_pop_rururb] , p($wins_upper_thres)  
 	gen w_`v'_exp_kg=`v'_exp_kg
 	replace  w_`v'_exp_kg = r(r1) if  w_`v'_exp_kg > r(r1) &  w_`v'_exp_kg!=.
 	local l`v'_exp_kg : var lab `v'_exp_kg
@@ -5052,7 +5074,7 @@ foreach v of global topcropname_area {
 *now winsorize ratio only at top 5% - yield 
 foreach c of global topcropname_area {
 foreach i in yield_pl yield_hv{
-	_pctile `i'_`c' [aw=weight] ,  p(95)  //WINSORIZING YIELD FOR NIGERIA AT 5 PERCENT.
+	_pctile `i'_`c' [aw=weight_pop_rururb] ,  p(95)  //WINSORIZING YIELD FOR NIGERIA AT 5 PERCENT.
 	gen w_`i'_`c'=`i'_`c'
 	replace  w_`i'_`c' = r(r1) if  w_`i'_`c' > r(r1) &  w_`i'_`c'!=.
 	local w_`i'_`c' : var lab `i'_`c'
@@ -5183,7 +5205,7 @@ recode w_eggs_total_year value_eggs_produced (nonmissing=.) if egg_hh==0
 global small_farmer_vars land_size tlu_today total_income  
 foreach p of global small_farmer_vars {
 	gen `p'_aghh = `p' if ag_hh==1
-	_pctile `p'_aghh  [aw=weight] , p(40) 
+	_pctile `p'_aghh  [aw=weight_pop_rururb] , p(40) 
 	gen small_`p' = (`p' <= r(r1))
 	replace small_`p' = . if ag_hh!=1
 }
@@ -5194,11 +5216,11 @@ drop land_size_aghh small_land_size tlu_today_aghh small_tlu_today total_income_
 lab var small_farm_household "1= HH is in bottom 40th percentiles of land size, TLU, and total revenue"
 
 *create different weights 
-gen w_labor_weight=weight*w_labor_total
+gen w_labor_weight=weight_pop_rururb*w_labor_total
 lab var w_labor_weight "labor-adjusted household weights"
-gen w_land_weight=weight*w_farm_area
+gen w_land_weight=weight_pop_rururb*w_farm_area
 lab var w_land_weight "land-adjusted household weights"
-gen w_aglabor_weight_all=w_labor_hired*weight
+gen w_aglabor_weight_all=w_labor_hired*weight_pop_rururb
 lab var w_aglabor_weight_all "Hired labor-adjusted household weights"
 gen w_aglabor_weight_female=. //cannot create in this instrument  
 lab var w_aglabor_weight_female "Hired labor-adjusted household weights -female workers"
@@ -5217,27 +5239,31 @@ foreach cn in $topcropname_area {
 }
 gen w_ha_planted_all = ha_planted 
 foreach  v in all female male mixed {
-	gen  area_weight_`v'=weight*w_ha_planted_`v'
+	gen  area_weight_`v'=weight_pop_rururb*w_ha_planted_`v'
 }
-gen w_ha_planted_weight=w_ha_planted_all*weight
-gen individual_weight=hh_members*weight
-gen adulteq_weight=adulteq*weight
+gen w_ha_planted_weight=w_ha_planted_all*weight_pop_rururb
+gen individual_weight=hh_members*weight_pop_rururb
+gen adulteq_weight=adulteq*weight_pop_rururb
+
+****Currency Conversion Factors***
+gen ccf_loc = (1/$Nigeria_GHS_W2_inflation) 
+lab var ccf_loc "currency conversion factor - 2017 $NGN"
+gen ccf_usd = ccf_loc/$Nigeria_GHS_W2_exchange_rate 
+lab var ccf_usd "currency conversion factor - 2017 $USD"
+gen ccf_1ppp = ccf_loc/$Nigeria_GHS_W2_cons_ppp_dollar
+lab var ccf_1ppp "currency conversion factor - 2017 $Private Consumption PPP"
+gen ccf_2ppp = ccf_loc/$Nigeria_GHS_W2_gdp_ppp_dollar
+lab var ccf_2ppp "currency conversion factor - 2017 $GDP PPP"
 
 *Rural poverty headcount ratio
-*First, we convert $1.90/day to local currency in 2011 using https://data.worldbank.org/indicator/PA.NUS.PRVT.PP?end=2011&locations=TZ&start=1990
-	// 1.90 * 79.531 = 151.1089  
-*NOTE: this is using the "Private Consumption, PPP" conversion factor because that's what we have been using. 
-* This can be changed this to the "GDP, PPP" if we change the rest of the conversion factors.
-*The global poverty line of $1.90/day is set by the World Bank
-*http://www.worldbank.org/en/topic/poverty/brief/global-poverty-line-faq
-*Second, we inflate the local currency to the year that this survey was carried out using the CPI inflation rate using https://data.worldbank.org/indicator/FP.CPI.TOTL?end=2017&locations=TZ&start=2003
-	// 1+(134.925 - 110.84)/110.84 = 1.2172952	
-	// 151.1089* 1.2172952 = 183.94414 N
-*NOTE: if the survey was carried out over multiple years we use the last year
-*This is the poverty line at the local currency in the year the survey was carried out
 
-gen poverty_under_1_9 = (daily_percap_cons<183.94414)
-la var poverty_under_1_9 "Household has a percapita conumption of under $1.90 in 2011 $ PPP)"
+gen poverty_under_1_9 = (daily_percap_cons<$Nigeria_GHS_W2_poverty_threshold)
+gen poverty_under_2_15 = daily_percap_cons < $Nigeria_GHS_W2_poverty_215
+gen poverty_under_npl = daily_percap_cons < $Nigeria_GHS_W2_poverty_nbs
+
+la var poverty_under_1_9 "Household has a percapita conumption of under $1.90 in 2011 PPP$"
+la var poverty_under_2_15 "Household has a percapita consumption of under $2.15 in 2017 PPP$"
+la var poverty_under_npl "Household has a percapita consumption below the national Nigerian poverty line"
 
 *average consumption expenditure of the bottom 40% of the rural consumption expenditure distribution
 *First, generating variable that reports the individuals in the bottom 40% of rural consumption expenditures
@@ -5251,15 +5277,8 @@ _pctile w_daily_peraeq_cons [aw=adulteq_weight] if rural==1, p(40)
 gen bottom_40_peraeq = 0
 replace bottom_40_peraeq = 1 if r(r1) > w_daily_peraeq_cons & rural==1
 
-****Currency Conversion Factors***
-gen ccf_loc = (1 + $Nigeria_GHS_W2_inflation) 
-lab var ccf_loc "currency conversion factor - 2016 $NGN"
-gen ccf_usd = (1 + $Nigeria_GHS_W2_inflation)/$Nigeria_GHS_W2_exchange_rate 
-lab var ccf_usd "currency conversion factor - 2016 $USD"
-gen ccf_1ppp = (1 + $Nigeria_GHS_W2_inflation)/ $Nigeria_GHS_W2_cons_ppp_dollar
-lab var ccf_1ppp "currency conversion factor - 2016 $Private Consumption PPP"
-gen ccf_2ppp = (1 + $Nigeria_GHS_W2_inflation)/ $Nigeria_GHS_W2_gdp_ppp_dollar
-lab var ccf_2ppp "currency conversion factor - 2016 $GDP PPP"
+
+
  
 *generating clusterid and strataid
 gen clusterid=ea
@@ -5299,10 +5318,13 @@ keep hhid fhh clusterid strataid *weight* *wgt* zone state lga ea rural farm_siz
 */ encs* num_crops_* multiple_crops* imprv_seed_* hybrid_seed_* *labor_total *farm_area *labor_productivity* *land_productivity* /*
 */ *wage_paid_aglabor* *labor_hired ar_h_wgt_* *yield_hv_* ar_pl_wgt_* *yield_pl_* *liters_per_* milk_animals poultry_owned *costs_dairy* *cost_per_lit* /*
 */ *egg_poultry_year* *inorg_fert_rate* *ha_planted* *cost_expli_hh* *cost_expli_ha* *monocrop_ha* *kgs_harv_mono* *cost_total_ha* /*
-*/ *_exp* poverty_under_1_9 *value_crop_production* *value_harv* *value_crop_sales* *value_sold* *kgs_harvest* *total_planted_area* *total_harv_area* /*
+*/ *_exp* poverty_under_1_9 poverty_under_2_15 poverty_under_npl *value_crop_production* *value_harv* *value_crop_sales* *value_sold* *kgs_harvest* *total_planted_area* *total_harv_area* /*
 */ *all_area_* grew_* agactivities_hh ag_hh crop_hh livestock_hh fishing_hh *_milk_produced* *eggs_total_year *value_eggs_produced* /*
-*/ *value_livestock_products* *value_livestock_sales* *total_cons* nb_cattle_today nb_poultry_today bottom_40_percap bottom_40_peraeq /*
+*/ *value_livestock_products* *value_livestock_sales* *total_cons* nb_cattle_today *sales_livestock_products nb_cows_today lvstck_holding_srum  nb_smallrum_today nb_chickens_today nb_poultry_today /*HKS 6.6.23*/ nb_largerum_t nb_smallrum_t nb_chickens_t bottom_40_percap bottom_40_peraeq /*
 */ ccf_loc ccf_usd ccf_1ppp ccf_2ppp *sales_livestock_products area_plan* area_harv*  *value_pro* *value_sal*
+
+drop weight
+ren weight_pop_rururb weight
 
 //////////Identifier Variables ////////
 *Add variables and ren household id so dta file can be appended with dta files from other instruments
@@ -5321,10 +5343,11 @@ label define instrument 1 "Tanzania NPS Wave 1" 2 "Tanzania NPS Wave 2" 3 "Tanza
 	*/ 19 "Nigeria NIBAS AgDev (Nassarawa)" 20 "Nigeria NIBAS AgDev (Benue)" 21 "Nigeria NIBAS AgDev (Kaduna)" /*
 	*/ 22 "Nigeria NIBAS AgDev (Niger)" 23 "Nigeria NIBAS AgDev (Kano)" 24 "Nigeria NIBAS AgDev (Katsina)" 
 label values instrument instrument	
-saveold "${Nigeria_GHS_W2_final_data}/Nigeria_GHS_W2_household_variables.dta", replace
- 
- 
-//Stop
+*saveold "${Nigeria_GHS_W2_final_data}/Nigeria_GHS_W2_household_variables.dta", replace
+gen ssp = (farm_size_agland <= 2 & farm_size_agland != 0) & (nb_largerum_today <= 10 & nb_largerum_t <= 10 & nb_chickens_today <= 50) // HKS 6.16.23
+
+saveold "${Nigeria_GHS_W2_final_data}/Nigeria_GHS_W2_household_variables.dta", replace // HKS 6.16.23 
+
 ********************************************************************************
 *INDIVIDUAL-LEVEL VARIABLES
 ********************************************************************************
@@ -5399,6 +5422,8 @@ lab var female_vac_animal "1 = Individual female farmers (livestock keeper) uses
 foreach v of varlist $empty_vars { 
 	replace `v' = .
 }
+drop weight
+ren weight_pop_rururb weight
 
 //////////Identifier Variables ////////
 *Add variables and ren household id so dta file can be appended with dta files from other instruments
@@ -5450,14 +5475,14 @@ global winsorize_vars area_meas_hectares  labor_total
 foreach p of global winsorize_vars { 
 	gen w_`p' =`p'
 	local l`p' : var lab `p'
-	_pctile w_`p'   [aw=weight] if w_`p'!=0 , p($wins_lower_thres $wins_upper_thres)    
+	_pctile w_`p'   [aw=weight_pop_rururb] if w_`p'!=0 , p($wins_lower_thres $wins_upper_thres)    
 	replace w_`p' = r(r1) if w_`p' < r(r1)  & w_`p'!=. & w_`p'!=0
 	replace w_`p' = r(r2) if w_`p' > r(r2)  & w_`p'!=.
 	lab var w_`p' "`l`p'' - Winsorized top and bottom 1%"
 }
  
 *Winsorize plot_value_harvest at top  1% only 
-_pctile plot_value_harvest  [aw=weight] , p($wins_upper_thres)  
+_pctile plot_value_harvest  [aw=weight_pop_rururb] , p($wins_upper_thres)  
 gen w_plot_value_harvest=plot_value_harvest
 replace w_plot_value_harvest = r(r1) if w_plot_value_harvest > r(r1) & w_plot_value_harvest != . 
 lab var w_plot_value_harvest "Value of crop harvest on this plot - Winsorized top 1%"
@@ -5471,7 +5496,7 @@ gen plot_labor_prod = w_plot_value_harvest/w_labor_total
 lab var plot_labor_prod "Plot labor productivity (value production/labor-day)"
 
 *Winsorize both land and labor productivity at top 1% only
-gen plot_weight=w_area_meas_hectares*weight 
+gen plot_weight=w_area_meas_hectares*weight_pop_rururb 
 lab var plot_weight "Weight for plots (weighted by plot area)"
 foreach v of varlist  plot_productivity  plot_labor_prod {
 	_pctile `v' [aw=plot_weight] , p($wins_upper_thres)  
@@ -5480,31 +5505,42 @@ foreach v of varlist  plot_productivity  plot_labor_prod {
 	local l`v' : var lab `v'
 	lab var  w_`v'  "`l`v'' - Winzorized top 1%"
 }	
-	
-*Convert monetary values to USD and PPP
+
+
+****Currency Conversion Factors***
+gen ccf_loc = (1/$Nigeria_GHS_W2_inflation) 
+lab var ccf_loc "currency conversion factor - 2017 $NGN"
+gen ccf_usd = ccf_loc/$Nigeria_GHS_W2_exchange_rate 
+lab var ccf_usd "currency conversion factor - 2017 $USD"
+gen ccf_1ppp = ccf_loc/$Nigeria_GHS_W2_cons_ppp_dollar
+lab var ccf_1ppp "currency conversion factor - 2017 $Private Consumption PPP"
+gen ccf_2ppp = ccf_loc/$Nigeria_GHS_W2_gdp_ppp_dollar
+lab var ccf_2ppp "currency conversion factor - 2017 $GDP PPP"
+
 global monetary_val plot_value_harvest plot_productivity  plot_labor_prod 
 foreach p of global monetary_val {
-	gen `p'_1ppp = (1 + $Nigeria_GHS_W2_inflation) * `p' / $Nigeria_GHS_W2_cons_ppp_dollar
-	gen `p'_2ppp = (1 + $Nigeria_GHS_W2_inflation) * `p' / $Nigeria_GHS_W2_gdp_ppp_dollar
-	gen `p'_usd = (1 + $Nigeria_GHS_W2_inflation) * `p' / $Nigeria_GHS_W2_exchange_rate
-	gen `p'_loc = (1 + $Nigeria_GHS_W2_inflation) * `p'
+	gen `p'_1ppp = `p' * ccf_1ppp
+	gen `p'_2ppp = `p' * ccf_2ppp
+	gen `p'_usd = `p' * ccf_usd 
+	gen `p'_loc =  `p' * ccf_loc 
 	local l`p' : var lab `p' 
-	lab var `p'_1ppp "`l`p'' (2016 $ Private Consumption PPP)"
-	lab var `p'_2ppp "`l`p'' (2016 $ GDP PPP)"
-	lab var `p'_usd "`l`p'' (2016 $ USD)"
-	lab var `p'_loc "`l`p'' (2016 NGN)" 
+	lab var `p'_1ppp "`l`p'' (2017 $ Private Consumption PPP)"
+	lab var `p'_2ppp "`l`p'' (2017 $ GDP PPP)"
+	lab var `p'_usd "`l`p'' (2017$ USD)"
+	lab var `p'_loc "`l`p'' (2017 NGN)" 
 	lab var `p' "`l`p'' (NGN)"  
-	gen w_`p'_1ppp = (1 + $Nigeria_GHS_W2_inflation) * w_`p' / $Nigeria_GHS_W2_cons_ppp_dollar
-	gen w_`p'_2ppp = (1 + $Nigeria_GHS_W2_inflation) * w_`p' / $Nigeria_GHS_W2_gdp_ppp_dollar
-	gen w_`p'_usd = (1 + $Nigeria_GHS_W2_inflation) * w_`p' / $Nigeria_GHS_W2_exchange_rate
-	gen w_`p'_loc = (1 + $Nigeria_GHS_W2_inflation) * w_`p' 
+	gen w_`p'_1ppp = w_`p' * ccf_1ppp
+	gen w_`p'_2ppp = w_`p' * ccf_2ppp
+	gen w_`p'_usd = w_`p' * ccf_usd
+	gen w_`p'_loc = w_`p' * ccf_loc
 	local lw_`p' : var lab w_`p'
-	lab var w_`p'_1ppp "`lw_`p'' (2016 $ Private Consumption PPP)"
-	lab var w_`p'_2ppp "`lw_`p'' (2016 $ GDP PPP)"
-	lab var w_`p'_usd "`lw_`p'' (2016 $ USD)"
-	lab var w_`p'_loc "`lw_`p'' (2016 NGN)" 
+	lab var w_`p'_1ppp "`lw_`p'' (2017 $ Private Consumption PPP)"
+	lab var w_`p'_2ppp "`lw_`p'' (2017 $ GDP PPP)"
+	lab var w_`p'_usd "`lw_`p'' (2017 $ USD)"
+	lab var w_`p'_loc "`lw_`p'' (2017 NGN)" 
 	lab var w_`p' "`lw_`p'' (NGN)" 
 }
+ 
  
 *We are reporting two variants of gender-gap
 * mean difference in log productivitity without and with controls (plot size and region/state)
@@ -5619,7 +5655,7 @@ save   "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_gendergap.dta", replace
 restore
 /*BET.12.4.2020 - END*/ 
 
-gen plot_labor_weight= w_labor_total*weight
+gen plot_labor_weight= w_labor_total*weight_pop_rururb
 foreach i in 1ppp 2ppp loc{
 	gen w_plot_productivity_all_`i'=w_plot_productivity_`i'
 	gen w_plot_productivity_female_`i'=w_plot_productivity_`i' if dm_gender==2
@@ -5633,6 +5669,8 @@ foreach i in 1ppp 2ppp loc{
 	gen w_plot_labor_prod_male_`i'=w_plot_labor_prod_`i' if dm_gender==1
 	gen w_plot_labor_prod_mixed_`i'=w_plot_labor_prod_`i' if dm_gender==3
 }
+drop weight
+ren weight_pop_rururb weight
 
 //////////Identifier Variables ////////
 *Add variables and ren household id so dta file can be appended with dta files from other instruments
@@ -5665,5 +5703,7 @@ The summary statistics are outputted only for the sub_population of households, 
 The code for outputting the summary statistics is in a separare dofile that is called here
 */ 
 *Parameters
-//global list_instruments  "Nigeria_GHS_W2"
-//do "${directory}\_Summary_Statistics\EPAR_UW_335_SUMMARY_STATISTICS_01.17.2020_alt.do" 
+global list_instruments  "Nigeria_GHS_W2"
+*do "${directory}\_Summary_Statistics\EPAR_UW_335_SUMMARY_STATISTICS_01.17.2020_alt.do"
+ do "${directory}\_Summary_Statistics\EPAR_UW_335_SUMMARY_STATISTICS_03.23.23.do"	
+ 

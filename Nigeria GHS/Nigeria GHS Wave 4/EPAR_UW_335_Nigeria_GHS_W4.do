@@ -9,7 +9,7 @@
 				  Travis Reynolds, the World Bank's LSMS-ISA team, the FAO's RuLIS team, IFPRI, IRRI, and the Bill & Melinda Gates Foundation Agricultural Development Data and Policy team in discussing indicator construction decisions. 
 				  
 				  All coding errors remain ours alone.
-*Date			: This  Version - 15 April 2022
+*Date			: This  Version - 9 October 2023
 ----------------------------------------------------------------------------------------------------------------------------------------------------*/
 
 *Data source
@@ -560,8 +560,8 @@ Issues this section is used to address:
 use "${Nigeria_GHS_W4_raw_data}/secta3i_harvestw4.dta", clear
 append using "${Nigeria_GHS_W4_raw_data}/secta3ii_harvestw4.dta"
 append using "${Nigeria_GHS_W4_raw_data}/secta3iii_harvestw4.dta"
-replace cropcode=1120 if inrange(cropcode, 1121,1124)
-label define CROPCODE 1120 "1120. YAM" , replace
+/*replace cropcode=1120 if inrange(cropcode, 1121,1124)
+label define CROPCODE 1120 "1120. YAM" , replace */
 //recode cropcode (2170=2030) //Bananas=plaintains ALT 06.23.2020: Bad idea, because the conversion factors vary a bunch (har har)
 ren sa3iq6ii unit
 ren sa3iq6_4 size
@@ -1067,6 +1067,7 @@ ren tlu tlu_coefficient
 ren animal_cd lvstckid
 gen cattle=inrange(lvstckid,101,107)
 gen smallrum=inlist(lvstckid,110,  111, 120)  //DYA.11.21.2020 no 119 in the options
+gen largerum = inlist(lvstckid,101,102,103,104,105,106,107) // HKS 6.16.23
 gen poultry=inrange(lvstckid,113,120)  //DYA.11.21.2020  "120" guinea fowl is poultry
 gen other_ls=inlist(lvstckid,108,109, 122, 123) //DYA.11.21.2020   no 121
 gen cows=inrange(lvstckid,105,105)
@@ -1081,6 +1082,7 @@ gen nb_chickens_stardseas=nb_ls_stardseas if chickens==1
 gen nb_ls_today =s11iq2a   //DYA.11.21.2020 This wave makes the distinction between animal owned and animal kept but in earlier waves there was not such distinction and it is more likely that in W1-3 we are counting animals owned and kept together (this could be why  tlu is much smaller in W4 is we use s11iq2 instead of s11iq2a which I am using now)
 gen nb_cattle_today=nb_ls_today if cattle==1 
 gen nb_smallrum_today=nb_ls_today if smallrum==1 
+gen nb_largerum_today=nb_ls_today if largerum==1 // HKS 6.16.23
 gen nb_poultry_today=nb_ls_today if poultry==1 
 gen nb_other_ls_today=nb_ls_today if other_ls==1  
 gen nb_cows_today=nb_ls_today if cows==1 
@@ -1099,6 +1101,7 @@ lab var nb_cows_stardseas "Number of cows owned at the begining of ag season"
 lab var nb_chickens_stardseas "Number of chickens owned at the begining of ag season"
 lab var nb_cattle_today "Number of cattle owned as of the time of survey"
 lab var nb_smallrum_today "Number of small ruminant owned as of the time of survey"
+lab var nb_largerum_today "Number of large ruminant owned as of the time of survey" // HKS 6.16.23
 lab var nb_poultry_today "Number of cattle poultry as of the time of survey"
 lab var nb_other_ls_today "Number of other livestock (dog, donkey, and other) owned as of the time of survey"
 lab var nb_cows_today "Number of cows owned as of the time of survey"
@@ -1110,7 +1113,8 @@ lab var nb_ls_stardseas  "Number of livestock owned at the begining of ag season
 lab var nb_ls_today "Number of livestock owned as of today"
 lab var nb_ls_sold "Number of total livestock sold alive this ag season"
 drop tlu_coefficient
-save "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_TLU_Coefficients.dta", replace
+*save "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_TLU_Coefficients.dta", replace
+save "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_TLU_Coefficients_wlargerum_061623.dta", replace // HKS 6.16.23
 
 
 ********************************************************************************
@@ -1681,6 +1685,10 @@ gen n_units = qty*strmatch(input, "npk_fert")*0.15 + qty*strmatch(input, "urea")
 gen p_units = qty*strmatch(input, "npk_fert")*0.15
 gen k_units = qty*strmatch(input, "npk_fert")*0.15
 gen n_units_org = qty*strmatch(input,"orgfert")*0.01
+la var n_units "Kg of nitrogen applied to plot from inorganic fertilizer"
+la var p_units "Kg of phosphorus applied to plot from inorganic fertilizer"
+la var k_units "Kg of potassium applied to plot from inorganic fertilizer"
+la var n_units_org "Kg of nitrogen from manure and organic fertilizer applied to plot"
 collapse (sum) *_units*, by(ea hhid plot_id)
 tempfile fert_units
 save `fert_units'
@@ -1714,6 +1722,7 @@ preserve
 	la var org_fert_rate "Qty organic fertilizer used (kg)"
 	la var herb_rate "Qty of herbicide used (kg/L)"
 	la var pest_rate "Qty of pesticide used (kg/L)"
+	merge 1:1 hhid plot_id using `fert_units', nogen
 	save "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_input_quantities.dta", replace
 restore
 append using "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_plot_labor.dta"
@@ -1846,7 +1855,6 @@ use "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_all_plots.dta", clear
 	la var k_units "Potassium kg/ha"
 	la var n_units_org "Kg/ha of manure nitrogen applied, estimated"
 	la var yield_unit_n "Kg of yield per kg of N per ha"
-**# Bookmark #3
 	save "${Nigeria_GHS_W4_created_data}/nga_plots_for_regression.dta", replace
 	//merge 1:1 hhid plot_id using "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_plot_cost_inputs.dta", nogen keep(1 3)
 	/*Easy way, starting from previous line
@@ -2726,6 +2734,7 @@ save "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_farmer_vaccine.dta", replace
 ********************************************************************************
 *ANIMAL HEALTH - DISEASES
 ********************************************************************************
+
 use "${Nigeria_GHS_W4_raw_data}/sect11j_plantingw4.dta", clear
 gen disease_animal = 1 if s11jq1a==1
 replace disease_animal = 0 if s11jq1a==2
@@ -2745,20 +2754,20 @@ foreach i in disease_animal disease_fmd disease_lump disease_bruc disease_cbpp d
 	gen `i'_camels = `i' if species==6
 }
 collapse (max) disease_*, by (hhid)
-lab var disease_animal "1= Household has animal that suffered from disease"
-lab var disease_fmd "1= Household has animal that suffered from foot and mouth disease"
-lab var disease_lump "1= Household has animal that suffered from lumpy skin disease"
-lab var disease_bruc "1= Household has animal that suffered from black quarter"
-lab var disease_cbpp "1= Household has animal that suffered from brucelosis"
-lab var disease_bq "1= Household has animal that suffered from black quarter"
+lab var disease_animal "1= Household experienced veterinary disease"
+lab var disease_fmd "1= Household experienced foot and mouth disease"
+lab var disease_lump "1= Household experienced lumpy skin disease"
+lab var disease_bruc "1= Household experienced brucelosis"
+lab var disease_cbpp "1= Household experienced contagious bovine pleuro pneumonia"
+lab var disease_bq "1= Household experienced black quarter"
 foreach i in disease_animal disease_fmd disease_lump disease_bruc disease_cbpp disease_bq{
 	local l`i' : var lab `i'
-	lab var `i'_lrum "`l`i'' - large ruminants"
-	lab var `i'_srum "`l`i'' - small ruminants"
-	lab var `i'_pigs "`l`i'' - pigs"
-	lab var `i'_equine "`l`i'' - equine"
-	lab var `i'_poultry "`l`i'' - poultry"
-	lab var `i'_camels "`l`i'' - camels"
+	lab var `i'_lrum "`l`i'' in large ruminants"
+	lab var `i'_srum "`l`i'' in small ruminants"
+	lab var `i'_pigs "`l`i'' in pigs"
+	lab var `i'_equine "`l`i'' in equine"
+	lab var `i'_poultry "`l`i'' in poultry"
+	lab var `i'_camels "`l`i'' in camels"
 }
 save "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_livestock_diseases.dta", replace
 
@@ -6132,6 +6141,34 @@ gen blw_cona_ph = daily_peraeq_fdcons_ph < $Nigeria_GHS_W4_CoNA_diet
 gen blw_coca_ph = daily_peraeq_fdcons_ph < $Nigeria_GHS_W4_CoCA_diet
 save "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_food_dep.dta", replace
 
+***rCSI
+*Alternative food consumption measure using the reduced coping strategies index. Weights are from the WFP guidance document Kenya Pilot Study (see https://documents.wfp.org/stellent/groups/public/documents/manual_guide_proced/wfp211058.pdf)
+	//Question																	Severity Score
+	//8b: about healthy and nutritious/preferred foods 							1	
+	//8c: inadequate dietary diversity 											1
+	//8d: skipped meals															1
+	//8e: insufficient quantity 												1
+	//8f: ran out of food? 														3
+	//8g: were hungry but did not eat 											4
+	//8h: went without eating for the whole day									4
+	//8i: reduced own food consumption so kids had enough to eat 				3
+	//8j: had to borrow or rely on help from a friend or relative				2
+
+use "${Nigeria_GHS_W4_raw_data}/sect9_plantingw4.dta", clear
+recode s9q8* (2=0)
+gen rCSI = s9q8b + s9q8c + s9q8d + s9q8e + s9q8f*3 + s9q8g * 4 + s9q8h*4 + s9q8i * 3 + s9q8j*2	
+//Max score is 20, 50th percentile among scores > 0 is 9
+gen nofoodinsec = rCSI <= 3
+gen highfoodinsec = rCSI >= 12
+keep state hhid rCSI nofoodinsec highfoodinsec
+tempfile rCSI
+save `rCSI'
+use "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_food_dep.dta", clear
+merge 1:1 hhid using `rCSI', nogen
+merge 1:1 hhid using "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_hhsize.dta", nogen keepusing(hh_members weight_pop_rururb)
+//collapse (mean) dep_food total_dep_food calor_insuf nutr_insuf precarious secure months* min_fdcons max_fdcons avg_fdcons rCSI nofoodinsec highfoodinsec hh_members [aw=weight_pop_rururb], by(state)
+save "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_food_dep_ext.dta", replace
+
 	*********************************
 	*	WHO CHILD MALNUTRITION		*
 	*********************************
@@ -6301,7 +6338,8 @@ merge 1:1 hhid using "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_livestock_ex
 merge 1:1 hhid using "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_livestock_products.dta", nogen keep(1 3)
 merge 1:1 hhid using "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_TLU.dta", nogen keep(1 3)
 merge 1:1 hhid using "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_herd_characteristics.dta", nogen keep(1 3)
-merge 1:1 hhid using "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_TLU_Coefficients.dta", nogen keep(1 3)
+*merge 1:1 hhid using "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_TLU_Coefficients.dta", nogen keep(1 3)
+merge 1:1 hhid using "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_TLU_Coefficients_wlargerum_061623.dta", nogen keep (1 3) // HKS 6.16.23
 lab var sales_livestock_products "Value of sales of livestock products"
 lab var value_livestock_products "Value of livestock products"
 recode value_livestock_sales value_livestock_purchases value_milk_produced  value_eggs_produced /*value_other_produced*/ /*fish_income_fishfarm*/  cost_*livestock (.=0) //Commented variables not in W4
@@ -7217,8 +7255,9 @@ gen w_aglabor_weight_female=. // cannot create in this instrument
 lab var w_aglabor_weight_female "Hired labor-adjusted household weights -female workers"
 gen w_aglabor_weight_male=. // cannot create in this instrument 
 lab var w_aglabor_weight_male "Hired labor-adjusted household weights -male workers"
-gen weight_milk=. //cannot create in this instrument
-gen weight_egg=. //cannot create in this instrument
+//ALT: Not sure where these came from; they cause an ambiguous abbreviation error in the summary stats.
+//gen weight_milk=. //cannot create in this instrument
+//gen weight_egg=. //cannot create in this instrument
 *generate area weights for monocropped plots
 foreach cn in $topcropname_area {
 	gen ar_pl_mono_wgt_`cn'_all = weight*`cn'_monocrop_ha
@@ -7228,6 +7267,7 @@ foreach cn in $topcropname_area {
 		gen kgs_harv_wgt_`cn'_`g' = weight*kgs_harv_mono_`cn'_`g'
 	}
 }
+
 gen w_ha_planted_all = ha_planted 
 foreach  g in all female male mixed {
 	gen area_weight_`g'=weight_pop_rururb*w_ha_planted_`g'
@@ -7296,7 +7336,7 @@ foreach v of varlist $empty_vars {
 }
 
 // Removing intermediate variables to get below 5,000 vars
-keep hhid fhh clusterid strataid *weight* *wgt* zone state lga ea rural farm_size* *total_income* /*
+keep hhid fhh clusterid strataid *weight_pop_rururb* *_weight* *wgt* zone state lga ea rural farm_size* *total_income* /*
 */ *percapita_income* *percapita_cons* *daily_percap_cons* *peraeq_cons* *daily_peraeq_cons* /*
 */ *income* *share* *proportion_cropvalue_sold *farm_size_agland hh_members adulteq *labor_family *labor_hired use_inorg_fert vac_* /*
 */ feed* water* lvstck_housed* ext_* use_fin_* lvstck_holding* *mortality_rate* *lost_disease* disease* any_imp* formal_land_rights_hh /*
@@ -7306,9 +7346,10 @@ keep hhid fhh clusterid strataid *weight* *wgt* zone state lga ea rural farm_siz
 */ *egg_poultry_year* *inorg_fert_rate* *ha_planted* *cost_expli_hh* *cost_expli_ha* *monocrop_ha* *kgs_harv_mono* *cost_total_ha* /*
 */ *_exp* poverty_under_1_9 *value_crop_production* *value_harv* *value_crop_sales* *value_sold* *kgs_harvest* *total_planted_area* *total_harv_area* /*
 */ *all_area_* grew_* agactivities_hh ag_hh crop_hh livestock_hh fishing_hh *_milk_produced* *eggs_total_year *value_eggs_produced* /*
-*/ *value_livestock_products* *value_livestock_sales* *total_cons* nb_cattle_today *sales_livestock_products nb_cows_today lvstck_holding_srum  nb_smallrum_today nb_chickens_today nb_poultry_today bottom_40_percap bottom_40_peraeq /*
+*/ *value_livestock_products* *value_livestock_sales* *total_cons* nb_cattle_today /*HKS 6.6.23*/ nb_largerum_t nb_smallrum_t nb_chickens_t  *sales_livestock_products nb_cows_today lvstck_holding_srum  nb_smallrum_today nb_chickens_today nb_poultry_today bottom_40_percap bottom_40_peraeq /*
 */ ccf_loc ccf_usd ccf_1ppp ccf_2ppp *sales_livestock_products  *value_pro* *value_sal*
 
+ren weight_pop_rururb weight
 
 //////////Identifier Variables ////////
 *Add variables and ren household id so dta file can be appended with dta files from other instruments
@@ -7332,9 +7373,12 @@ label define instrument 1 "Tanzania NPS Wave 1" 2 "Tanzania NPS Wave 2" 3 "Tanza
 	*/ 22 "Nigeria NIBAS AgDev (Niger)" 23 "Nigeria NIBAS AgDev (Kano)" 24 "Nigeria NIBAS AgDev (Katsina)" /*
 	*/ 25 "Nigeria GHS Wave 4"
 label values instrument instrument	
+*saveold "${Nigeria_GHS_W4_final_data}/Nigeria_GHS_W4_household_variables.dta", replace
+
+gen ssp = (farm_size_agland <= 2 & farm_size_agland != 0) & (nb_largerum_today <= 10 & nb_largerum_t <= 10 & nb_chickens_today <= 50) // HKS 6.16.23
 saveold "${Nigeria_GHS_W4_final_data}/Nigeria_GHS_W4_household_variables.dta", replace
 
-Stop
+*Stop
 
 ********************************************************************************
 *INDIVIDUAL-LEVEL VARIABLES
@@ -7419,7 +7463,7 @@ global empty_vars *hybrid_seed* women_diet number_foodgroup
 foreach v of varlist $empty_vars { 
 	replace `v' = .
 }
-
+ren weight_pop_rururb weight
 
 //////////Identifier Variables ////////
 *Add variables and ren household id so dta file can be appended with dta files from other instruments
@@ -7537,18 +7581,12 @@ gen plot_weight=w_area_meas_hectares*weight_pop_rururb
 lab var plot_weight "Weight for plots (weighted by plot area)"
 
 foreach v of varlist  plot_productivity  plot_labor_prod {
-	_pctile `v' [aw=plot_weight], p($wins_upper_thres)  
-	scalar p1_nat = r(r1)
+	_pctile `v' [aw=plot_weight] , p($wins_upper_thres)  
 	gen w_`v'=`v'
-	foreach r of local list_levels {	
-		_pctile w_`p' [aw=weight_pop_rururb_pop_rururb] if zone==`r', p($wins_upper_thres)
-		scalar p1_lev_`r' = r(r1)
-		replace  w_`v' = min(p1_nat, p1_lev_`r') if  w_`v' > min(p1_nat, p1_lev_`r') &  w_`v'!=.
-	}
-	
+	replace  w_`v' = r(r1) if  w_`v' > r(r1) &  w_`v'!=.
 	local l`v' : var lab `v'
 	lab var  w_`v'  "`l`v'' - Winzorized top 1%"
-}	
+}		
 
 /*ALT Updates 03.20.23
 *Convert monetary values to USD and PPP
@@ -7738,8 +7776,8 @@ foreach i in 1ppp 2ppp loc{
 
 *Create weight 
 gen plot_labor_weight= w_labor_total*weight_pop_rururb
-
-
+drop weight
+ren weight_pop_rururb weight
 //////////Identifier Variables ////////
 *Add variables and ren household id so dta file can be appended with dta files from other instruments
 gen hhid_panel = hhid 
