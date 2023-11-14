@@ -155,7 +155,7 @@ Relies on conversion unit conversion factor which is in progress
 In progress (Incomplete)  
 **Known Issues:**
 	* LABOR: Labor expense estimates are severely understated for several reasons: 1. the survey instrument did not ask for number of hired labors. Therefore, the constructed value of hired labor for some households could represent all hired labor costs or per laborer hired labor costs. 2. We typically use the value of hired labor to imput the value of family and nonhired (exchange) labor. However, due to issues with how hired labor is contructed, we cannot use these values to impute the value of family or nonhired (exchange) labor.
-	* PLOT RENTS: Some rainy season data is missing. The final output on plot rents has too few of observations as compared to reported plot rents in the raw data.
+	* PLOT RENTS: Some rainy season data is missing.Data for crop payments owed, cash and in-kind were not in the raw data even though it was a question on the instrument, thus payments by crops may be understated because of this. Other waves of the survey do have these data available which makes the comparison across waves for plots challanging. The final output on plot rents has too few of observations as compared to reported plot rents in the raw data.
 	* TRANSPORTATION COSTS: The survey instrument collects information on transportation costs associated with bringing crops to market (seperate from transportation costs associated with picking up seed and other inputs which we currently are reporting). We are still in the process of building this smaller module and incorporating into crop expenses. Crop expenses in aggregate will be understated for now because transportation costs for crops are missing.
 
 ### Monocropped Plots
