@@ -4053,8 +4053,7 @@ merge 1:1 hhid using "${Nigeria_GHS_W1_created_data}/Nigeria_GHS_W1_livestock_pr
 merge 1:1 hhid using "${Nigeria_GHS_W1_created_data}/Nigeria_GHS_W1_TLU.dta", nogen keep (1 3)
 merge 1:1 hhid using "${Nigeria_GHS_W1_created_data}/Nigeria_GHS_W1_herd_characteristics", nogen keep (1 3)
 recode value_livestock_sales value_livestock_purchases value_milk_produced  value_eggs_produced value_other_produced fish_income_fishfarm  cost_*livestock (.=0)
-*merge 1:1 hhid using "${Nigeria_GHS_W1_created_data}/Nigeria_GHS_W1_TLU_Coefficients.dta", nogen keep (1 3)
-merge 1:1 hhid using "${Nigeria_GHS_W1_created_data}/Nigeria_GHS_W1_TLU_Coefficients_wlargerum_061623.dta", nogen keep (1 3) // HKS 6.16.23
+merge 1:1 hhid using "${Nigeria_GHS_W1_created_data}/Nigeria_GHS_W1_TLU_Coefficients.dta", nogen keep (1 3)
 
 *Number of obs are not consistent across these files
 *adding in fish farm income to livestock income

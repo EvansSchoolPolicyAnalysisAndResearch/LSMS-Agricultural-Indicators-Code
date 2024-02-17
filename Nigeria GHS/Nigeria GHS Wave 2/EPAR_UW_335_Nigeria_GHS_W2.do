@@ -126,14 +126,7 @@ global directory			"\\netid.washington.edu\wfs\EvansEPAR\Project\EPAR\Working Fi
 
 //set directories
 *Nigeria General HH survey (NG LSMS)  Wave 2
-*global Nigeria_GHS_W2_raw_data "$directory/Nigeria GHS/Nigeria GHS Wave 2/Raw DTA Files/v02_all_one_folder"
-*global Nigeria_GHS_W2_created_data  "$directory/Nigeria GHS/Nigeria GHS Wave 2/Final DTA Files - ALT/created_data"
-*global Nigeria_GHS_W2_final_data  "$directory/Nigeria GHS/Nigeria GHS Wave 2/Final DTA Files - ALT/final_data"
- 
 global Nigeria_GHS_W2_raw_data "$directory/Nigeria GHS/Nigeria GHS Wave 2/Raw DTA Files/NGA_2012_GHSP-W2_v02_M"
-*global Nigeria_GHS_W2_created_data  "$directory/Nigeria GHS/Nigeria GHS Wave 2/Final DTA Files - AGP/created_data"
-*global Nigeria_GHS_W2_final_data  "$directory/Nigeria GHS/Nigeria GHS Wave 2/Final DTA Files - AGP/final_data" 
-  
 global Nigeria_GHS_W2_created_data  "$directory/Nigeria GHS/Nigeria GHS Wave 2/Final DTA Files/created_data"
 global Nigeria_GHS_W2_final_data  "$directory/Nigeria GHS/Nigeria GHS Wave 2/Final DTA Files/final_data" 
   
@@ -1130,7 +1123,7 @@ ren s11dq31 valtransfertexp3
 //ren s11dq41 valtransfertexp4 
 
 //ALT: 3 obs with OS, two are manure and one is 20-10-10
-replace itemcodefertimp2 = 3 if s11dq7b!=.
+replace itemcodefertimp2 = 3 if s11dq7b!=""
 replace itemcodefertimp2 = 1 if s11dq7b=="201010"
 
 keep item* qty* val* zone state lga ea sector hhid plot_id

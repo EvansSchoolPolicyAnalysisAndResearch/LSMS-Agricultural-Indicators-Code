@@ -5798,7 +5798,8 @@ ren s5q4 value_today
 ren s5q1 number_items_owned
 ren s5q3 age_item
 gen value_assets = value_today*number_items_owned
-collapse (sum) value_assets=value_today, by(hhid)
+//collapse (sum) value_assets=value_today, by(hhid)
+collapse (sum) value_assets, by(hhid) //ALT 12.01.23: Bug fix
 lab var value_assets "Value of household assets"
 save "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_hh_assets.dta", replace 
 

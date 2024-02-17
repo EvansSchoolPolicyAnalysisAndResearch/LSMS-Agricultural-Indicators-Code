@@ -63,8 +63,8 @@ global directory			    "\\netid.washington.edu\wfs\EvansEPAR\Project\EPAR\Workin
 
 *These paths correspond to the folders where the raw data files are located and where the created data and final data will be stored.
 global Tanzania_NPS_W3_raw_data 			"$directory/Tanzania NPS/Tanzania NPS Wave 3/Raw DTA Files/TZA_2012_NPS-R3_v01_M_STATA8_English_labels" 
-global Tanzania_NPS_W3_created_data 		"$directory/Tanzania NPS/Tanzania NPS Wave 3/Final DTA files - AQP/created_data" 
-global Tanzania_NPS_W3_final_data  		"$directory/Tanzania NPS/Tanzania NPS Wave 3/Final DTA files - AQP/final_data"
+global Tanzania_NPS_W3_created_data 		"$directory/Tanzania NPS/Tanzania NPS Wave 3/Final DTA files/created_data" 
+global Tanzania_NPS_W3_final_data  		"$directory/Tanzania NPS/Tanzania NPS Wave 3/Final DTA files/final_data"
 
 
 ********************************************************************************
@@ -680,7 +680,7 @@ preserve
 	keep y3_hhid plot_id months* prop* val* field_size
 	reshape long monthslandrent vallandrentexp propinkindpaid, i(y3_hhid plot_id) j(short)
 	la val short //Remove value labels from the short variable - not sure why they're getting applied
-	merge 1:1 y3_hhid plot_id short using "\\netid.washington.edu\wfs\EvansEPAR\Project\EPAR\Working Files\335 - Ag Team Data Support\Waves\Tanzania NPS\Tanzania NPS Wave 3\Final DTA Files_ALT\created_data\Tanzania_NPS_W3_plot_value_prod.dta"
+	merge 1:1 y3_hhid plot_id short using "${Tanzania_NPS_W3_created_data}\Tanzania_NPS_W3_plot_value_prod.dta"
 	gen pricelandrent = (vallandrentexp+(propinkindpaid*value_harvest))/monthslandrent/field_size 
 	keep y3_hhid plot_id pricelandrent short field_size
 	reshape wide pricelandrent, i(y3_hhid plot_id field_size) j(short) //82 total observations; there isn't a significant difference between short and long rainy season rents.

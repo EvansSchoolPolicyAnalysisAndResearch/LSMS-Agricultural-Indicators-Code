@@ -5003,7 +5003,7 @@ gen adulteq_weight=adulteq*weight
 	// 10.3341* 1.2412458 = 12.827158 ETB
 *NOTE: if the survey was carried out over multiple years we use the last year
 *This is the poverty line at the local currency in the year the survey was carried out
-gen poverty_under_1_9 = (daily_percap_cons< $ETH_ESS_W1_poverty_190
+gen poverty_under_1_9 = daily_percap_cons< $ETH_ESS_W1_poverty_190
 gen poverty_under_215 = daily_percap_cons < $ETH_ESS_W1_poverty_215 
 gen poverty_under_nbs = daily_percap_cons < $ETH_ESS_W1_poverty_nbs
 la var poverty_under_1_9 "Household has a percapita conumption below $1.90 in 2011 $ PPP"

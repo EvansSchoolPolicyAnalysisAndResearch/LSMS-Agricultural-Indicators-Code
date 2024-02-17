@@ -516,7 +516,7 @@ use "${Nigeria_GHS_W3_raw_data}/sect11f_plantingw3.dta", clear
 	replace area_unit=s11fq4b if area_unit==.
 	merge m:1 zone area_unit using "${Nigeria_GHS_W3_created_data}/Nigeria_GHS_W3_landcf.dta", nogen keep(1 3)
 	gen ha_planted = s11fq1a*conversion
-	replace ha_planted = s11fq4a*conversion if ha_planted==.
+	replace ha_planted = s11fq4a*conversion if ha_planted==. & s11fq4a!=0 //Tree crops. A few obs reported in stands equal to the number of trees reported. The WB conversion for "stand" is probably for something different, because it results in very low converted hectares. Might distort yields for oil palm a little.
 	drop conversion area_unit
 	ren sa3iq5b area_unit
 	merge m:1 zone area_unit using "${Nigeria_GHS_W3_created_data}/Nigeria_GHS_W3_landcf.dta", nogen keep(1 3)
@@ -575,22 +575,22 @@ use "${Nigeria_GHS_W3_raw_data}/sect11f_plantingw3.dta", clear
 	replace purestand=0 if purestand==.
 	drop crops_plot crops_avg plant_dates harv_dates plant_date_unique harv_date_unique permax
 	//Okay, now we should be able to relatively accurately rescale plots.
-	replace ha_planted = ha_harvest if ha_planted==. //182 changes
-	replace ha_harvest = ha_planted if (s11fq12a != 0 & s11fq12a != .) | (sa3iq6d1 != 0 & sa3iq6d1 != .) //ALT 02.15.22
+	replace ha_planted = ha_harvest if ha_planted==. | ha_planted==0  & ha_harvest!=. //182 changes
+	//replace ha_harvest = ha_planted if (s11fq12a != 0 & s11fq12a != .) | (sa3iq6d1 != 0 & sa3iq6d1 != .) //ALT 02.15.22 - This was intended to account for expected harvests but there's answers for almost all observations so it just creates a mess instead.
 	//Let's first consider that planting might be misreported but harvest is accurate
 	replace ha_planted = ha_harvest if ha_planted > field_size & ha_harvest < ha_planted & ha_harvest!=. //4,476 changes
 	gen percent_field=ha_planted/field_size
 *Generating total percent of purestand and monocropped on a field
-	bys hhid plot_id: egen total_percent = total(percent_field)
+	bys hhid plot_id: egen tot_ha_planted = sum(ha_planted)
 //about 60% of plots have a total intercropped sum greater than 1
 //about 3% of plots have a total monocropped sum greater than 1
 //Dealing with crops which have monocropping larger than plot size or monocropping that fills plot size and still has intercropping to add
-	replace percent_field = percent_field/total_percent if total_percent>1 & purestand==0
-	replace percent_field = 1 if percent_field>1 & purestand==1
+	replace percent_field = ha_planted/tot_ha_planted if tot_ha_planted > field_size & purestand==0
+	replace percent_field = 1 if tot_ha_planted>field_size & purestand==1
 	//407 changes made
 
 
-	replace ha_planted = percent_field*field_size
+	replace ha_planted = percent_field*field_size if (tot_ha_planted > field_size & purestand==0) | (tot_ha_planted>field_size & purestand==1)
 	replace ha_harvest = ha_planted if ha_harvest > ha_planted
 	
 	*renaming unit code for merge
@@ -2550,7 +2550,7 @@ collapse (max) imprv_seed_ hybrid_seed_, by(hhid crop_code)
 merge m:1 crop_code using "${Nigeria_GHS_W3_created_data}/Nigeria_GHS_W3_cropname_table.dta", nogen keep(3)
 drop crop_code
 reshape wide imprv_seed_ hybrid_seed_, i(hhid) j(crop_name) string
-save "${Nigeria_GHS_W3_created_data}/Nigeria_GHS_W3_imprvseed_crop.dta",replace //ALT: this is slowly devolving into a kludgy mess as I try to keep continuity up in the hh_vars section.
+save "${Nigeria_GHS_W3_created_data}/Nigeria_GHS_W3_imprvseed_crop.dta",replace 
 restore 
 
 
@@ -2807,8 +2807,8 @@ save "${Nigeria_GHS_W3_created_data}/Nigeria_GHS_W3_cropcosts.dta", replace
 ********************************************************************************
 //ALT 08.04.21: Added in org fert, herbicide, and pesticide; additional coding needed to integrate these into summary stats
 use "${Nigeria_GHS_W3_created_data}/Nigeria_GHS_W3_all_plots.dta", clear
-collapse (sum) ha_planted, by(hhid plot_id dm_gender)
-merge 1:1 hhid plot_id using "${Nigeria_GHS_W3_created_data}/Nigeria_GHS_W3_input_quantities.dta", nogen keep(1 3) //11 plots have expenses but don't show up in the all_plots roster.
+collapse (sum) ha_planted, by(ea hhid plot_id dm_gender)
+merge 1:1 ea hhid plot_id using "${Nigeria_GHS_W3_created_data}/Nigeria_GHS_W3_input_quantities.dta",  keep(1 3) //11 plots have expenses but don't show up in the all_plots roster.
 gen dm_gender2 = "male" if dm_gender==1
 replace dm_gender2 = "female" if dm_gender==2
 replace dm_gender2 = "mixed" if dm_gender==3
@@ -4266,6 +4266,7 @@ egen totcons = rowtotal(fdsorby-nfdhealth)
 	*		FOOD SECURITY			*
 	*********************************
 **Part of poverty estimation, imported from W4
+**# Bookmark #1
 
 use "${Nigeria_GHS_W3_raw_data}/cons_agg_wave3_visit1.dta", clear
 drop totcons
@@ -4316,6 +4317,21 @@ egen max_fdcons = rowmax(daily_peraeq_fdcons_*)
 gen avg_fdcons = (daily_peraeq_fdcons_ph + daily_peraeq_fdcons_pp)/2
 save "${Nigeria_GHS_W3_created_data}/Nigeria_GHS_W3_food_dep.dta", replace
 
+use "${Nigeria_GHS_W3_raw_data}/sect9_plantingw3.dta", clear
+recode s9q1* (2=0)
+gen rCSI = s9q1a + s9q1b + s9q1c + s9q1d + s9q1e*3 + s9q1f * 4 + s9q1g*4 + s9q1h * 3 + s9q1i*2
+//Max score is 20, 50th percentile among scores > 0 is 9
+gen nofoodinsec = rCSI <= 3
+gen highfoodinsec = rCSI >= 12
+keep state hhid rCSI nofoodinsec highfoodinsec
+tempfile rCSI
+save `rCSI'
+use "${Nigeria_GHS_W3_created_data}/Nigeria_GHS_W3_food_dep.dta", clear
+merge 1:1 hhid using `rCSI', nogen
+merge 1:1 hhid using "${Nigeria_GHS_W3_created_data}/Nigeria_GHS_W3_hhsize.dta", nogen keepusing(hh_members weight_pop_rururb)
+//collapse (mean) dep_food total_dep_food calor_insuf nutr_insuf precarious secure months* min_fdcons max_fdcons avg_fdcons rCSI nofoodinsec highfoodinsec hh_members [aw=weight_pop_rururb], by(state)
+save "${Nigeria_GHS_W3_created_data}/Nigeria_GHS_W3_food_dep_ext.dta", replace
+
 
 
 ********************************************************************************
@@ -4326,7 +4342,7 @@ ren s5q4 value_today
 ren s5q1 number_items_owned
 ren s5q3 age_item
 gen value_assets = value_today*number_items_owned
-collapse (sum) value_assets=value_today, by(hhid)
+collapse (sum) value_assets /*=value_today*/, by(hhid) //ALT 11.21.23: Bug fix
 la var value_assets "Value of household assets"
 save "${Nigeria_GHS_W3_created_data}/Nigeria_GHS_W3_hh_assets.dta", replace 
 
