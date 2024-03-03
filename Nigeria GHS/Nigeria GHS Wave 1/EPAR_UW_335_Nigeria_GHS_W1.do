@@ -3249,454 +3249,135 @@ save "${Nigeria_GHS_W1_created_data}/Nigeria_GHS_W1_ag_wage.dta", replace
 ********************************************************************************
 * Crop Yield   *
 ********************************************************************************
-***Yield for Dry Season not calculated because no area harvested information, only area planted**
-use "${Nigeria_GHS_W1_raw_data}/sect11f_plantingw1", clear
-ren plotid plot_id
-ren cropcode crop_code
-recode crop_code (2170=2030)		//recoding plantains to banana in Nigeria
-*recode crop_code( 1110   1111=1110) //DYA 8.19.19 unshelled rice(paddy) is also rice
-*including monocropping and relay cropping (plant one crop, harvest, then plant another) as monocropping
-*including tree crops as mono-cropped, but we aren't currently including them in the rescaling decisions
-gen purestand= 1
-replace purestand= 0 if s11fq2==2 | s11fq2==4 | s11fq2==5 | s11fq2==6 
-gen any_pure= purestand==1
-gen any_mixed = purestand==0
-*Merging in gender of plot manager
-merge m:1 plot_id hhid using "${Nigeria_GHS_W1_created_data}/Nigeria_GHS_W1_plot_areas", nogen keep(1 3)
-*There are a lot of unconventional measurements
-*Using conversion factors from BID
-/*
-*Heaps
-gen conversion = 0.00012 if zone==1 & s11fq1b==1
-replace conversion = 0.00016 if zone==2 & s11fq1b==1
-replace conversion = 0.00011 if zone==3 & s11fq1b==1
-replace conversion = 0.00019 if zone==4 & s11fq1b==1
-replace conversion = 0.00021 if zone==5 & s11fq1b==1
-replace conversion = 0.00012 if zone==6 & s11fq1b==1
-*Ridges
-replace conversion = 0.0027 if zone==1 & s11fq1b==2
-replace conversion = 0.004 if zone==2 & s11fq1b==2
-replace conversion = 0.00494 if zone==3 & s11fq1b==2
-replace conversion = 0.0023 if zone==4 & s11fq1b==2
-replace conversion = 0.0023 if zone==5 & s11fq1b==2
-replace conversion = 0.0001 if zone==6 & s11fq1b==2
-*Stands
-replace conversion = 0.00006 if zone==1 & s11fq1b==3
-replace conversion = 0.00016 if zone==2 & s11fq1b==3
-replace conversion = 0.00004 if zone==3 & s11fq1b==3
-replace conversion = 0.00004 if zone==4 & s11fq1b==3
-replace conversion = 0.00013 if zone==5 & s11fq1b==3
-replace conversion = 0.00041 if zone==6 & s11fq1b==3
-*Plots
-replace conversion = 0.0667 if s11fq1b==4
-*Acres
-replace conversion = 0.404686 if s11fq1b==5
-*Hectares
-replace conversion = 1 if s11fq1b==6
-*Square meters
-replace conversion = 0.0001 if s11fq1b==7
-*/
-gen ha_planted = s11fq1a*conversion
-*recode ha_planted (.=0)
-*adding in tree crops
-ren plot_id plotid
-ren crop_code cropcode
-merge 1:1 hhid plotid cropid cropcode using "${Nigeria_GHS_W1_raw_data}/sect11g_plantingw1", nogen keep(1 3)
-//432 permanent crop observations matched
-gen perm_crop=(s11gq1a!=.)	
-*Using conversion factors for permanent crops
-*Using conversion factors from BID
-/*
-*Heaps
-replace conversion = 0.00012 if zone==1 & s11gq1b==1
-replace conversion = 0.00016 if zone==2 & s11gq1b==1
-replace conversion = 0.00011 if zone==3 & s11gq1b==1
-replace conversion = 0.00019 if zone==4 & s11gq1b==1
-replace conversion = 0.00021 if zone==5 & s11gq1b==1
-replace conversion = 0.00012 if zone==6 & s11gq1b==1
-*Ridges
-replace conversion = 0.0027 if zone==1 & s11gq1b==2
-replace conversion = 0.004 if zone==2 & s11gq1b==2
-replace conversion = 0.00494 if zone==3 & s11gq1b==2
-replace conversion = 0.0023 if zone==4 & s11gq1b==2
-replace conversion = 0.0023 if zone==5 & s11gq1b==2
-replace conversion = 0.00001 if zone==6 & s11gq1b==2
-*Stands
-replace conversion = 0.00006 if zone==1 & s11gq1b==3
-replace conversion = 0.00016 if zone==2 & s11gq1b==3
-replace conversion = 0.00004 if zone==3 & s11gq1b==3
-replace conversion = 0.00004 if zone==4 & s11gq1b==3
-replace conversion = 0.00013 if zone==5 & s11gq1b==3
-replace conversion = 0.00041 if zone==6 & s11gq1b==3
-*Plots
-replace conversion = 0.0667 if s11gq1b==4
-*Acres
-replace conversion = 0.404686 if s11gq1b==5
-*Hectares
-replace conversion = 1 if s11gq1b==6
-*Square meters
-replace conversion = 0.0001 if s11gq1b==7
-*/
-replace ha_planted = s11gq1a*conversion if ha_planted==.
-//181 changes made
-recode ha_planted (.=0)
-ren plotid plot_id
-merge m:1 plot_id hhid using "$Nigeria_GHS_W1_created_data\Nigeria_GHS_W1_plot_decision_makers", nogen keep(1 3)
-*Area planted by crop here
-ren cropcode crop_code
-recode crop_code (2170=2030)
-ren s11gq4 number_trees_planted
-preserve 
-*dropping permanent crops for rescaling
-drop if perm_crop==1
-*Start by capping area planted of each individual crop at plot area if GPS measurements are available
-gen over_planted = ha_planted>field_size & ha_planted!=. & gps_meas==1
-gen over_planted_scaling = field_size/ha_planted if over_planted==1
-bys hhid plot_id: egen mean_planted_scaling = mean(over_planted_scaling)
-replace mean_planted_scaling =1 if missing(mean_planted_scaling)
-replace ha_planted = field_size if over_planted==1
-*replace ha_planted = ha_planted*mean_planted_scaling if over_planted==0
-// 1,020 observations where ha_planted=0 - most of these are missing an area or unit. Some report a unit of "other".
-gen intercropped_yn = 1 if ~missing(s11fq2) 
-replace intercropped_yn =0 if s11fq2 == 1 | s11fq2==3 
-gen percent_field=ha_planted/field_size
-gen mono_field = percent_field if intercropped_yn==0 
-gen int_field = percent_field if intercropped_yn==1 
-*Generating total percent of purestand and monocropped on a field
-bys hhid plot_id: egen total_percent_int_sum = total(int_field)
-bys hhid plot_id: egen total_percent_mono = total(mono_field)
-// about 54% of plots have a total intercropped sum greater than 1
-// about 2.5% of plots have a total monocropped sum greater than 
-// Dealing with crops which have monocropping larger than plot size or monocropping that fills plot size and still has intercropping to add
-generate oversize_plot = (total_percent_mono >1)
-replace oversize_plot = 1 if total_percent_mono >=1 & total_percent_int_sum >0 
-bys hhid plot_id: egen total_percent_field = total(percent_field)			            
-replace percent_field = percent_field/total_percent_field if total_percent_field>1 & oversize_plot ==1
-// 344 changes made
-drop total_percent_field mono_field int_field total_percent_mono total_percent_int_sum total_percent_field oversize_plot // AYW 12.7.19
-bys hhid plot_id: egen total_percent_field = total(percent_field) 
-gen mono_field = percent_field if intercropped_yn==0 
-gen int_field = percent_field if intercropped_yn==1 
-bys hhid plot_id: egen total_percent_mono = total(mono_field)
-bys hhid plot_id: egen total_percent_int_sum = total(int_field) 
-drop /*DYA*/ total_percent_field
-bys hhid plot_id: egen total_percent_field = total(percent_field)
-generate oversize_plot = (total_percent_mono >1)
+use "${Nigeria_GHS_W1_created_data}/Nigeria_GHS_W1_all_plots.dta", clear
+ren crop_code_master crop_code
+gen number_trees_planted_banana = number_trees_planted if crop_code==2030 
+gen number_trees_planted_cassava = number_trees_planted if crop_code==1020 
+gen number_trees_planted_cocoa = number_trees_planted if crop_code==3040
+recode number_trees_planted_banana number_trees_planted_cassava number_trees_planted_cocoa (.=0) 
+collapse (sum) number_trees_planted*, by(hhid)
+save "${Nigeria_GHS_W1_created_data}/Nigeria_GHS_W1_trees.dta", replace
 
-//Rescaling intercropped crops to fit on remainder of plot after monocropped crops are accounted for
-gen total_percent_inter = 1-total_percent_mono 
-bys hhid plot_id: egen inter_crop_number = total(intercropped_yn) 
-gen percent_inter = (int_field/total_percent_int_sum)*total_percent_inter if (total_percent_int_sum > total_percent_inter) // AYW 12.7.19 
-replace percent_inter = int_field if (total_percent_int_sum <= total_percent_inter) // AYW 12.7.19
-//2,397 changes	 
-//59 changes
-ren cultivate field_cultivated  
-gen field_area_cultivated = field_size if field_cultivated==1
-gen crop_area_planted = percent_field*field_area_cultivated  if intercropped_yn == 0 
-replace crop_area_planted = percent_inter*field_area_cultivated  if intercropped_yn == 1 
-gen us_total_area_planted = total_percent_field*field_area_cultivated 
-gen us_inter_area_planted = total_percent_int_sum*field_area_cultivated 
-tempfile annual_crop_area
-save `annual_crop_area'
-restore
-
-*adding permanent crops back in 
-merge 1:1 hhid plot_id cropid using `annual_crop_area', nogen
-*Generating crop area planted for permanent crops
-replace crop_area_planted = ha_planted if perm_crop==1
-*dropping variables that we don't need
-drop s11fq1a-s11fq4d s11aq4c s11aq5c-sa1q8 sa1q9c sa1q10c-sa1q38e s11gq1a-s11gq3 s11gq5a-s11gq8c
-save "${Nigeria_GHS_W1_created_data}/Nigeria_GHS_W1_crop_area_planted", replace
-
-
-
-////Now to harvest////
-* Area conversion factors
-use "${Nigeria_GHS_W1_raw_data}/w1agnsconversion", clear
-ren agcropid crop_code
-ren nscode unit_cd
-ren conversion conv_national
-sort crop_code unit_cd conv_national
-save "${Nigeria_GHS_W1_created_data}/Nigeria_GHS_W1_ng1_cf.dta", replace
-
-
-use "${Nigeria_GHS_W1_raw_data}/secta3_harvestw1.dta", clear
-ren sa3q1 crop_name
-ren sa3q2 crop_code
-ren sa3q3 harvest_yesno
-ren sa3q6a quantity_harvested
-ren sa3q6b quantity_harvested_unit
-ren sa3q18 value_harvested
-ren sa3q5a area_harv
-ren sa3q5b area_harv_unit
-ren plotid plot_id
-
-*merging in field sizes
-merge m:1 hhid plot_id using "${Nigeria_GHS_W1_created_data}/Nigeria_GHS_W1_plot_areas.dta", nogen keep(1 3)
-*There is one household that does not list the cropid
-duplicates drop hhid plot_id cropid, force
-merge 1:1 hhid plot_id cropid using "${Nigeria_GHS_W1_created_data}/Nigeria_GHS_W1_crop_area_planted",nogen keep(1 3)
-*There are 1,964 observations that are in the harvest file but not the planted file. We don't have intercropping information on these observations
-
-gen area_harv_ha=.
-*replacing area harvested with area reported by farmer
-replace area_harv_ha= area_harv if area_harv_unit==6
-replace area_harv_ha = area_harv*0.0667 if area_harv_unit==4	& area_harv_ha ==.		//reported in plots
-replace area_harv_ha = area_harv*0.404686 if area_harv_unit==5 & area_harv_ha ==.			//reported in acres
-replace area_harv_ha = area_harv*0.0001 if area_harv_unit==7	& area_harv_ha ==.		//reported in square meters
-
-replace area_harv_ha = area_harv*0.00012 if area_harv_unit==1 & zone==1 & area_harv_ha ==.		//reported in heaps
-replace area_harv_ha = area_harv*0.00016 if area_harv_unit==1 & zone==2 & area_harv_ha ==.
-replace area_harv_ha = area_harv*0.00011 if area_harv_unit==1 & zone==3 & area_harv_ha ==.
-replace area_harv_ha = area_harv*0.00019 if area_harv_unit==1 & zone==4 & area_harv_ha ==.
-replace area_harv_ha = area_harv*0.00021 if area_harv_unit==1 & zone==5 & area_harv_ha ==.
-replace area_harv_ha = area_harv*0.00012 if area_harv_unit==1 & zone==6 & area_harv_ha ==.
-
-replace area_harv_ha = area_harv*0.0027 if area_harv_unit==2 & zone==1 & area_harv_ha ==.			//reported in ridges
-replace area_harv_ha = area_harv*0.004 if area_harv_unit==2 & zone==2 & area_harv_ha ==.
-replace area_harv_ha = area_harv*0.00494 if area_harv_unit==2 & zone==3 & area_harv_ha ==.
-replace area_harv_ha = area_harv*0.0023 if area_harv_unit==2 & zone==4 & area_harv_ha ==.
-replace area_harv_ha = area_harv*0.0023 if area_harv_unit==2 & zone==5 & area_harv_ha ==.
-replace area_harv_ha = area_harv*0.00001 if area_harv_unit==2 & zone==6 & area_harv_ha ==.
-
-replace area_harv_ha = area_harv*0.00006 if area_harv_unit==3 & zone==1 & area_harv_ha ==.			//reported in stands
-replace area_harv_ha = area_harv*0.00016 if area_harv_unit==3 & zone==2 & area_harv_ha ==.
-replace area_harv_ha = area_harv*0.00004 if area_harv_unit==3 & zone==3 & area_harv_ha ==.
-replace area_harv_ha = area_harv*0.00004 if area_harv_unit==3 & zone==4 & area_harv_ha ==.
-replace area_harv_ha = area_harv*0.00013 if area_harv_unit==3 & zone==5 & area_harv_ha ==.
-replace area_harv_ha = area_harv*0.00041 if area_harv_unit==3 & zone==6 & area_harv_ha ==.
-
-//Capping Code:
-
-gen over_harvest = area_harv_ha>field_size & area_harv_ha!=. & gps_meas==1
-gen over_harvest_scaling = field_size/area_harv_ha if over_harvest == 1
-bys hhid plot_id: egen mean_harvest_scaling = mean(over_harvest_scaling)
-replace mean_harvest_scaling =1 if missing(mean_harvest_scaling)
-replace area_harv_ha = field_size if over_harvest == 1
-//4,587 changes
-replace area_harv_ha = area_harv_ha*mean_harvest_scaling if over_harvest == 0 
-//375 changes 
-//Intercropping Scaling Code:
-bys hhid plot_id: egen over_harv_plot = max(over_harvest)
-gen int_f_harv = area_harv_ha if intercropped_yn==1
-bys hhid plot_id: egen total_area_int_sum_hv = total(int_f_harv)
-bys hhid plot_id: egen total_area_hv = total(area_harv_ha)
-replace us_total_area_planted = total_area_hv if over_harv_plot ==1
-replace us_inter_area_planted = total_area_int_sum_hv if over_harv_plot ==1
-drop int_f_harv total_area_int_sum_hv total_area_hv oversize_plot		
-gen mono_f_harv = area_harv_ha if intercropped_yn==0
-gen int_f_harv = area_harv_ha if intercropped_yn==1
-bys hhid plot_id: egen total_area_int_sum_hv = total(int_f_harv)
-bys hhid plot_id: egen total_area_mono_hv = total(mono_f_harv)
-
-//Oversize Plots
-generate oversize_plot = total_area_mono_hv > field_area
-replace oversize_plot = 1 if total_area_mono_hv >=1 & total_area_int_sum_hv >0 
-bys hhid plot_id: egen total_area_harv = total(area_harv_ha)	
-replace area_harv_ha = (area_harv_ha/us_total_area_planted)*field_area if oversize_plot ==1
-generate total_area_int_hv = field_area - total_area_mono_hv
-replace area_harv_ha = (int_f_harv/us_inter_area_planted)*total_area_int_hv if intercropped_yn==1 & oversize_plot !=1 
-*Replacing all area harvested of 0 as missing
-replace area_harv_ha=. if area_harv_ha==0
-replace crop_area_planted=area_harv_ha if crop_area_planted==. & area_harv_ha!=.
-//IHS 9.25.19
-count if area_harv_ha>crop_area_planted & area_harv_ha!=. //2710 observations where area harvested is greater than area planted 
-replace area_harv_ha = crop_area_planted if area_harv_ha>crop_area_planted & area_harv_ha!=.
-//IHS END
-
-*renaming unit code for merge 
-ren quantity_harvested_unit unit_cd
-*merging in conversion factors
-merge m:1 crop_code unit_cd using "${Nigeria_GHS_W1_created_data}/Nigeria_GHS_W1_ng1_cf.dta", gen(cf_merge)
-gen quant_harv_kg= quantity_harvested*conv_national
-replace quant_harv_kg = 0 if harvest_yesno==2 & (sa3q4== 1 | sa3q4== 2 | sa3q4== 3 | sa3q4== 4) 
-replace quant_harv_kg = . if harvest_yesno==2 & (sa3q4== 5 | sa3q4== 6 | sa3q4== 7 | sa3q4== 8 | sa3q4== 9 | sa3q4== 10)
-*Using median conversion factors at lowest possible area to try and avoid missings; units/conversions seem somewhat stable across crops
-bys unit_cd zone state: egen state_conv_unit = median(conv_national)
-bys unit_cd zone: egen zone_conv_unit = median(conv_national)
-bys unit_cd: egen national_conv = median(conv_national)
-replace conv_national = state_conv_unit if conv_national==. & unit_cd!=900		
-replace conv_national = zone_conv_unit if conv_national==. & unit_cd!=900		
-replace conv_national = national_conv if conv_national==. & unit_cd!=9
-replace quant_harv_kg= quantity_harvested*conv_national
-replace quant_harv_kg=quantity_harvested if unit_cd==1
-replace quant_harv_kg= quantity_harvested/1000 if unit_cd==2
-drop if quant_harv_kg==.
-
-preserve
-recode crop_code (2170=2030)  //recoding plantains as bananas for Nigeria
-collapse (sum) kgs_harvest=quant_harv_kg, by(hhid crop_code)
-lab var kgs_harvest "Kgs harvested of this crop"
-save "${Nigeria_GHS_W1_created_data}/Nigeria_GHS_W1_crop_kgs_harvest", replace	
-restore
-
-*merging in gender variables
-merge m:1 hhid plot_id using "${Nigeria_GHS_W1_created_data}/Nigeria_GHS_W1_plot_decision_makers", gen(_merge_gender)
-drop if quant_harv_kg==. 
-drop area_harv
-*replacing area harvested with area planted if area harvested is missing
-replace area_harv_ha = crop_area_planted if area_harv_ha==.
-
-*Creating area and quantity variables by decision-maker and type of planting
-ren quant_harv_kg harvest 
-ren area_harv_ha area_harv 
-ren any_mixed inter
-gen harvest_male = harvest if dm_gender==1
-gen area_harv_male = area_harv if dm_gender==1
-gen harvest_female = harvest if dm_gender==2
-gen area_harv_female = area_harv if dm_gender==2
-gen harvest_mixed = harvest if dm_gender==3
-gen area_harv_mixed = area_harv if dm_gender==3
-gen area_harv_inter= area_harv if inter==1
-gen area_harv_pure= area_harv if inter==0
-gen harvest_inter= harvest if inter==1
-gen harvest_pure= harvest if inter==0
-gen harvest_inter_male= harvest if dm_gender==1 & inter==1
-gen harvest_pure_male= harvest if dm_gender==1 & inter==0
-gen harvest_inter_female= harvest if dm_gender==2 & inter==1
-gen harvest_pure_female= harvest if dm_gender==2 & inter==0
-gen harvest_inter_mixed= harvest if dm_gender==3 & inter==1
-gen harvest_pure_mixed= harvest if dm_gender==3 & inter==0
-gen area_harv_inter_male= area_harv if dm_gender==1 & inter==1
-gen area_harv_pure_male= area_harv if dm_gender==1 & inter==0
-gen area_harv_inter_female= area_harv if dm_gender==2 & inter==1
-gen area_harv_pure_female= area_harv if dm_gender==2 & inter==0
-gen area_harv_inter_mixed= area_harv if dm_gender==3 & inter==1
-gen area_harv_pure_mixed= area_harv if dm_gender==3 & inter==0
-ren crop_area_planted area_plan
-gen area_plan_male = area_plan if dm_gender==1
-gen area_plan_female = area_plan if dm_gender==2
-gen area_plan_mixed = area_plan if dm_gender==3
-gen area_plan_inter= area_plan if inter==1
-gen area_plan_pure= area_plan if inter==0
-gen area_plan_inter_male= area_plan if dm_gender==1 & inter==1
-gen area_plan_pure_male= area_plan if dm_gender==1 & inter==0
-gen area_plan_inter_female= area_plan if dm_gender==2 & inter==1
-gen area_plan_pure_female= area_plan if dm_gender==2 & inter==0
-gen area_plan_inter_mixed= area_plan if dm_gender==3 & inter==1
-gen area_plan_pure_mixed= area_plan if dm_gender==3 & inter==0
-recode crop_code (2170=2030)  //recoding plantains as bananas for Nigeria
-collapse (sum) harvest* area_harv* area_plan* number_trees_planted, by(hhid crop_code)
-*Saving area planted for Shannon Diversity index
+use "${Nigeria_GHS_W1_created_data}/Nigeria_GHS_W1_all_plots.dta", clear
+ren crop_code_master crop_code
+//Legacy stuff- agquery gets handled above.
+gen mixed = "inter" if purestand==0
+replace mixed="pure" if purestand==1
+gen dm_gender2="mixed"
+replace dm_gender2="male" if dm_gender==1
+replace dm_gender2="female" if dm_gender==2
+collapse (sum) area_harv_=ha_harvest area_plan_=ha_planted harvest_=quant_harv_kg, by(hhid dm_gender2 mixed crop_code)
+reshape wide harvest_ area_harv_ area_plan_, i(hhid dm_gender2 crop_code) j(mixed) string
+ren area* area*_
+ren harvest* harvest*_
+reshape wide harvest* area*, i(hhid crop_code) j(dm_gender2) string
+foreach i in harvest area_plan area_harv {
+	egen `i' = rowtotal (`i'_*)
+	foreach j in inter pure {
+		egen `i'_`j' = rowtotal(`i'_`j'_*) 
+	}
+	foreach k in male female mixed {
+		egen `i'_`k' = rowtotal(`i'_*_`k')
+	}
+	
+}
 save "${Nigeria_GHS_W1_created_data}/Nigeria_GHS_W1_hh_crop_area_plan.dta", replace
 
 
 *Total planted and harvested area summed accross all plots, crops, and seasons.
 preserve
-collapse (sum) all_area_harvested=area_harv all_area_planted=area_plan, by(hhid)
-replace all_area_harvested=all_area_planted if all_area_harvested>all_area_planted & all_area_harvested!=.
-save "${Nigeria_GHS_W1_created_data}/Nigeria_GHS_W1_hh_area_planted_harvested_allcrops.dta", replace
-restore 
+	collapse (sum) all_area_harvested=area_harv all_area_planted=area_plan, by(hhid)
+	replace all_area_harvested=all_area_planted if all_area_harvested>all_area_planted & all_area_harvested!=.
+	save "${Nigeria_GHS_W1_created_data}/Nigeria_GHS_W1_hh_area_planted_harvested_allcrops.dta", replace
+restore
+
+replace crop_code=1120 if inrange(crop_code, 1121,1124)
+//label define crop 1120 "1120. YAM", replace
+
 keep if inlist(crop_code, $comma_topcrop_area)
 save "${Nigeria_GHS_W1_created_data}/Nigeria_GHS_W1_crop_harvest_area_yield.dta", replace
 
-
 *Yield at the household level
 use "${Nigeria_GHS_W1_created_data}/Nigeria_GHS_W1_crop_harvest_area_yield.dta", clear
-* Adding value of crop production
-merge 1:1 hhid crop_code using "${Nigeria_GHS_W1_created_data}/Nigeria_GHS_W1_hh_crop_values_production.dta", nogen keep(1 3)
-ren value_crop_production value_harv
-ren value_crop_sales value_sold
-merge 1:1 hhid crop_code using "${Nigeria_GHS_W1_created_data}/Nigeria_GHS_W1_crop_kgs_harvest.dta", nogen keep(1 3)
-*generate here total_planted_area and total_harvested_area. Not necessary but this will be useful if we have data from two seasons. 
-gen total_harv_area=area_harv
-gen total_planted_area=area_plan
-drop harvest_yesno area_harv_unit
-local ncrop : word count $topcropname_area
-foreach v of varlist  harvest*  area_harv* area_plan* total_planted_area total_harv_area kgs_harvest* value_harv value_sold {
-	separate `v', by(crop_code)
-	forvalues i=1(1)`ncrop' {
-		local p : word `i' of  $topcrop_area
-		local np : word `i' of  $topcropname_area
-		local `v'`p' = subinstr("`v'`p'","`p'","_`np'",1)	
-		ren `v'`p'  ``v'`p''
-	}	
+*Value of crop production
+merge m:1 crop_code using "${Nigeria_GHS_W1_created_data}/Nigeria_GHS_W1_cropname_table.dta", nogen keep(1 3)
+merge m:1 hhid crop_code using "${Nigeria_GHS_W1_created_data}/Nigeria_GHS_W1_hh_crop_values_production.dta", nogen keep(1 3) // HS 4/14/23: Switched 1:1 to m:1 to allow for multiple yam observations following recode of yam varietis to just yam
+ren value_crop_production value_harv_
+ren value_crop_sales value_sold_
+foreach i in harvest area {
+	ren `i'* `i'*_
 }
+gen total_planted_area_ = area_plan_
+gen total_harv_area_ = area_harv_ 
+gen kgs_harvest_ = harvest_
 
-***tree crops 
-global tree_cropname "banana cocoa"
-global comma_tree_crop "2030, 3040"
-global tree_crop = subinstr("$comma_tree_crop",","," ",.)
-
-** replacing area variables for tree crops with missing because we do not have accurate area measures for NGA LSMS
-foreach v of varlist area_harv* area_plan* total_planted_area total_harv_area{
-	replace `v'=. if inlist(crop_code, $comma_tree_crop)
-}
-
-forvalues k=1(1)2  {
-local c : word `k' of $tree_crop
-local cn : word `k' of $tree_cropname
-	gen number_trees_planted_`cn' = number_trees_planted if crop_code==`c'
-
-}
-recode number_trees_planted* (.=0) 
-collapse (firstnm) harvest* area_harv*  area_plan* total_planted_area* total_harv_area* kgs_harvest*   value_harv* value_sold* (sum) number_trees_planted_* , by(hhid)
+drop crop_code
+unab vars : *_
+reshape wide `vars', i(hhid) j(crop_name) string
+merge 1:1 hhid using "${Nigeria_GHS_W1_created_data}/Nigeria_GHS_W1_trees.dta"
+collapse (sum) harvest* area_harv*  area_plan* total_planted_area* total_harv_area* kgs_harvest*   value_harv* value_sold* number_trees_planted*  , by(hhid) 
 recode harvest*   area_harv* area_plan* kgs_harvest* total_planted_area* total_harv_area*    value_harv* value_sold* (0=.)
+egen kgs_harvest = rowtotal(kgs_harvest_*)
+la var kgs_harvest "Quantity harvested of all crops (kgs) (household) (summed accross all seasons)" 
 
 *ren variable
 foreach p of global topcropname_area {
-	lab var value_harv_`p' "Value harvested of `p' (NGN) (household)" 
-	lab var value_sold_`p' "Value sold of `p' (NGN) (household)" 
-	lab var kgs_harvest_`p'  "Quantity harvested of `p' (kgs) (household) (summed accross all seasons)"  
+	lab var value_harv_`p' "Value harvested of `p' (Naira) (household)" 
+	lab var value_sold_`p' "Value sold of `p' (Naira) (household)" 
+	lab var kgs_harvest_`p'  "Quantity harvested of `p' (kgs) (household) (summed accross all seasons)" 
 	lab var total_harv_area_`p'  "Total area harvested of `p' (ha) (household) (summed accross all seasons)" 
 	lab var total_planted_area_`p'  "Total area planted of `p' (ha) (household) (summed accross all seasons)" 
-	lab var harvest_`p' "Quantity harvested of `p' (kgs) (household) - LRS" 
-	lab var harvest_male_`p' "Quantity harvested of `p' (kgs) (male-managed plots) - LRS" 
-	lab var harvest_female_`p' "Quantity harvested of `p' (kgs) (female-managed plots) - LRS" 
-	lab var harvest_mixed_`p' "Quantity harvested of `p' (kgs) (mixed-managed plots) - LRS"
-	lab var harvest_pure_`p' "Quantity harvested of `p' (kgs) - purestand (household - LRS)"
-	lab var harvest_pure_male_`p'  "Quantity harvested of `p' (kgs) - purestand (male-managed plots) - LRS"
-	lab var harvest_pure_female_`p'  "Quantity harvested of `p' (kgs) - purestand (female-managed plots) - LRS"
-	lab var harvest_pure_mixed_`p'  "Quantity harvested of `p' (kgs) - purestand (mixed-managed plots) - LRS"
-	lab var harvest_inter_`p' "Quantity harvested of `p' (kgs) - intercrop (household) - LRS"
-	lab var harvest_inter_male_`p' "Quantity harvested of `p' (kgs) - intercrop (male-managed plots) - LRS" 
-	lab var harvest_inter_female_`p' "Quantity harvested of `p' (kgs) - intercrop (female-managed plots) - LRS"
-	lab var harvest_inter_mixed_`p' "Quantity harvested  of `p' (kgs) - intercrop (mixed-managed plots) - LRS"
-	lab var area_harv_`p' "Area harvested of `p' (ha) (household) - LRS" 
-	lab var area_harv_male_`p' "Area harvested of `p' (ha) (male-managed plots) - LRS" 
-	lab var area_harv_female_`p' "Area harvested of `p' (ha) (female-managed plots) - LRS" 
+	lab var harvest_`p' "Quantity harvested of `p' (kgs) (household)" 
+	lab var harvest_male_`p' "Quantity harvested of `p' (kgs) (male-managed plots)" 
+	lab var harvest_female_`p' "Quantity harvested of `p' (kgs) (female-managed plots)" 
+	lab var harvest_mixed_`p' "Quantity harvested of `p' (kgs) (mixed-managed plots)"
+	lab var harvest_pure_`p' "Quantity harvested of `p' (kgs) - purestand (household)"
+	lab var harvest_pure_male_`p'  "Quantity harvested of `p' (kgs) - purestand (male-managed plots)"
+	lab var harvest_pure_female_`p'  "Quantity harvested of `p' (kgs) - purestand (female-managed plots)"
+	lab var harvest_pure_mixed_`p'  "Quantity harvested of `p' (kgs) - purestand (mixed-managed plots)"
+	lab var harvest_inter_`p' "Quantity harvested of `p' (kgs) - intercrop (household)"
+	lab var harvest_inter_male_`p' "Quantity harvested of `p' (kgs) - intercrop (male-managed plots)" 
+	lab var harvest_inter_female_`p' "Quantity harvested of `p' (kgs) - intercrop (female-managed plots)"
+	lab var harvest_inter_mixed_`p' "Quantity harvested  of `p' (kgs) - intercrop (mixed-managed plots)" //ALT: Redundant?
+	lab var area_harv_`p' "Area harvested of `p' (ha) (household)" 
+	lab var area_harv_male_`p' "Area harvested of `p' (ha) (male-managed plots)" 
+	lab var area_harv_female_`p' "Area harvested of `p' (ha) (female-managed plots)" 
 	lab var area_harv_mixed_`p' "Area harvested of `p' (ha) (mixed-managed plots)"
-	lab var area_harv_pure_`p' "Area harvested of `p' (ha) - purestand (household) - LRS"
-	lab var area_harv_pure_male_`p'  "Area harvested of `p' (ha) - purestand (male-managed plots) - LRS"
-	lab var area_harv_pure_female_`p'  "Area harvested of `p' (ha) - purestand (female-managed plots) - LRS"
-	lab var area_harv_pure_mixed_`p'  "Area harvested of `p' (ha) - purestand (mixed-managed plots) - LRS"
-	lab var area_harv_inter_`p' "Area harvested of `p' (ha) - intercrop (household) - LRS"
-	lab var area_harv_inter_male_`p' "Area harvested of `p' (ha) - intercrop (male-managed plots) - LRS" 
-	lab var area_harv_inter_female_`p' "Area harvested of `p' (ha) - intercrop (female-managed plots) - LRS"
-	lab var area_harv_inter_mixed_`p' "Area harvested  of `p' (ha) - intercrop (mixed-managed plots) - LRS"
-	lab var area_plan_`p' "Area planted of `p' (ha) (household) - LRS" 
-	lab var area_plan_male_`p' "Area planted of `p' (ha) (male-managed plots) - LRS" 
-	lab var area_plan_female_`p' "Area planted of `p' (ha) (female-managed plots) - LRS" 
+	lab var area_harv_pure_`p' "Area harvested of `p' (ha) - purestand (household)"
+	lab var area_harv_pure_male_`p'  "Area harvested of `p' (ha) - purestand (male-managed plots)"
+	lab var area_harv_pure_female_`p'  "Area harvested of `p' (ha) - purestand (female-managed plots)"
+	lab var area_harv_pure_mixed_`p'  "Area harvested of `p' (ha) - purestand (mixed-managed plots)"
+	lab var area_harv_inter_`p' "Area harvested of `p' (ha) - intercrop (household)"
+	lab var area_harv_inter_male_`p' "Area harvested of `p' (ha) - intercrop (male-managed plots)" 
+	lab var area_harv_inter_female_`p' "Area harvested of `p' (ha) - intercrop (female-managed plots)"
+	lab var area_harv_inter_mixed_`p' "Area harvested  of `p' (ha) - intercrop (mixed-managed plots)"
+	lab var area_plan_`p' "Area planted of `p' (ha) (household)" 
+	lab var area_plan_male_`p' "Area planted of `p' (ha) (male-managed plots)" 
+	lab var area_plan_female_`p' "Area planted of `p' (ha) (female-managed plots)" 
 	lab var area_plan_mixed_`p' "Area planted of `p' (ha) (mixed-managed plots)"
-	lab var area_plan_pure_`p' "Area planted of `p' (ha) - purestand (household) - LRS"
-	lab var area_plan_pure_male_`p'  "Area planted of `p' (ha) - purestand (male-managed plots) - LRS"
-	lab var area_plan_pure_female_`p'  "Area planted of `p' (ha) - purestand (female-managed plots) - LRS"
-	lab var area_plan_pure_mixed_`p'  "Area planted of `p' (ha) - purestand (mixed-managed plots) - LRS"
-	lab var area_plan_inter_`p' "Area planted of `p' (ha) - intercrop (household) - LRS"
-	lab var area_plan_inter_male_`p' "Area planted of `p' (ha) - intercrop (male-managed plots) - LRS" 
-	lab var area_plan_inter_female_`p' "Area planted of `p' (ha) - intercrop (female-managed plots) - LRS"
-	lab var area_plan_inter_mixed_`p' "Area planted  of `p' (ha) - intercrop (mixed-managed plots) - LRS"
+	lab var area_plan_pure_`p' "Area planted of `p' (ha) - purestand (household)"
+	lab var area_plan_pure_male_`p'  "Area planted of `p' (ha) - purestand (male-managed plots)"
+	lab var area_plan_pure_female_`p'  "Area planted of `p' (ha) - purestand (female-managed plots)"
+	lab var area_plan_pure_mixed_`p'  "Area planted of `p' (ha) - purestand (mixed-managed plots)"
+	lab var area_plan_inter_`p' "Area planted of `p' (ha) - intercrop (household)"
+	lab var area_plan_inter_male_`p' "Area planted of `p' (ha) - intercrop (male-managed plots)" 
+	lab var area_plan_inter_female_`p' "Area planted of `p' (ha) - intercrop (female-managed plots)"
+	lab var area_plan_inter_mixed_`p' "Area planted  of `p' (ha) - intercrop (mixed-managed plots)"
 }
 
-
+drop if hhid== 200156 | hhid==200190 | hhid==310091 // households that have an area planted or harvested but indicated that they rented out or did not cultivate 
 foreach p of global topcropname_area {
 	gen grew_`p'=(total_harv_area_`p'!=. & total_harv_area_`p'!=.0 ) | (total_planted_area_`p'!=. & total_planted_area_`p'!=.0)
 	lab var grew_`p' "1=Household grew `p'" 
 	gen harvested_`p'= (total_harv_area_`p'!=. & total_harv_area_`p'!=.0 )
 	lab var harvested_`p' "1= Household harvested `p'"
 }
-foreach p of global tree_cropname{
-	replace grew_`p' = 1 if number_trees_planted_`p' != 0 & number_trees_planted_`p' != . 
-}
-drop harvest- harvest_pure_mixed area_harv- area_harv_pure_mixed area_plan- area_plan_pure_mixed value_harv value_sold total_planted_area total_harv_area  
-foreach p of global topcropname_area {
-	recode kgs_harvest_`p' (.=0) if grew_`p'==1 
-	recode value_sold_`p' (.=0) if grew_`p'==1 
-	recode value_harv_`p' (.=0) if grew_`p'==1 
-}	
+replace grew_banana =1 if  number_trees_planted_banana!=0 & number_trees_planted_banana!=. 
+replace grew_cassav =1 if number_trees_planted_cassava!=0 & number_trees_planted_cassava!=. 
+replace grew_cocoa =1 if number_trees_planted_cocoa!=0 & number_trees_planted_cocoa!=. 
+//drop harvest- harvest_pure_mixed area_harv- area_harv_pure_mixed area_plan- area_plan_pure_mixed value_harv value_sold total_planted_area total_harv_area  
+//ALT 08.16.21: No drops necessary; only variables here are the ones that are listed in the labeling block above.
 save "${Nigeria_GHS_W1_created_data}/Nigeria_GHS_W1_yield_hh_crop_level.dta", replace
-
-
 
 
 * VALUE OF CROP PRODUCTION  // using 335 output
