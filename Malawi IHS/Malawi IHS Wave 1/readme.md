@@ -6,6 +6,7 @@
 ## Prerequisites
 * Download the raw data from [https://microdata.worldbank.org/index.php/catalog/3557](https://microdata.worldbank.org/index.php/catalog/1003)
 * Extract the files to the "Raw DTA Files" folder in the cloned directory
+  * We use the full sample raw data files for the Malawi - Third Integrated Household Survey 2010-2011 including both panel (Panel A and Panel B) and cross-sectional households.
 * Update the paths on lines 148-150 with the correct paths to the raw data and output files.
 
 ## Table of Contents
@@ -36,7 +37,7 @@
 ### Weights
 - **Description:** This dataset includes case_id as a unique identifier, along with its location identifiers (i.e. rural, region, district, ta, ea_id, etc.) and a weight variable provided by the LSMS-ISA raw data indicating how many households a given household represents. A higher weight indicates undersampling whereas a lower weight indicates oversampling.
 - **Output:** Malawi_IHS_W1_weights.dta
-- **Coding Status:** ![Pending Review](https://placehold.co/15x15/1589F0/1589F0.png) `Pending Review`
+- **Coding Status:** ![Complete](https://placehold.co/15x15/c5f015/c5f015.png) `Complete`
 - **Known Issues:** None
 
 ### Individual IDs
@@ -60,7 +61,7 @@
 ### GPS Coordinates
 - **Description:** This dataset includes case_id as a unique identifier and contains variables for household latitude and longitude as measured by a GPS.
 - **Output:** Malawi_IHS_W1_hh_coords.dta
-- **Coding Status:** ![Pending Review](https://placehold.co/15x15/1589F0/1589F0.png) `Pending Review`
+- **Coding Status:** ![Complete](https://placehold.co/15x15/c5f015/c5f015.png) `Complete`
 - **Known Issues:** None
   
 ### Plot Areas
@@ -81,156 +82,248 @@
 - **Coding Status:** ![Complete](https://placehold.co/15x15/c5f015/c5f015.png) `Complete`
 - **Known Issues:** None
 
-### Crop Unit Conversion Factors
-- **Description:** 
-- **Output:** Malawi_IHS_W1_cf.dta
-- **Coding Status:** ![Incomplete](https://placehold.co/15x15/f03c15/f03c15.png) `Incomplete`
-- **Known Issues:** Tree/permanent crop file not currently being used. Must build out to create more matches between raw data and conversion factors.
-
 ### All Plots
 - **Description:** This dataset includes case_id, plot_id, season, and crop_code as unique identifiers and contains location identifiers (i.e. rural, region, district, ta, ea_id, etc.) and other variables that indicate harvest quantities, hectares planted and harvested,  corresponding calories by amount of crop grown, and number of months a crop was grown.
 - **Output:** Malawi_IHS_W1_all_plots.dta
 - **Coding Status:** ![Complete](https://placehold.co/15x15/c5f015/c5f015.png) `Complete`
-- **Known Issues:** Crop_code fixes and calorie conversions are incomplete.
+- **Known Issues:** Self-employment income does not report crop sales. No "still-to-harvest" value recorded in survey.
 
 ### TLU (Tropical Livestock Units)
 - **Description:** This dataset includes case_id as a unique identifier and contains other variables that quantify livestock counts at two time intervals (1 year ago and today) by various livestock types including poultry, chicken specfically, cattle, cows specfically, etc.
 - **Output:** Malawi_IHS_W1_TLU_Coefficients.dta
+- **Coding Status:** ![Complete](https://placehold.co/15x15/c5f015/c5f015.png) `Complete`
+- **Known Issues:** None
+
+## Gross Crop Revenue
+- **Description:** This dataset summarizes crop production value, revenue, and losses for each household and/or household/crop type.
+- **Output:** Malawi_IHS_W1_cropsales_value.dta ; Malawi_IHS_W1_crop_values_production.dta ; Malawi_IHS_W1_hh_crop_production.dta ; Malawi_IHS_W1_crop_losses.dta
 - **Coding Status:** ![Pending Review](https://placehold.co/15x15/1589F0/1589F0.png) `Pending Review`
 - **Known Issues:** None
 
 ### Crop Expenses
 - **Description:** This dataset summarizes crop expenses by input type for households in the dataset where most case_ids contain multiple observations of crop expenses such as labor, seed, plot rents, fertilizer, pesticides, herbicides, animal traction rentals, and mechanized tool rentals.
 - **Output:** Malawi_IHS_W1_hh_cost_inputs_long_complete.dta
-- **Coding Status:** ![Incomplete](https://placehold.co/15x15/f03c15/f03c15.png) `Incomplete`
-- **Known Issues:** **LABOR:** Labor expense estimates are severely understated for several reasons: 1. the survey instrument did not ask for number of hired labors. Therefore, the constructed value of hired labor for some households could represent ***all*** hired labor costs or ***per laborer*** hired labor costs. 2. We typically use the value of hired labor to imput the value of family and nonhired (exchange) labor. However, due to issues with how hired labor is contructed, we cannot use these values to impute the value of family or nonhired (exchange) labor. **PLOT RENTS:** The final output on plot rents has too few of observations as compared to reported plot rents in the raw data. This requires resolution. **TRANSPORTATION COSTS:** The survey instrument collects information on transportation costs associated with bringing crops to market (seperate from transportation costs associated with picking up seed and other inputs which we currently are reporting). We are still in the process of building this smaller module and incorporating into crop expenses. Crop expenses in aggregate will be understated for now because transportation costs for crops are missing. **OTHER ISSUES:** This file is at the household level rather than disaggregated by plot as most crop expenses were not reported at the plot level (with the exception of plot rents). We also aggregate expenses over the course of the year as not all raw data are at the season-level (e.g. animal traction and mechanized tool rentals). 
+- **Coding Status:** ![Complete](https://placehold.co/15x15/c5f015/c5f015.png) `Complete`
+- **Known Issues:** **LABOR:** The constructed value of hired labor for some households likely represent ***per laborer*** hired labor costs, however several outlier values imply that some households reported ***all*** hired labor costs. We use the value of hired labor to impute the value of family and nonhired (exchange) labor. For both hired labor and imputed non-hired labor costs, the some observations may reflect this discrepancy in survey response. 
+
+### Monocropped Plots
+- **Description:** This dataset includes case_id and plot_id as a unique identifier and contains variables summarizing plot characteristics for only plots that reported a single crop among priority crops (as designated by user earlier in file). 
+- **Output:** multiple: Malawi_IHS_W1_inputs_`cn'.dta where cn refers to various priority crops (as designated by user earlier in file).
+- **Coding Status:** ![Complete](https://placehold.co/15x15/c5f015/c5f015.png) `Complete`
+- **Known Issues:** None
 
 ### Livestock Income
 - **Description:** This dataset includes case_id as a unique identifier and contains variables summarizing livestock revenues and costs. 
 - **Output:** Malawi_IHS_W1_livestock_income.dta
-- **Coding Status:** ![Pending Review](https://placehold.co/15x15/1589F0/1589F0.png) `Pending Review`
+- **Coding Status:** ![Complete](https://placehold.co/15x15/c5f015/c5f015.png) `Complete`
 - **Known Issues:** None
 
 ### Fish Income
 - **Description:** This dataset includes case_id as a unique identifier and contains variables summarizing value of fish harvest and income from fish sales.
 - **Output:** Malawi_IHS_W1_fish_income.dta
-- **Coding Status:** ![Pending Review](https://placehold.co/15x15/1589F0/1589F0.png) `Pending Review`
+- **Coding Status:** ![Complete](https://placehold.co/15x15/c5f015/c5f015.png) `Complete`
 - **Known Issues:** Small dataset of survey respondents where some may have reported income from fish sales (total) or income from fish sales (per piece).
   
 ### Self-Employment Income
 - **Description:** This dataset includes case_id as a unique identifier and variables that indicate whether or not a household generated income by self-employment and amount of self-employment income in the month prior to the survey.
 - **Output:** Malawi_IHS_W1_self_employment.dta
-- **Coding Status:** ![Pending Review](https://placehold.co/15x15/1589F0/1589F0.png) `Pending Review`
+- **Coding Status:** ![Complete](https://placehold.co/15x15/c5f015/c5f015.png) `Complete`
 - **Known Issues:** Our reported measure of self-employment income does not reflect an annual measure of self-employment income and only represent self-employment income earned in the month prior to the survey.
 
 ### Fish Trading Income
 - **Description:** This dataset includes case_id as a unique identifier and an estimated amount of income generated by fish trading.
 - **Output:** Malawi_IHS_W1_fish_trading_income.dta
-- **Coding Status:** ![Pending Review](https://placehold.co/15x15/1589F0/1589F0.png) `Pending Review`
+- **Coding Status:** ![Complete](https://placehold.co/15x15/c5f015/c5f015.png) `Complete`
 - **Known Issues:** None
 
 ### Non-Ag Wage Income
 - **Description:** This dataset includes case_id as a unique identifier and an estimated annual salary generated by non-agricultural wages.
 - **Output:** Malawi_IHS_W1_wage_income.dta
-- **Coding Status:** ![Pending Review](https://placehold.co/15x15/1589F0/1589F0.png) `Pending Review`
+- **Coding Status:** ![Complete](https://placehold.co/15x15/c5f015/c5f015.png) `Complete`
 - **Known Issues:** None
   
 ### Ag Wage Income
 - **Description:** This dataset includes case_id as a unique identifier and an estimated annual salary generated by agricultural wages.
 - **Output:** Malawi_IHS_W1_agwage_income.dta
-- **Coding Status:** ![Pending Review](https://placehold.co/15x15/1589F0/1589F0.png) `Pending Review`
+- **Coding Status:** ![Complete](https://placehold.co/15x15/c5f015/c5f015.png) `Complete`
 - **Known Issues:** None
 
 ### Other Income
 - **Description:** This dataset includes case_id as a unique identifier and estimated income from other sources including remittances, assets, pensions, and assistance.
 - **Output:** Malawi_IHS_W1_other_income.dta
-- **Coding Status:** ![Pending Review](https://placehold.co/15x15/1589F0/1589F0.png) `Pending Review`
+- **Coding Status:** ![Complete](https://placehold.co/15x15/c5f015/c5f015.png) `Complete`
 - **Known Issues:** None
 
 ### Land Rental Income
 - **Description:** This dataset includes case_id as a unique identifier and estimated income from renting out owned land.
 - **Output:** Malawi_IHS_W1_land_rental_income.dta
-- **Coding Status:** ![Pending Review](https://placehold.co/15x15/1589F0/1589F0.png) `Pending Review`
+- **Coding Status:** ![Complete](https://placehold.co/15x15/c5f015/c5f015.png) `Complete`
 - **Known Issues:** Very small number of households actually reported this type of income.
 
 ### Farm Size / Land Size
 - **Description:** This dataset includes case_id as a unique identifier and estimated total land size (in hectares) including those rented in and out.
 - **Output:** Malawi_IHS_W1_land_size_total.dta
-- **Coding Status:** ![Pending Review](https://placehold.co/15x15/1589F0/1589F0.png) `Pending Review`
+- **Coding Status:** ![Complete](https://placehold.co/15x15/c5f015/c5f015.png) `Complete`
 - **Known Issues:** None
 
 ### Off Farm Hours
-- **Description:** This dataset includes case_id as a unique identifier, estimated hours spent on non-agricultural activities per week, and number of household members working hours off the farm.
+- **Description:** This dataset includes case_id as a unique identifier, estimated hours spent on non-agricultural activities annualized, and number of household members working hours off the farm.
 - **Output:** Malawi_IHS_W1_off_farm_hours.dta
-- **Coding Status:** ![Pending Review](https://placehold.co/15x15/1589F0/1589F0.png) `Pending Review`
+- **Coding Status:** ![Complete](https://placehold.co/15x15/c5f015/c5f015.png) `Complete`
 - **Known Issues:** Currently reporting off farm hours per week - may want to impute for annual values.
   
 ### Farm Labor
 - **Description:** This dataset includes case_id as a unique identifier, number of labor days for hired laborers, number of labor days for family laborers, and number of labor days total.
 - **Output:** Malawi_IHS_W1_off_family_hired_labor.dta
-- **Coding Status:** ![Pending Review](https://placehold.co/15x15/1589F0/1589F0.png) `Pending Review`
+- **Coding Status:** ![Complete](https://placehold.co/15x15/c5f015/c5f015.png) `Complete`
 - **Known Issues:** Hired labor days are most likely understated. As mentioend before under Labor of Crop Expenses 1. the survey instrument did not ask for number of hired labors. Therefore, some households may have reported labor days and wages for one laborer or all hired laborers.
   
 ### Vaccine Usage
 - **Description:** This dataset includes case_id and farmerid as a unique identifiers, whether or not the farmer was the livestock keeper, characteristics about the livestock keeper (age, gender, etc.) and whether or not a farmer chose to vaccinate all animals. 
 - **Output:** Malawi_IHS_W1_off_farmer_vaccine.dta
-- **Coding Status:** ![Pending Review](https://placehold.co/15x15/1589F0/1589F0.png) `Pending Review`
+- **Coding Status:** ![Complete](https://placehold.co/15x15/c5f015/c5f015.png) `Complete`
 - **Known Issues:** Is farmerid the variable name we want?
 
 ### Animal Health (Diseases)
 - **Description:** This dataset includes case_id as a unique identifier and a series of binary variables indicating whether a household experienced livestock types having various diseases.
 - **Output:** Malawi_IHS_W1_livestock_diseases.dta
-- **Coding Status:** ![Pending Review](https://placehold.co/15x15/1589F0/1589F0.png) `Pending Review`
+- **Coding Status:** ![Complete](https://placehold.co/15x15/c5f015/c5f015.png) `Complete`
 - **Known Issues:** None
 
 ### Use of Inorganic Fertilizer
 - **Description:** This dataset includes case_id and farmerid as a unique identifiers, whether or not the farmer use inorganic fertilizer, and farmer characteristics (age, gender, etc.) 
 - **Output:** Malawi_IHS_W1_off_farmer_fert_use.dta
-- **Coding Status:** ![Pending Review](https://placehold.co/15x15/1589F0/1589F0.png) `Pending Review`
+- **Coding Status:** ![Complete](https://placehold.co/15x15/c5f015/c5f015.png) `Complete`
 - **Known Issues:** Is farmerid the variable name we want?
+
+### Fertilizer Application Rate
+- **Description:** This dataset includes case_id as a unique identifier and a series of variables describing volume and rate of fertilizer applied (e.g. nitrogen, phosphate, potassium)
+- **Output:** Malawi_IHS_W1_fertilizer_application.dta
+- **Coding Status:** ![Complete](https://placehold.co/15x15/c5f015/c5f015.png) `Complete`
+- **Known Issues:** None
+
+### Plot Managers
+- **Description:** This dataset includes case_id, plot_id, and plot manager as a unique identifier and a series of variables describing fertilizer and seed type applied.
+- **Output:** Malawi_IHS_W1_farmer_improved_hybrid_seed_use.dta ; Malawi_IHS_W1_input_use.dta
+- **Coding Status:** ![Complete](https://placehold.co/15x15/c5f015/c5f015.png) `Complete`
+- **Known Issues:** None
   
 ### Reached by Ag Extension
 - **Description:** This dataset includes case_id as a unique identifier and a series of binary variables indicating whether a household was reached by particular extension types (public, private, etc.).
 - **Output:** Malawi_IHS_W1_any_ext.dta
-- **Coding Status:** ![Pending Review](https://placehold.co/15x15/1589F0/1589F0.png) `Pending Review`
+- **Coding Status:** ![Complete](https://placehold.co/15x15/c5f015/c5f015.png) `Complete`
 - **Known Issues:** None
-  
+
+### Mobile Phone Ownership
+- **Description:** This dataset includes case_id as a unique identifier and one binary variable indicating whether the household owned a mobile phone.
+- **Output:** Malawi_IHS_W1_mobile_own.dta
+- **Coding Status:** ![Complete](https://placehold.co/15x15/c5f015/c5f015.png) `Complete`
+- **Known Issues:** None
+ 
 ### Use of Formal Financial Services
 - **Description:** This dataset includes case_id as a unique identifier and binary variables indicating whether a household consumed credit or other formal financial services.
 - **Output:** Malawi_IHS_W1_fin_serv.dta
-- **Coding Status:** ![Pending Review](https://placehold.co/15x15/1589F0/1589F0.png) `Pending Review`
-- **Known Issues:** Saved dataset contains extraneous variables which should be removed by EPAR.
+- **Coding Status:** ![Complete](https://placehold.co/15x15/c5f015/c5f015.png) `Complete`
+- **Known Issues:** None
   
 ### Milk Productivity
-- **Description:** This dataset includes case_id as a unique identifier and a measure of liters of milk produced.
+- **Description:** This dataset includes case_id as a unique identifier and a measure of liters of milk produced and how many months milk was produced.
 - **Output:** Malawi_IHS_W1_milk_animals.dta
-- **Coding Status:** ![Incomplete](https://placehold.co/15x15/f03c15/f03c15.png) `Incomplete`
-- **Known Issues:** Incomplete
+- **Coding Status:** ![Complete](https://placehold.co/15x15/c5f015/c5f015.png) `Complete`
+- **Known Issues:** None
   
 ### Egg Productivity
 - **Description:** This dataset includes case_id as a unique identifier, a variable for the number of poultry, and measures for eggs produced per week, month, and per year.
 - **Output:** Malawi_IHS_W1_eggs_animals.dta
-- **Coding Status:** ![Pending Review](https://placehold.co/15x15/1589F0/1589F0.png) `Pending Review`
+- **Coding Status:** ![Complete](https://placehold.co/15x15/c5f015/c5f015.png) `Complete`
 - **Known Issues:** None
   
 ### Rate of Fertilizer Application
-- **Description:** This dataset includes case_id as a unique identifier...
-- **Coding Status:** ![Incomplete](https://placehold.co/15x15/f03c15/f03c15.png) `Incomplete`
-- **Known Issues:** Incomplete
-  
+- **Description:** This dataset includes case_id as a unique identifier and several variables that describe fertilizer, pesticide, and herbicide application by weight, hectares planted, and head of household gender.
+- **Output:** Malawi_IHS_W1_fertilizer_application.dta 
+- **Coding Status:** ![Complete](https://placehold.co/15x15/c5f015/c5f015.png) `Complete`
+- **Known Issues:** Partially redundant with the "Fertilizer Application Rate" section, which isolates agronomically relevant fertilizer components (N, K, etc.). This section will be kept to ensure consistency across countries and waves of LSMS data.
+
 ### Household's Dietary Diversity Score
 - **Description:** This dataset includes case_id as a unique identifier, a count of food groups (out of 12) the surveyed individual consumed last week, and whether or not a houseshold consumed at least 6 of the 12 food groups, of 8 of the 12 food groups. 
 - **Output:** Malawi_IHS_W1_household_diet.dta
-- **Coding Status:** ![Pending Review](https://placehold.co/15x15/1589F0/1589F0.png) `Pending Review`
+- **Coding Status:** ![Complete](https://placehold.co/15x15/c5f015/c5f015.png) `Complete`
 - **Known Issues:** None
 
 ### Women's Control Over Income
-- **Description:** This dataset includes case_id as a unique identifier...
+- **Description:** This dataset includes case_id and individual id (indiv) as a unique identifier and a series of binary variables describing individual gender and ownership over different income streams (e.g. salary income).
+- **Output:** Malawi_IHS_W1_control_income.dta
+- **Coding Status:** ![Complete](https://placehold.co/15x15/c5f015/c5f015.png) `Complete`
+- **Known Issues:** None
+
+### Women's Participation in Agricultural Decision Making 
+- **Description:**  This dataset includes case_id and individual id (indiv) as a unique identifier and a series of binary variables describing individual gender and role in decisions related to agriculture (e.g. crops, livestock).
+- **Output:** Malawi_IHS_W1_control_income.dta
+- **Coding Status:** ![Complete](https://placehold.co/15x15/c5f015/c5f015.png) `Complete`
+- **Known Issues:** None
+
+### Women's Ownership of Assets
+- **Description:** This dataset includes case_id and individual id (indiv) as a unique identifier and a series of binary variables describing individual gender and ownership of assets. 
+- **Output:** Malawi_IHS_W1_ownasset.dta
+- **Coding Status:** ![Complete](https://placehold.co/15x15/c5f015/c5f015.png) `Complete`
+- **Known Issues:** None
+
+### Crop Yields
+- **Description:**  
+- **Output:** 
 - **Coding Status:** ![Incomplete](https://placehold.co/15x15/f03c15/f03c15.png) `Incomplete`
-- **Known Issues:** Incomplete
+- **Known Issues:** 
 
+### Shannon Diversity Index
+- **Description:**  
+- **Output:** 
+- **Coding Status:** ![Incomplete](https://placehold.co/15x15/f03c15/f03c15.png) `Incomplete`
+- **Known Issues:** 
 
+### Consumption
+- **Description:** This dataset includes case_id as a unique identifier and a series of variables describing household consumption (e.g. total, per capita, per adult equivalent, etc.).
+- **Output:** Malawi_IHS_W1_consumption.dta
+- **Coding Status:** ![Complete](https://placehold.co/15x15/c5f015/c5f015.png) `Complete`
+- **Known Issues:** None
 
+### Household food provision
+- **Description:** This dataset includes case_id as a unique identifier and a numeric variable describing months that the household experienced food insecurity.
+- **Output:** Malawi_IHS_W1_food_security.dta
+- **Coding Status:** ![Complete](https://placehold.co/15x15/c5f015/c5f015.png) `Complete`
+- **Known Issues:** 
 
+### Food Security
+- **Description:** This dataset includes case_id as a unique identifier and a series of numeric variables describing household food consumption (e.g. total, per capita, per adult equivalent, etc.).
+- **Output:** Malawi_IHS_W1_food_cons.dta
+- **Coding Status:** ![Complete](https://placehold.co/15x15/c5f015/c5f015.png) `Complete`
+- **Known Issues:** None
 
+### Household Assets
+- **Description:** This dataset includes case_id as a unique identifier and a single numeric variable descrining the gross value of household assets.
+- **Output:** Malawi_IHS_W1_hh_assets.dta
+- **Coding Status:** ![Complete](https://placehold.co/15x15/c5f015/c5f015.png) `Complete`
+- **Known Issues:** None
 
+### Household Variables
+- **Description:**  
+- **Output:** 
+- **Coding Status:** ![Incomplete](https://placehold.co/15x15/f03c15/f03c15.png) `Incomplete`
+- **Known Issues:** 
+
+### Individual Level Variables
+- **Description:**  
+- **Output:** 
+- **Coding Status:** ![Incomplete](https://placehold.co/15x15/f03c15/f03c15.png) `Incomplete`
+- **Known Issues:** 
+
+### Plot Level Variables
+- **Description:**  
+- **Output:** 
+- **Coding Status:** ![Incomplete](https://placehold.co/15x15/f03c15/f03c15.png) `Incomplete`
+- **Known Issues:** 
+
+### Summary Statistics
+- **Description:**  
+- **Output:** 
+- **Coding Status:** ![Incomplete](https://placehold.co/15x15/f03c15/f03c15.png) `Incomplete`
+- **Known Issues:** 
