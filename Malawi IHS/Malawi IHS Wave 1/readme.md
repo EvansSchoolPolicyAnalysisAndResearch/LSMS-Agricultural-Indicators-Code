@@ -23,7 +23,7 @@
     * Malawi_IHS_W1_inflation - Ratio of 2010:2017 Malawi consumer price index (World Bank), used for calculating poverty thresholds
   * **Poverty Thresholds**
     * Malawi_IHS_W1_poverty_threshold - The pre-2023 $1.90 2011 PPP poverty line used by the World Bank, converted to local currency
-    * Malawi_IHS_W1_poverty_ifpri - The poverty threshold as reported by IFPRI, deflated to 2010 via CPI
+    * Malawi_IHS_W1_poverty_ifpri - The poverty threshold as reported by IFPRI, deflated to 2010 via consumer price index (CPI) adjustment
     * Malawi_IHS_W1_poverty_215 - The updated $2.15 2017 PPP poverty line currently used by the World Bank, converted to local currency
   * **Thresholds for Winsorization:** the smallest (below the 1 percentile) and largest (above the 99 percentile) are replaced with the observations closest to them
   * **Priority Crops:** the top 12 crops by area cultivated (determined by ALL PLOTS later in the code)
@@ -94,7 +94,7 @@
 - **Coding Status:** ![Complete](https://placehold.co/15x15/c5f015/c5f015.png) `Complete`
 - **Known Issues:** None
 
-## Gross Crop Revenue
+### Gross Crop Revenue
 - **Description:** This dataset summarizes crop production value, revenue, and losses for each household and/or household/crop type.
 - **Output:** Malawi_IHS_W1_cropsales_value.dta ; Malawi_IHS_W1_crop_values_production.dta ; Malawi_IHS_W1_hh_crop_production.dta ; Malawi_IHS_W1_crop_losses.dta
 - **Coding Status:** ![Pending Review](https://placehold.co/15x15/1589F0/1589F0.png) `Pending Review`
@@ -171,6 +171,7 @@
 - **Output:** Malawi_IHS_W1_off_farm_hours.dta
 - **Coding Status:** ![Complete](https://placehold.co/15x15/c5f015/c5f015.png) `Complete`
 - **Known Issues:** Currently reporting off farm hours per week - may want to impute for annual values.
+
   
 ### Farm Labor
 - **Description:** This dataset includes case_id as a unique identifier, number of labor days for hired laborers, number of labor days for family laborers, and number of labor days total.
@@ -179,10 +180,10 @@
 - **Known Issues:** Hired labor days are most likely understated. As mentioend before under Labor of Crop Expenses 1. the survey instrument did not ask for number of hired labors. Therefore, some households may have reported labor days and wages for one laborer or all hired laborers.
   
 ### Vaccine Usage
-- **Description:** This dataset includes case_id and farmerid as a unique identifiers, whether or not the farmer was the livestock keeper, characteristics about the livestock keeper (age, gender, etc.) and whether or not a farmer chose to vaccinate all animals. 
+- **Description:** This dataset includes case_id and individual_id as a unique identifiers, whether or not the farmer was the livestock keeper, characteristics about the livestock keeper (age, gender, etc.) and whether or not a farmer chose to vaccinate all animals. 
 - **Output:** Malawi_IHS_W1_off_farmer_vaccine.dta
 - **Coding Status:** ![Complete](https://placehold.co/15x15/c5f015/c5f015.png) `Complete`
-- **Known Issues:** Is farmerid the variable name we want?
+- **Known Issues:** None
 
 ### Animal Health (Diseases)
 - **Description:** This dataset includes case_id as a unique identifier and a series of binary variables indicating whether a household experienced livestock types having various diseases.
@@ -191,10 +192,10 @@
 - **Known Issues:** None
 
 ### Use of Inorganic Fertilizer
-- **Description:** This dataset includes case_id and farmerid as a unique identifiers, whether or not the farmer use inorganic fertilizer, and farmer characteristics (age, gender, etc.) 
+- **Description:** This dataset includes case_id and indiv as a unique identifiers, whether or not the farmer use inorganic fertilizer, and farmer characteristics (age, gender, etc.) 
 - **Output:** Malawi_IHS_W1_off_farmer_fert_use.dta
 - **Coding Status:** ![Complete](https://placehold.co/15x15/c5f015/c5f015.png) `Complete`
-- **Known Issues:** Is farmerid the variable name we want?
+- **Known Issues:** 
 
 ### Fertilizer Application Rate
 - **Description:** This dataset includes case_id as a unique identifier and a series of variables describing volume and rate of fertilizer applied (e.g. nitrogen, phosphate, potassium)
@@ -237,12 +238,18 @@
 - **Output:** Malawi_IHS_W1_eggs_animals.dta
 - **Coding Status:** ![Complete](https://placehold.co/15x15/c5f015/c5f015.png) `Complete`
 - **Known Issues:** None
-  
-### Rate of Fertilizer Application
-- **Description:** This dataset includes case_id as a unique identifier and several variables that describe fertilizer, pesticide, and herbicide application by weight, hectares planted, and head of household gender.
+
+### Crop Production Costs Per Hectare
+- **Description:** This dataset includes case_id as a unique identifier and several variables that describe explicit and total costs to by decisionmaker gender.
 - **Output:** Malawi_IHS_W1_fertilizer_application.dta 
 - **Coding Status:** ![Complete](https://placehold.co/15x15/c5f015/c5f015.png) `Complete`
-- **Known Issues:** Partially redundant with the "Fertilizer Application Rate" section, which isolates agronomically relevant fertilizer components (N, K, etc.). This section will be kept to ensure consistency across countries and waves of LSMS data.
+- **Known Issues:** This is a legacy file kept to ensure consistency with the other LSMS waves. Because nutrient content of fertilizer can vary, the fertilizer nutrient application section is a more accurate way to estimate fertilizer use.
+
+### Rate of Fertilizer Application
+- **Description:** This dataset includes case_id as a unique identifier and several variables that describe fertilizer, pesticide, and herbicide application by weight, hectares planted, and head of household gender.
+- **Output:** ${Malawi_IHS_W1_created_data}\Malawi_IHS_W1_cropcosts.dta
+- **Coding Status:** ![Complete](https://placehold.co/15x15/c5f015/c5f015.png) `Complete`
+- **Known Issues:** None
 
 ### Household's Dietary Diversity Score
 - **Description:** This dataset includes case_id as a unique identifier, a count of food groups (out of 12) the surveyed individual consumed last week, and whether or not a houseshold consumed at least 6 of the 12 food groups, of 8 of the 12 food groups. 
