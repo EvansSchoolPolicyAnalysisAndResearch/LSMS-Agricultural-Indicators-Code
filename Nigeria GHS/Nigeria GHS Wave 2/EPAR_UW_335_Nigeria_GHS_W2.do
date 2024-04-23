@@ -256,7 +256,7 @@ collapse (sum) hh_members (max) fhh, by (hhid)
 lab var hh_members "Number of household members"
 lab var fhh "1= Female-headed household"
 *DYA.11.1.2020 Re-scaling survey weights to match population estimates
-merge 1:1 hhid using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_hhids.dta", nogen
+merge 1:1 hhid using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_weights.dta", nogen
 *Adjust to match total population
 total hh_members [pweight=weight]
 matrix temp =e(b)
@@ -4443,7 +4443,7 @@ save "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_food_dep.dta", replace
 	global empty_vars ""
 	global topcropname_area_full  "maize rice wheat sorgum millet cowpea grdnt beans yam swtptt cassav banana cocoa soy" //adding beans and wheat becuase they are not included in Nigieria
 
-	use "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_hhids.dta", clear
+	use "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_weights.dta", clear
 
 	*Gross crop income 
 	merge 1:1 hhid using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_hh_crop_production.dta", nogen keep(1 3)
@@ -5352,7 +5352,7 @@ merge m:1 hhid using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_hhsize.dta",
 merge 1:1 hhid indiv using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_farmer_fert_use.dta", nogen  keep(1 3)
 merge 1:1 hhid indiv using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_farmer_improvedseed_use.dta", nogen  keep(1 3)
 merge 1:1 hhid indiv using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_farmer_vaccine.dta", nogen  keep(1 3)
-merge m:1 hhid using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_hhids.dta", nogen keep (1 3)
+merge m:1 hhid using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_weights.dta", nogen keep (1 3)
 
 *Land rights
 merge 1:1 hhid indiv using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_land_rights_ind.dta", nogen

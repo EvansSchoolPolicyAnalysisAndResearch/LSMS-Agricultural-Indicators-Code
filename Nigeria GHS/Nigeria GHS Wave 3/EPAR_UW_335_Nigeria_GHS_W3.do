@@ -2808,7 +2808,7 @@ save "${Nigeria_GHS_W3_created_data}/Nigeria_GHS_W3_cropcosts.dta", replace
 //ALT 08.04.21: Added in org fert, herbicide, and pesticide; additional coding needed to integrate these into summary stats
 use "${Nigeria_GHS_W3_created_data}/Nigeria_GHS_W3_all_plots.dta", clear
 collapse (sum) ha_planted, by(ea hhid plot_id dm_gender)
-merge 1:1 ea hhid plot_id using "${Nigeria_GHS_W3_created_data}/Nigeria_GHS_W3_input_quantities.dta",  keep(1 3) //11 plots have expenses but don't show up in the all_plots roster.
+merge 1:1 ea hhid plot_id using "${Nigeria_GHS_W3_created_data}/Nigeria_GHS_W3_input_quantities.dta", nogen keep(1 3) //11 plots have expenses but don't show up in the all_plots roster.
 gen dm_gender2 = "male" if dm_gender==1
 replace dm_gender2 = "female" if dm_gender==2
 replace dm_gender2 = "mixed" if dm_gender==3
@@ -2818,7 +2818,7 @@ ren inorg_fert_rate fert_inorg_kg_
 ren org_fert_rate fert_org_kg_ 
 ren pest_rate pest_kg_
 ren herb_rate herb_kg_
-reshape wide ha_planted_ fert_inorg_kg_ fert_org_kg_ pest_kg_ herb_kg_, i(hhid plot_id) j(dm_gender2) string
+reshape wide ha_planted_ fert_inorg_kg_ fert_org_kg_ pest_kg_ herb_kg_, i(ea hhid plot_id) j(dm_gender2) string
 collapse (sum) *male *mixed, by(hhid)
 recode ha_planted* (0=.)
 foreach i in ha_planted fert_inorg_kg fert_org_kg pest_kg herb_kg {

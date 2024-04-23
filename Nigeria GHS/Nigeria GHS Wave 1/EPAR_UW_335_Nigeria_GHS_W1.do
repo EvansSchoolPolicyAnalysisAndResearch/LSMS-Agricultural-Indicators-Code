@@ -3250,7 +3250,6 @@ save "${Nigeria_GHS_W1_created_data}/Nigeria_GHS_W1_ag_wage.dta", replace
 * Crop Yield   *
 ********************************************************************************
 use "${Nigeria_GHS_W1_created_data}/Nigeria_GHS_W1_all_plots.dta", clear
-ren crop_code_master crop_code
 gen number_trees_planted_banana = number_trees_planted if crop_code==2030 
 gen number_trees_planted_cassava = number_trees_planted if crop_code==1020 
 gen number_trees_planted_cocoa = number_trees_planted if crop_code==3040
@@ -3259,10 +3258,10 @@ collapse (sum) number_trees_planted*, by(hhid)
 save "${Nigeria_GHS_W1_created_data}/Nigeria_GHS_W1_trees.dta", replace
 
 use "${Nigeria_GHS_W1_created_data}/Nigeria_GHS_W1_all_plots.dta", clear
-ren crop_code_master crop_code
 //Legacy stuff- agquery gets handled above.
 gen mixed = "inter" if purestand==0
 replace mixed="pure" if purestand==1
+drop if dm_gender ==. //106 obs deleted.
 gen dm_gender2="mixed"
 replace dm_gender2="male" if dm_gender==1
 replace dm_gender2="female" if dm_gender==2
@@ -3291,7 +3290,7 @@ preserve
 	save "${Nigeria_GHS_W1_created_data}/Nigeria_GHS_W1_hh_area_planted_harvested_allcrops.dta", replace
 restore
 
-replace crop_code=1120 if inrange(crop_code, 1121,1124)
+//replace crop_code=1120 if inrange(crop_code, 1121,1124)
 //label define crop 1120 "1120. YAM", replace
 
 keep if inlist(crop_code, $comma_topcrop_area)
