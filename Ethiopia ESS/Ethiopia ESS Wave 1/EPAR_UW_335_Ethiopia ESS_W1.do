@@ -5003,7 +5003,7 @@ gen adulteq_weight=adulteq*weight
 	// 10.3341* 1.2412458 = 12.827158 ETB
 *NOTE: if the survey was carried out over multiple years we use the last year
 *This is the poverty line at the local currency in the year the survey was carried out
-gen poverty_under_1_9 = daily_percap_cons< $ETH_ESS_W1_poverty_190
+gen poverty_under_1_9 = daily_percap_cons < $ETH_ESS_W1_poverty_190
 gen poverty_under_215 = daily_percap_cons < $ETH_ESS_W1_poverty_215 
 gen poverty_under_nbs = daily_percap_cons < $ETH_ESS_W1_poverty_nbs
 la var poverty_under_1_9 "Household has a percapita conumption below $1.90 in 2011 $ PPP"
@@ -5068,25 +5068,26 @@ foreach v of varlist $empty_vars {
 *Add variables and ren household id so dta file can be appended with dta files from other instruments
 ren household_id hhid 
 gen str18 hhid_panel = string(region, "%02.0f") + string(zone, "%02.0f") + string(woreda, "%02.0f") + string(town, "%02.0f") + string(subcity, "%02.0f")+ string(kebele, "%03.0f")+ string(ea, "%02.0f") + string(household, "%03.0f")
-lab var hhid_panel "Panel HH identifier"
+lab var hhid_panel "panel hh identifier" 
 gen geography = "Ethiopia"
-gen survey = "LSMS-ISA"
-gen year = "2011-12"
-gen instrument = 5
-label define instrument 1 "Tanzania NPS Wave 1" 2 "Tanzania NPS Wave 2" 3 "Tanzania NPS Wave 3" 4 "Tanzania NPS Wave 4" /*
-	*/ 5 "Ethiopia ESS Wave 1" 6 "Ethiopia ESS Wave 2" 7 "Ethiopia ESS Wave 3" /*
-	*/ 8 "Nigeria GHS Wave 1" 9 "Nigeria GHS Wave 2" 10 "Nigeria GHS Wave 3" /*
-	*/ 11 "Tanzania TBS AgDev (Lake Zone)" 12 "Tanzania TBS AgDev (Northern Zone)" 13 "Tanzania TBS AgDev (Southern Zone)" /*
-	*/ 14 "Ethiopia ACC Baseline" /*
-	*/ 15 "India RMS Baseline (Bihar)" 16 "India RMS Baseline (Odisha)" 17 "India RMS Baseline (Uttar Pradesh)" 18 "India RMS Baseline (West Bengal)" /*
-	*/ 19 "Nigeria NIBAS AgDev (Nassarawa)" 20 "Nigeria NIBAS AgDev (Benue)" 21 "Nigeria NIBAS AgDev (Kaduna)" /*
-	*/ 22 "Nigeria NIBAS AgDev (Niger)" 23 "Nigeria NIBAS AgDev (Kano)" 24 "Nigeria NIBAS AgDev (Katsina)" 
+gen survey = "LSMS-ISA" 
+gen year = "2011-12" 
+gen instrument = 21
+//Only runs if label isn't already defined.
+capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2" 13 "Tanzania NPS Wave 3" 14 "Tanzania NPS Wave 4" 15 "Tanzania NPS Wave 5" /*
+	*/ 21 "Ethiopia ESS Wave 1" 22 "Ethiopia ESS Wave 2" 23 "Ethiopia ESS Wave 3" 24 "Ethiopia ESS Wave 4" 25 "Ethiopia ESS Wave 5" /*
+	*/ 31 "Nigeria GHS Wave 1" 32 "Nigeria GHS Wave 2" 33 "Nigeria GHS Wave 3" 34 "Nigeria GHS Wave 4"/*
+	*/ 41 "Malawi IHS/IHPS Wave 1" 42 "Malawi IHS/IHPS Wave 2" 43 "Malawi IHS/IHPS Wave 3" 44 "Malawi IHS/IHPS Wave 4" /*
+    */ 51 "Uganda NPS Wave 1" 52 "Uganda NPS Wave 2" 53 "Uganda NPS Wave 3" 54 "Uganda NPS Wave 4" 55 "Uganda NPS Wave 5" /*W6 does not exist*/ 56 "Uganda NPS Wave 7" 57 "Uganda NPS Wave 8" /* 
+*/ 61 "Burkina Faso EMC Wave 1" /* 
+*/ 71 "Mali EACI Wave 1" 72 "Mali EACI Wave 2" /*
+*/ 81 "Niger ECVMA Wave 1" 82 "Niger ECVMA Wave 2"
 label values instrument instrument	
 saveold "${ETH_ESS_W1_final_data}/Ethiopia_ESS_W1_household_variables.dta", replace
 
-**************
+*****************************************************************
 *INDIVIDUAL-LEVEL VARIABLES
-**************
+*****************************************************************
 use "${ETH_ESS_W1_created_data}/Ethiopia_ESS_W1_control_income.dta", clear
 merge 1:1 household_id personid using "${ETH_ESS_W1_created_data}/Ethiopia_ESS_W1_ag_decision.dta", nogen keep(1 3)
 merge 1:1 household_id personid using "${ETH_ESS_W1_created_data}/Ethiopia_ESS_W1_women_asset.dta", nogen keep(1 3)
@@ -5142,30 +5143,29 @@ foreach g in all female male {
 *Add variables and ren household id so dta file can be appended with dta files from other instruments
 ren household_id hhid 
 gen str18 hhid_panel = string(region, "%02.0f") + string(zone, "%02.0f") + string(woreda, "%02.0f") + string(town, "%02.0f") + string(subcity, "%02.0f")+ string(kebele, "%03.0f")+ string(ea, "%02.0f") + string(household, "%03.0f")
-lab var hhid_panel "Panel HH identifier"
-ren personid indid
+lab var hhid_panel "panel hh identifier" 
 gen geography = "Ethiopia"
-gen survey = "LSMS-ISA"
-gen year = "2011-12"
-gen instrument = 5
-label define instrument 1 "Tanzania NPS Wave 1" 2 "Tanzania NPS Wave 2" 3 "Tanzania NPS Wave 3" 4 "Tanzania NPS Wave 4" /*
-	*/ 5 "Ethiopia ESS Wave 1" 6 "Ethiopia ESS Wave 2" 7 "Ethiopia ESS Wave 3" /*
-	*/ 8 "Nigeria GHS Wave 1" 9 "Nigeria GHS Wave 2" 10 "Nigeria GHS Wave 3" /*
-	*/ 11 "Tanzania TBS AgDev (Lake Zone)" 12 "Tanzania TBS AgDev (Northern Zone)" 13 "Tanzania TBS AgDev (Southern Zone)" /*
-	*/ 14 "Ethiopia ACC Baseline" /*
-	*/ 15 "India RMS Baseline (Bihar)" 16 "India RMS Baseline (Odisha)" 17 "India RMS Baseline (Uttar Pradesh)" 18 "India RMS Baseline (West Bengal)" /*
-	*/ 19 "Nigeria NIBAS AgDev (Nassarawa)" 20 "Nigeria NIBAS AgDev (Benue)" 21 "Nigeria NIBAS AgDev (Kaduna)" /*
-	*/ 22 "Nigeria NIBAS AgDev (Niger)" 23 "Nigeria NIBAS AgDev (Kano)" 24 "Nigeria NIBAS AgDev (Katsina)" 
+gen survey = "LSMS-ISA" 
+gen year = "2011-12" 
+gen instrument = 21
+//Only runs if label isn't already defined.
+capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2" 13 "Tanzania NPS Wave 3" 14 "Tanzania NPS Wave 4" 15 "Tanzania NPS Wave 5" /*
+	*/ 21 "Ethiopia ESS Wave 1" 22 "Ethiopia ESS Wave 2" 23 "Ethiopia ESS Wave 3" 24 "Ethiopia ESS Wave 4" 25 "Ethiopia ESS Wave 5" /*
+	*/ 31 "Nigeria GHS Wave 1" 32 "Nigeria GHS Wave 2" 33 "Nigeria GHS Wave 3" 34 "Nigeria GHS Wave 4"/*
+	*/ 41 "Malawi IHS/IHPS Wave 1" 42 "Malawi IHS/IHPS Wave 2" 43 "Malawi IHS/IHPS Wave 3" 44 "Malawi IHS/IHPS Wave 4" /*
+    */ 51 "Uganda NPS Wave 1" 52 "Uganda NPS Wave 2" 53 "Uganda NPS Wave 3" 54 "Uganda NPS Wave 4" 55 "Uganda NPS Wave 5" /*W6 does not exist*/ 56 "Uganda NPS Wave 7" 57 "Uganda NPS Wave 8" /* 
+*/ 61 "Burkina Faso EMC Wave 1" /* 
+*/ 71 "Mali EACI Wave 1" 72 "Mali EACI Wave 2" /*
+*/ 81 "Niger ECVMA Wave 1" 82 "Niger ECVMA Wave 2"
+
 label values instrument instrument	
 saveold "${ETH_ESS_W1_final_data}/Ethiopia_ESS_W1_individual_variables.dta", replace
 
 
 
-///////////////////
-//               //
-//  FIELD LEVEL  //
-//               //
-///////////////////
+*****************************************************************
+*PLOT-LEVEL VARIABLES
+*****************************************************************
 use "${ETH_ESS_W1_created_data}/Ethiopia_ESS_W1_crop_production_field.dta", clear
 merge 1:1 household_id holder_id parcel_id field_id using "${ETH_ESS_W1_created_data}/Ethiopia_ESS_W1_field_area.dta", nogen keep(1 3)
 merge m:1 household_id using "${ETH_ESS_W1_created_data}/Ethiopia_ESS_W1_male_head.dta", nogen keep(1 3)		// weights
@@ -5173,7 +5173,7 @@ merge m:1 household_id using "${ETH_ESS_W1_created_data}/Ethiopia_ESS_W1_hhids.d
 merge 1:1 household_id holder_id parcel_id field_id using "${ETH_ESS_W1_created_data}/Ethiopia_ESS_W1_plot_farmlabor_postplanting.dta", keep (1 3) nogen
 merge 1:1 household_id holder_id parcel_id field_id using "${ETH_ESS_W1_created_data}/Ethiopia_ESS_W1_plot_farmlabor_postharvest.dta", keep (1 3) nogen
 egen  labor_total =rowtotal(days_hired_postplant days_famlabor_postplant days_otherlabor_postplant days_hired_postharvest days_famlabor_postharvest days_otherlabor_postharvest)
-keep holder_id- pw  cultivated region zone woreda zone woreda   fhh clusterid- household area_meas_hectares days_hired_postplant days_famlabor_postplant days_otherlabor_postplant days_hired_postharvest days_famlabor_postharvest days_otherlabor_postharvest labor_total
+keep holder_id- pw  cultivated region zone woreda zone woreda   fhh clusterid- household area_meas_hectares days_hired_postplant days_famlabor_postplant days_otherlabor_postplant days_hired_postharvest days_famlabor_postharvest days_otherlabor_postharvest labor_total rural
 drop  if area_meas_hectares==0 | area_meas_hectares==. | value_crop_production_field==0
 ren value_crop_production_field plot_value_harvest
 global winsorize_vars area_meas_hectares labor_total
@@ -5265,23 +5265,22 @@ gen plot_labor_weight= w_labor_total*weight
 *Add variables and ren household id so dta file can be appended with dta files from other instruments
 ren household_id hhid 
 gen str18 hhid_panel = string(region, "%02.0f") + string(zone, "%02.0f") + string(woreda, "%02.0f") + string(town, "%02.0f") + string(subcity, "%02.0f")+ string(kebele, "%03.0f")+ string(ea, "%02.0f") + string(household, "%03.0f")
-lab var hhid_panel "Panel HH identifier"
-ren field_id plot_id
+lab var hhid_panel "panel hh identifier" 
 gen geography = "Ethiopia"
-gen survey = "LSMS-ISA"
-gen year = "2011-12"
-gen instrument = 5
-label define instrument 1 "Tanzania NPS Wave 1" 2 "Tanzania NPS Wave 2" 3 "Tanzania NPS Wave 3" 4 "Tanzania NPS Wave 4" /*
-	*/ 5 "Ethiopia ESS Wave 1" 6 "Ethiopia ESS Wave 2" 7 "Ethiopia ESS Wave 3" /*
-	*/ 8 "Nigeria GHS Wave 1" 9 "Nigeria GHS Wave 2" 10 "Nigeria GHS Wave 3" /*
-	*/ 11 "Tanzania TBS AgDev (Lake Zone)" 12 "Tanzania TBS AgDev (Northern Zone)" 13 "Tanzania TBS AgDev (Southern Zone)" /*
-	*/ 14 "Ethiopia ACC Baseline" /*
-	*/ 15 "India RMS Baseline (Bihar)" 16 "India RMS Baseline (Odisha)" 17 "India RMS Baseline (Uttar Pradesh)" 18 "India RMS Baseline (West Bengal)" /*
-	*/ 19 "Nigeria NIBAS AgDev (Nassarawa)" 20 "Nigeria NIBAS AgDev (Benue)" 21 "Nigeria NIBAS AgDev (Kaduna)" /*
-	*/ 22 "Nigeria NIBAS AgDev (Niger)" 23 "Nigeria NIBAS AgDev (Kano)" 24 "Nigeria NIBAS AgDev (Katsina)" 
+gen survey = "LSMS-ISA" 
+gen year = "2011-12" 
+gen instrument = 21
+//Only runs if label isn't already defined.
+capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2" 13 "Tanzania NPS Wave 3" 14 "Tanzania NPS Wave 4" 15 "Tanzania NPS Wave 5" /*
+	*/ 21 "Ethiopia ESS Wave 1" 22 "Ethiopia ESS Wave 2" 23 "Ethiopia ESS Wave 3" 24 "Ethiopia ESS Wave 4" 25 "Ethiopia ESS Wave 5" /*
+	*/ 31 "Nigeria GHS Wave 1" 32 "Nigeria GHS Wave 2" 33 "Nigeria GHS Wave 3" 34 "Nigeria GHS Wave 4"/*
+	*/ 41 "Malawi IHS/IHPS Wave 1" 42 "Malawi IHS/IHPS Wave 2" 43 "Malawi IHS/IHPS Wave 3" 44 "Malawi IHS/IHPS Wave 4" /*
+    */ 51 "Uganda NPS Wave 1" 52 "Uganda NPS Wave 2" 53 "Uganda NPS Wave 3" 54 "Uganda NPS Wave 4" 55 "Uganda NPS Wave 5" /*W6 does not exist*/ 56 "Uganda NPS Wave 7" 57 "Uganda NPS Wave 8" /* 
+*/ 61 "Burkina Faso EMC Wave 1" /* 
+*/ 71 "Mali EACI Wave 1" 72 "Mali EACI Wave 2" /*
+*/ 81 "Niger ECVMA Wave 1" 82 "Niger ECVMA Wave 2"
 label values instrument instrument	
 saveold "${ETH_ESS_W1_final_data}/Ethiopia_ESS_W1_field_plot_variables.dta", replace
-
 
 
 ********************************************************************************
@@ -5293,6 +5292,6 @@ The summary statistics are outputted only for the sub_population of households, 
 The code for outputting the summary statistics is in a separare dofile that is called here
 */ 
 *Parameters
-global list_instruments  "Ethiopia_ESS_W1"
-do "${directory}/EPAR_UW_335_SUMMARY_STATISTICS_01.17.2020.do" 
+global list_instruments  "ETH_ESS_W1"
+do "${directory}/EPAR_UW_335_SUMMARY_STATISTICS_02.08.24.do" 
 
