@@ -3,14 +3,14 @@
 *Title/Purpose 	: This do.file was developed by the Evans School Policy Analysis & Research Group (EPAR) 
 				  for the construction of a set of agricultural development indicators 
 				  using the Uganda National Panel Survey (UNPS) LSMS-ISA Wave 5 (2015-16).
-*Author(s)		: Didier Alia, C. Leigh Anderson, & Josh Grandbouche
+*Author(s)		: Didier Alia, Andrew Tomes, C. Leigh Anderson
 
 *Acknowledgments: We acknowledge the helpful contributions of members of the World Bank's LSMS-ISA team, the FAO's RuLIS team, IFPRI, IRRI, 
 				  and the Bill & Melinda Gates Foundation Agricultural Development Data and Policy team in discussing indicator construction decisions. 
-				  We also acknowledge the contributions of former EPAR members Pierre Biscaye, David Coomes, Jack Knauer, Josh Merfeld,  
+				  We also acknowledge the contributions of former EPAR members Pierre Biscaye, David Coomes, Josh Grandbouche, Jack Knauer, Josh Merfeld,  
 				  Isabella Sun, Chelsea Sweeney, Emma Weaver, Ayala Wineman, & Travis Reynolds.
 				  All coding errors remain ours alone.
-*Date			: This  Version - 17 April 2024
+*Date			: This  Version - 9 May 2024
 ----------------------------------------------------------------------------------------------------------------------------------------------------*/
 
 
@@ -27,18 +27,20 @@
 
 *Summary of Executing the Master do.file
 *-----------
-*This Master do.file constructs selected indicators using the Uganda UNPS (UN LSMS) data set.
-*Using data files from within the "raw_data" folder within the "uganda-wave5-2015-16" folder, 
-*the do.file first constructs common and intermediate variables, saving dta files when appropriate 
-*in the folder "\uganda-wave5-2015-16\created data".
-*These variables are then brought together at the household, plot, or individual level, saving dta files at each level when available 
-*in the folder "\uganda-wave5-2015-16\final data".
+* This Master do.file constructs selected indicators using the Uganda UNPS (UN LSMS) data set.
+* Using data files from within the "Raw DTA Files" folder, the do.file first constructs common and intermediate variables, 
+* saving dtafiles when appropriate in the folder "Final DTA Files/created_data" 
+*
+* These variables are then brought together at the household, plot, or individual level, saving dta files at each level when available in the
+* folder "Final DTA Files/final_data". 
 
-*The processed files include all households, individuals, and plots in the sample.
-*Toward the end of this do.file, there is a reference to another do.file that estimates summary statistics (mean, standard error of the mean, minimum, first quartile, median, third quartile, maximum) 
-*of final indicators, restricted to the rural households only, disaggregated by gender of head of household or plot manager or farm size.
-*The results are outputted in the excel file "Uganda_NPS_W5_summary_stats.xlsx" in the "\uganda-wave5-2015-16\final data" folder.
-*It is possible to modify the condition  "if rural==1" in the portion of code following the heading "SUMMARY STATISTICS" to generate all summary statistics for a different sub_population.
+
+* The processed files include all households, individuals, and plots in the sample. Toward the end of the do.file, a block of code estimates summary 
+* statistics (mean, standard error of the mean, minimum, first quartile, 
+* median, third quartile, maximum) of final indicators, restricted to the rural households only, disaggregated by gender of head of household or plot manager.
+
+* The results are saved in the excel file "Uganda_NPS_LSMS_ISA_W4_summary_stats.xlsx" in the "Final DTA Files/final_data" folder. 
+
 										
 /*
 OUTLINE OF THE DO.FILE
@@ -162,11 +164,11 @@ ssc install findname  // need this user-written ado file for some commands to wo
 // set directories
 * These paths correspond to the folders where the raw data files are located 
 * and where the created data and final data will be stored.
-global directory "\\netid.washington.edu\wfs\EvansEPAR\Project\EPAR\Working Files\378 - LSMS Burkina Faso, Malawi, Uganda"
-//set directories: These paths correspond to the folders where the raw data files are located and where the created data and final data will be stored.
-global Uganda_NPS_W5_raw_data 			"$directory\uganda-wave5-2015-16\Raw DTA Files"
-global Uganda_NPS_W5_created_data 		"$directory\uganda-wave5-2015-16\Final DTA Files\created_data"
-global Uganda_NPS_W5_final_data  		"$directory\uganda-wave5-2015-16\Final DTA Files\final_data"
+global root_folder "335_Agricultural-Indicator-Curation"
+global UGA_W2_raw_data "$root_folder/Uganda UNPS/Uganda UNPS Wave 2/raw_data"
+global UGA_W2_final_data "$root_folder/Uganda UNPS/Uganda UNPS Wave 2/Final DTA Files/final_data"
+global UGA_W2_created_data "$root_folder/Uganda UNPS/Uganda UNPS Wave 2/Final DTA Files/created_data"
+global directory "$root_folder/_Summary_statistics/"
 
 
 *Re-scaling survey weights to match population estimates
@@ -4547,18 +4549,16 @@ gen survey = "LSMS-ISA"
 la var survey "Survey type (LSMS or AgDev)"
 gen year = "2015-16"
 la var year "Year survey was carried out"
-gen instrument = 26
+gen instrument = 55
 la var instrument "Wave and location of survey"
-label define instrument 1 "Tanzania NPS Wave 1" 2 "Tanzania NPS Wave 2" 3 "Tanzania NPS Wave 3" 4 "Tanzania NPS Wave 4" /*
-	*/ 5 "Ethiopia ESS Wave 1" 6 "Ethiopia ESS Wave 2" 7 "Ethiopia ESS Wave 3" /*
-	*/ 8 "Nigeria GHS Wave 1" 9 "Nigeria GHS Wave 2" 10 "Nigeria GHS Wave 3" /*
-	*/ 11 "Tanzania TBS AgDev (Lake Zone)" 12 "Tanzania TBS AgDev (Northern Zone)" 13 "Tanzania TBS AgDev (Southern Zone)" /*
-	*/ 14 "Ethiopia ACC Baseline" /*
-	*/ 15 "India RMS Baseline (Bihar)" 16 "India RMS Baseline (Odisha)" 17 "India RMS Baseline (Uttar Pradesh)" 18 "India RMS Baseline (West Bengal)" /*
-	*/ 19 "Nigeria NIBAS AgDev (Nassarawa)" 20 "Nigeria NIBAS AgDev (Benue)" 21 "Nigeria NIBAS AgDev (Kaduna)" /*
-	*/ 22 "Nigeria NIBAS AgDev (Niger)" 23 "Nigeria NIBAS AgDev (Kano)" 24 "Nigeria NIBAS AgDev (Katsina)" /*
-    */ 25 "Uganda NPS Wave 3" 26 "Uganda NPS Wave 4"
-label values instrument instrument	
+capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2" 13 "Tanzania NPS Wave 3" 14 "Tanzania NPS Wave 4" 15 "Tanzania NPS Wave 5" /*
+	*/ 21 "Ethiopia ESS Wave 1" 22 "Ethiopia ESS Wave 2" 23 "Ethiopia ESS Wave 3" 24 "Ethiopia ESS Wave 4" 25 "Ethiopia ESS Wave 5" /*
+	*/ 31 "Nigeria GHS Wave 1" 32 "Nigeria GHS Wave 2" 33 "Nigeria GHS Wave 3" 34 "Nigeria GHS Wave 4"/*
+	*/ 41 "Malawi IHS/IHPS Wave 1" 42 "Malawi IHS/IHPS Wave 2" 43 "Malawi IHS/IHPS Wave 3" 44 "Malawi IHS/IHPS Wave 4" /*
+    */ 51 "Uganda NPS Wave 1" 52 "Uganda NPS Wave 2" 53 "Uganda NPS Wave 3" 54 "Uganda NPS Wave 4" 55 "Uganda NPS Wave 5" /*W6 does not exist*/ 56 "Uganda NPS Wave 7" 57 "Uganda NPS Wave 8" /* 
+*/ 61 "Burkina Faso EMC Wave 1" /* 
+*/ 71 "Mali EACI Wave 1" 72 "Mali EACI Wave 2" /*
+*/ 81 "Niger ECVMA Wave 1" 82 "Niger ECVMA Wave 2"
 *SAW Notes: We need an actual number for Uganda waves. 
 saveold "${Uganda_NPS_W5_final_data}/Uganda_NPS_W5_household_variables.dta", replace
 
@@ -4641,20 +4641,18 @@ foreach v of varlist $empty_vars {
 gen hhid_panel = hhid 
 lab var hhid_panel "panel hh identifier" 
 ren indiv indid
-gen geography = "Nigeria"
+gen geography = "Uganda"
 gen survey = "LSMS-ISA"
 gen year = "2015-16"
-gen instrument = 25
-capture label define instrument 1 "Tanzania NPS Wave 1" 2 "Tanzania NPS Wave 2" 3 "Tanzania NPS Wave 3" 4 "Tanzania NPS Wave 4" /*
-	*/ 5 "Ethiopia ESS Wave 1" 6 "Ethiopia ESS Wave 2" 7 "Ethiopia ESS Wave 3" /*
-	*/ 8 "Nigeria GHS Wave 1" 9 "Nigeria GHS Wave 2" 10 "Nigeria GHS Wave 3" /*
-	*/ 11 "Tanzania TBS AgDev (Lake Zone)" 12 "Tanzania TBS AgDev (Northern Zone)" 13 "Tanzania TBS AgDev (Southern Zone)" /*
-	*/ 14 "Ethiopia ACC Baseline" /*
-	*/ 15 "India RMS Baseline (Bihar)" 16 "India RMS Baseline (Odisha)" 17 "India RMS Baseline (Uttar Pradesh)" 18 "India RMS Baseline (West Bengal)" /*
-	*/ 19 "Nigeria NIBAS AgDev (Nassarawa)" 20 "Nigeria NIBAS AgDev (Benue)" 21 "Nigeria NIBAS AgDev (Kaduna)" /*
-	*/ 22 "Nigeria NIBAS AgDev (Niger)" 23 "Nigeria NIBAS AgDev (Kano)" 24 "Nigeria NIBAS AgDev (Katsina)"  /*
-	*/ 25 "Uganda Wave 3" 
-
+gen instrument = 55
+capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2" 13 "Tanzania NPS Wave 3" 14 "Tanzania NPS Wave 4" 15 "Tanzania NPS Wave 5" /*
+	*/ 21 "Ethiopia ESS Wave 1" 22 "Ethiopia ESS Wave 2" 23 "Ethiopia ESS Wave 3" 24 "Ethiopia ESS Wave 4" 25 "Ethiopia ESS Wave 5" /*
+	*/ 31 "Nigeria GHS Wave 1" 32 "Nigeria GHS Wave 2" 33 "Nigeria GHS Wave 3" 34 "Nigeria GHS Wave 4"/*
+	*/ 41 "Malawi IHS/IHPS Wave 1" 42 "Malawi IHS/IHPS Wave 2" 43 "Malawi IHS/IHPS Wave 3" 44 "Malawi IHS/IHPS Wave 4" /*
+    */ 51 "Uganda NPS Wave 1" 52 "Uganda NPS Wave 2" 53 "Uganda NPS Wave 3" 54 "Uganda NPS Wave 4" 55 "Uganda NPS Wave 5" /*W6 does not exist*/ 56 "Uganda NPS Wave 7" 57 "Uganda NPS Wave 8" /* 
+*/ 61 "Burkina Faso EMC Wave 1" /* 
+*/ 71 "Mali EACI Wave 1" 72 "Mali EACI Wave 2" /*
+*/ 81 "Niger ECVMA Wave 1" 82 "Niger ECVMA Wave 2"
 label values instrument instrument	
 *gen strataid=region
 *gen clusterid=ea
@@ -4883,16 +4881,15 @@ lab var hhid_panel "panel hh identifier"
 gen geography = "Uganda"
 gen survey = "LSMS-ISA"
 gen year = "2011-12"
-gen instrument = 25
-capture label define instrument 1 "Tanzania NPS Wave 1" 2 "Tanzania NPS Wave 2" 3 "Tanzania NPS Wave 3" 4 "Tanzania NPS Wave 4" /*
-	*/ 5 "Ethiopia ESS Wave 1" 6 "Ethiopia ESS Wave 2" 7 "Ethiopia ESS Wave 3" /*
-	*/ 8 "Nigeria GHS Wave 1" 9 "Nigeria GHS Wave 2" 10 "Nigeria GHS Wave 3" /*
-	*/ 11 "Tanzania TBS AgDev (Lake Zone)" 12 "Tanzania TBS AgDev (Northern Zone)" 13 "Tanzania TBS AgDev (Southern Zone)" /*
-	*/ 14 "Ethiopia ACC Baseline" /*
-	*/ 15 "India RMS Baseline (Bihar)" 16 "India RMS Baseline (Odisha)" 17 "India RMS Baseline (Uttar Pradesh)" 18 "India RMS Baseline (West Bengal)" /*
-	*/ 19 "Nigeria NIBAS AgDev (Nassarawa)" 20 "Nigeria NIBAS AgDev (Benue)" 21 "Nigeria NIBAS AgDev (Kaduna)" /*
-	*/ 22 "Nigeria NIBAS AgDev (Niger)" 23 "Nigeria NIBAS AgDev (Kano)" 24 "Nigeria NIBAS AgDev (Katsina)"   /*
-	*/ 25 "Uganda Wave 3"
+gen instrument = 55
+capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2" 13 "Tanzania NPS Wave 3" 14 "Tanzania NPS Wave 4" 15 "Tanzania NPS Wave 5" /*
+	*/ 21 "Ethiopia ESS Wave 1" 22 "Ethiopia ESS Wave 2" 23 "Ethiopia ESS Wave 3" 24 "Ethiopia ESS Wave 4" 25 "Ethiopia ESS Wave 5" /*
+	*/ 31 "Nigeria GHS Wave 1" 32 "Nigeria GHS Wave 2" 33 "Nigeria GHS Wave 3" 34 "Nigeria GHS Wave 4"/*
+	*/ 41 "Malawi IHS/IHPS Wave 1" 42 "Malawi IHS/IHPS Wave 2" 43 "Malawi IHS/IHPS Wave 3" 44 "Malawi IHS/IHPS Wave 4" /*
+    */ 51 "Uganda NPS Wave 1" 52 "Uganda NPS Wave 2" 53 "Uganda NPS Wave 3" 54 "Uganda NPS Wave 4" 55 "Uganda NPS Wave 5" /*W6 does not exist*/ 56 "Uganda NPS Wave 7" 57 "Uganda NPS Wave 8" /* 
+*/ 61 "Burkina Faso EMC Wave 1" /* 
+*/ 71 "Mali EACI Wave 1" 72 "Mali EACI Wave 2" /*
+*/ 81 "Niger ECVMA Wave 1" 82 "Niger ECVMA Wave 2"
 label values instrument instrument		
 saveold "${Uganda_NPS_W5_final_data}/Uganda_NPS_W5_field_plot_variables.dta", replace 
 
@@ -4906,4 +4903,4 @@ The code for outputting the summary statistics is in a separare dofile that is c
 */ 
 *Parameters
 global list_instruments  "Uganda_NPS_W5"
-do "R:\Project\EPAR\Working Files\378 - LSMS Burkina Faso, Malawi, Uganda\_SUMMARY_STATS\378_Uganda_summarystats.do"
+do "$directory/EPAR_UW_335_Summary_statistics.do"

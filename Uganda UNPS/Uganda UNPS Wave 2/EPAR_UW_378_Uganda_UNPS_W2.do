@@ -1,18 +1,16 @@
 /*------------------------------------------------------------------------------
 *Title/Purpose 	: This do.file was developed by the Evans School Policy Analysis & Research Group (EPAR) 
 				  for the construction of a set of agricultural development indicators 
-				  using the Uganda National Panel Survey (UNPS) LSMS-ISA Wave 1 (2009-10)
-*Author(s)		: Didier Alia, David Coomes, Elan Ebeling, Nina Forbes, Nida
-				  Haroon, Muel Kiel, Anu Sidhu, Isabella Sun, Emma Weaver,
-				  Ayala Wineman, C. Leigh Anderson, &  Travis Reynolds
+				  using the Uganda National Panel Survey (UNPS) LSMS-ISA Wave 2 (2010-11)
+*Author(s)		: Didier Alia, Andrew Tomes, & C. Leigh Anderson
 
-*Acknowledgments: We acknowledge the helpful contributions of members of the
-				  World Bank's LSMS-ISA team, the FAO's RuLIS team, IFPRI,
-				  IRRI, and the Bill & Melinda Gates Foundation Agricultural
-				  Development Data and Policy team in discussing indicator
-				  construction decisions. 
+*Acknowledgments: We acknowledge the helpful contributions of David Coomes, Elan Ebeling, Nina Forbes, Nida
+				  Haroon, Muel Kiel, Anu Sidhu, Isabella Sun, Emma Weaver,
+				  Ayala Wineman, Travis Reynolds, the World Bank's LSMS-ISA team, the FAO's RuLIS team, IFPRI, IRRI, 
+				  and the Bill & Melinda Gates Foundation Agricultural Development Data and Policy team in discussing indicator construction decisions. 				  
+
 				  All coding errors remain ours alone.
-*Date			: 2 Feb 2023
+*Date			: 9 May 2024
 ------------------------------------------------------------------------------*/
 
 
@@ -31,37 +29,23 @@
 * Uganda National Panel Survey.
 
 
+
 *Summary of Executing the Master do.file
 *-----------
-// BEGIN SAK 1.22.19 updated to the new folder structure
-* This Master do.file constructs selected indicators using the Uganda UNPS 
-* (UN LSMS) data set.
-* Using data files from within the "\raw_data" folder, 
-* the do.file first constructs common and intermediate variables, saving dta
-* files when appropriate in the folder
-* "\temp" 
+* This Master do.file constructs selected indicators using the Uganda UNPS (UN LSMS) data set.
+* Using data files from within the "Raw DTA Files" folder, the do.file first constructs common and intermediate variables, 
+* saving dtafiles when appropriate in the folder "Final DTA Files/created_data" 
 *
-* These variables are then brought together at the household, plot, or 
-* individual level, saving dta files at each level when available in the
-* folder "\output". 
+* These variables are then brought together at the household, plot, or individual level, saving dta files at each level when available in the
+* folder "Final DTA Files/final_data". 
 
 
-* The processed files include all households, individuals, and plots in the 
-* sample. Toward the end of the do.file, a block of code estimates summary 
+* The processed files include all households, individuals, and plots in the sample. Toward the end of the do.file, a block of code estimates summary 
 * statistics (mean, standard error of the mean, minimum, first quartile, 
-* median, third quartile, maximum) 
-* of final indicators, restricted to the rural households only, disaggregated '
-* by gender of head of household or plot manager.
+* median, third quartile, maximum) of final indicators, restricted to the rural households only, disaggregated by gender of head of household or plot manager.
 
-* The results are outputted in the excel file 
-* "Uganda_NPS_W2_summary_stats.xlsx" in the 
-* "\output\uganda-wave2-2010-11-unps" folder. 
+* The results are saved in the excel file "Uganda_NPS_LSMS_ISA_W4_summary_stats.xlsx" in the "Final DTA Files/final_data" folder. 
 
-//// END SAK File Path Changes
-
-* It is possible to modify the condition  "if rural==1" in the portion of code 
-* following the heading "SUMMARY STATISTICS" to generate all summary 
-* statistics for a different sub_population.
 
 
 /*
@@ -168,10 +152,13 @@ set maxvar 8000
 // set directories
 * These paths correspond to the folders where the raw data files are located 
 * and where the created data and final data will be stored.
-global root_folder "R:/Project/EPAR/Working Files/378 - LSMS Burkina Faso, Malawi, Uganda/uganda-wave2-2010-11"
-global UGA_W2_raw_data "$root_folder/raw_data"
-global UGA_W2_final_data "$root_folder/outputs"
-global UGA_W2_created_data "$root_folder/temp"
+global root_folder "335_Agricultural-Indicator-Curation"
+global UGA_W2_raw_data "$root_folder/Uganda UNPS/Uganda UNPS Wave 2/raw_data"
+global UGA_W2_final_data "$root_folder/Uganda UNPS/Uganda UNPS Wave 2/Final DTA Files/final_data"
+global UGA_W2_created_data "$root_folder/Uganda UNPS/Uganda UNPS Wave 2/Final DTA Files/created_data"
+global directory "$root_folder/_Summary_statistics/"
+
+do "$directory/EPAR_UW_335_Summary_statistics.do"
 
 *Re-scaling survey weights to match population estimates
 *https://databank.worldbank.org/source/world-development-indicators#
@@ -179,7 +166,7 @@ global UGA_NPS_W2_pop_tot 34273295
 global UGA_NPS_W2_pop_rur 27273317
 global UGA_NPS_W2_pop_urb 6999978
 
-global directory "R:\Project\EPAR\Working Files\378 - LSMS Burkina Faso, Malawi, Uganda\_SUMMARY_STATS"
+
 
 * Some other useful local variables
 local genders "male female mixed"
@@ -211,9 +198,9 @@ global NPS_LSMS_ISA_W2_gdp_ppp_dollar 1270.608398
 global NPS_LSMS_ISA_W2_cons_ppp_dollar 1221.087646
 //https://data.worldbank.org/indicator/FP.CPI.TOTL?end=2016&locations=UG&start=2011
 global NPS_LSMS_ISA_W2_inflation .69904077 //(116.6)/166.8, inflation for 2.15 2017 baseline https://data.worldbank.org/indicator/FP.CPI.TOTL?end=2016&locations=UG&start=2011 //
-global NPS_LSMS_ISA_W2_poverty_190 (1.90*944.26)*(116.6/116.6)  //Calculation for WB's previous $1.90 (PPP) poverty threshold, 158 N. This controls the indicator poverty_under_1_9; change the 1.9 to get results for a different threshold. Note this is based on the 2011 PPP conversion!
-global NPS_LSMS_ISA_W2_poverty_nbs 3880.75 *(1.108) //2009-2010 poverty line from https://nigerianstat.gov.ng/elibrary/read/544 adjusted to 2011
-global NPS_LSMS_ISA_W2_poverty_215 2.15 * ($NPS_LSMS_ISA_W2_inflation) * $NPS_LSMS_ISA_W2_cons_ppp_dollar  //New 2017 poverty line - 124.68 N
+global NPS_LSMS_ISA_W2_poverty_190 (1.90*944.26)*(116.6/116.6)  //Calculation for WB's previous $1.90 (PPP) poverty threshold. This controls the indicator poverty_under_1_9; change the 1.9 to get results for a different threshold. Note this is based on the 2011 PPP conversion!
+global NPS_LSMS_ISA_W2_poverty_nbs 3880.75 *(1.108) //2009-2010 poverty line from 
+global NPS_LSMS_ISA_W2_poverty_215 2.15 * ($NPS_LSMS_ISA_W2_inflation) * $NPS_LSMS_ISA_W2_cons_ppp_dollar  //New 2017 poverty line - 124.68 UGX
 ********************************************************************************
 *THRESHOLDS FOR WINSORIZATION
 ********************************************************************************
@@ -768,11 +755,11 @@ label values crop_code cropID //apply crop labels to crop_code_master
 *Standard Conversion Factor Table: By using All 7 Available Uganda waves we calculated the median conversion factors at the crop-unit-regional level for both sold and harvested crops. For  crops-unit-region conversion factors that were missing observations, information we imputed the conversion factors at the crop-unit-national level values. 
 *This Standard coversion factor table will be used across all Uganda waves to estimate kilogram harvested, and price per kilogram median values. 
 
-merge m:1 crop_code sold_unit_code region using "${UGA_W2_created_data}/Uganda_NPS_W2_UG_Conv_fact_sold_table.dta", keep(1 3) nogen 
+merge m:1 crop_code sold_unit_code region using "${UGA_W2_created_data}/UG_Conv_fact_sold_table.dta", keep(1 3) nogen 
 
 **We merge Crop Sold Conversion Factor at the crop-unit-national level***
 *This is for HHID with missiong regional information. 
-merge m:1 crop_code sold_unit_code  using "${UGA_W2_created_data}/Uganda_NPS_W2_Conv_fact_sold_table_national.dta", keep(1 3) nogen 
+merge m:1 crop_code sold_unit_code  using "${UGA_W2_created_data}/UG_Conv_fact_sold_table_national.dta", keep(1 3) nogen 
 
 *We create Quantity Sold (kg using standard  conversion factor table for each crop- unit and region). 
 replace s_conv_factor_sold = sn_conv_factor_sold if region!=. // We merge the national standard conversion factor for those HHID with missing regional info. 
@@ -798,10 +785,10 @@ foreach i in region district county subcounty parish ea HHID {
 	restore
 
 clonevar  unit_code= unit_code_harv
-merge m:1 crop_code unit_code region using "${UGA_W2_created_data}/Uganda_NPS_W2_Conv_fact_harvest_table.dta", keep(1 3) nogen 
+merge m:1 crop_code unit_code region using "${UGA_W2_created_data}/UG_Conv_fact_harvest_table.dta", keep(1 3) nogen 
 
 ***We merge Crop Harvested Conversion Factor at the crop-unit-national ***
-merge m:1 crop_code unit_code using "${UGA_W2_created_data}/Uganda_NPS_W2_Conv_fact_harvest_table_national.dta", keep(1 3) nogen 
+merge m:1 crop_code unit_code using "${UGA_W2_created_data}/UG_Conv_fact_harvest_table_national.dta", keep(1 3) nogen 
 *This is for HHID that are missing regional information
 
 
@@ -1092,11 +1079,11 @@ replace sold_unit_code = a5bq7c 			if missing(sold_unit_code)
 
 merge m:1 HHID using "${UGA_W2_created_data}/Uganda_NPS_W2_hhids.dta", nogen keepusing(region district county subcounty parish ea weight) keep(1 3)
 ***We merge Crop Sold Conversion Factor at the crop-unit-regional level***
-merge m:1 crop_code sold_unit_code region using "${UGA_W2_created_data}/Uganda_NPS_W2_UG_Conv_fact_sold_table.dta", keep(1 3) nogen 
+merge m:1 crop_code sold_unit_code region using "${UGA_W2_created_data}/UG_Conv_fact_sold_table.dta", keep(1 3) nogen 
 
 ***We merge Crop Sold Conversion Factor at the crop-unit-national level***
 *This is for HHID with missiong regional information. 
-merge m:1 crop_code sold_unit_code  using "${UGA_W2_created_data}/Uganda_NPS_W2_Conv_fact_sold_table_national.dta", keep(1 3) nogen 
+merge m:1 crop_code sold_unit_code  using "${UGA_W2_created_data}/UG_Conv_fact_sold_table_national.dta", keep(1 3) nogen 
 
 *We create Quantity Sold (kg using standard  conversion factor table for each crop- unit and region). 
 replace s_conv_factor_sold = sn_conv_factor_sold if region!=. //  We merge the national standard conversion factor for those HHID with missing regional info. 
@@ -1146,7 +1133,7 @@ rename value_lost crop_value_lost
 lab var crop_value_lost "Value of crop production that had been lost by the time of survey"
 save "${UGA_W2_created_data}/Uganda_NPS_W2_crop_losses.dta", replace
 
-
+/*
 
   /*********************************/
  /* Impute Crop Prices from Sales */
@@ -1430,6 +1417,7 @@ collapse (sum) value_lost, by (HHID)
 rename value_lost crop_value_lost
 lab var crop_value_lost "Value of crop production that had been lost by the time of survey"
 save "${UGA_W2_created_data}/Uganda_NPS_W2_crop_losses.dta", replace
+*/
 
 ********************************************************************************
 *                                 CROP EXPENSES                                *
@@ -2245,7 +2233,7 @@ drop tlu_coefficient
 save "${UGA_W2_created_data}/Uganda_NPS_W2_TLU_Coefficients.dta", /*
 	*/ replace
 
-
+/*
   /***************************/
  /* Crops Lost Post Harvest */
 /***************************/
@@ -2295,7 +2283,7 @@ label variable crop_value_lost /*
 save "${UGA_W2_created_data}/Uganda_NPS_W2_crop_losses.dta", replace
 
 
-
+*/
 ********************************************************************************
 *                               LIVESTOCK INCOME                               *
 ********************************************************************************
@@ -4744,8 +4732,8 @@ foreach i in harvest area {
 }
 gen total_planted_area_ = area_plan_
 *gen total_harv_area_ = area_harv_ 
-gen kgs_harvest_ = harvest_
-drop crop_code kgs_sold kgs_harvest  //
+drop s_quant_harv_kg crop_code kgs_sold
+ren quant_harv_kg kgs_harvest_
 unab vars : *_
 reshape wide `vars', i(HHID) j(crop_name) string
 collapse (sum) harvest* /*area_harv**/  area_plan* total_planted_area* /*total_harv_area**/ kgs_harvest* value_harv* value_sold* /*number_trees_planted**/  , by(HHID) 
@@ -4816,7 +4804,7 @@ recode crop_code 	(210/222			=1	"Beans and Cowpeas" )  ////   Beans, ,Cow peas
 					(120   					=10	"Rice"	)  ////
 					(640				=11	"Yam"	)  //// 
 					(221 223 224 =12 "Other nuts,seeds, and pulses"	)  ////  221  223 224 field peas, pigeon peas, chick peas,
-					(741 742 744						=13	"Bananas")  ////  banana food, banana beer, banana swwet
+					(740 741 742 744						=13	"Bananas")  ////  banana food, banana beer, banana swwet
 					(410 420 440 450 460 470   					=14	"Vegetables"	)  ////  cabbage, tomatoes, onions, pumpkins, dodo, egglplants 
 					(890 =15 "Other"	)  //// 
 					(610						=16	"Potato")  ////  
@@ -5363,9 +5351,9 @@ gen crop_hh = (value_crop_production!=0  | farm_area!=0)
 lab var crop_hh "1= Household has some land cultivated or some crop income"
 gen livestock_hh = (livestock_income!=0 | tlu_today!=0)
 lab  var livestock_hh "1= Household has some livestock or some livestock income"
-*recode fishing_income (.=0)
-*gen fishing_hh = (fishing_income!=0)
-*lab  var fishing_hh "1= Household has some fishing income" // SAW Not Available
+recode fishing_income (.=0)
+gen fishing_hh = (fishing_income!=0)
+lab  var fishing_hh "1= Household has some fishing income" // SAW Not Available
 
 ****getting correct subpopulations***** 
 *Recoding missings to 0 for households growing crops
@@ -6021,7 +6009,7 @@ keep HHID fhh clusterid strataid *weight* /*wgt*/ region /*regurb*/ district cou
 */ *wage_paid_aglabor* *labor_hired /*ar_h_wgt_* *yield_hv_**/ ar_pl_wgt_* *yield_pl_* *liters_per_* /*milk_animals*/ poultry_owned *costs_dairy* *cost_per_lit* /*
 */ *egg_poultry_year* *inorg_fert_rate* *ha_planted* *cost_expli_hh* *cost_expli_ha* *monocrop_ha* *kgs_harv_mono* *cost_total_ha* /*
 */ *_exp* poverty_under_* *value_crop_production* *value_harv* *value_crop_sales* *value_sold* *kgs_harvest* *total_planted_area* /**total_harv_area**/ /*
-*/ *all_area_* grew_* agactivities_hh ag_hh crop_hh livestock_hh /*fishing_hh*/ *_milk_produced* *eggs_total_year *value_eggs_produced* /*
+*/ *all_area_* grew_* agactivities_hh ag_hh crop_hh livestock_hh fishing_hh *_milk_produced* *eggs_total_year *value_eggs_produced* /*
 */ *value_livestock_products* *value_livestock_sales* *total_cons* /*nb_cattle_today nb_poultry_today*/ bottom_40_percap bottom_40_peraeq /*
 */ ccf_loc ccf_usd ccf_1ppp ccf_2ppp *sales_livestock_products area_plan* /*area_harv**/  *value_pro* *value_sal*
 *SAW 3/14/23 Need to check for the ones available in Uganda but not in Nigeria.
@@ -6029,29 +6017,24 @@ keep HHID fhh clusterid strataid *weight* /*wgt*/ region /*regurb*/ district cou
 
 //////////Identifier Variables ////////
 *Add variables and ren household id so dta file can be appended with dta files from other instruments
-gen hhid_panel = HHID 
+ren HHID hhid //hhid should be in lower case throughout for AgQuery+ compatibility
+gen hhid_panel = hhid 
 lab var hhid_panel "panel hh identifier" 
 gen geography = "Uganda"
-la var geography "Location of survey"
-gen survey = "LSMS-ISA"
-la var survey "Survey type (LSMS or AgDev)"
-gen year = "2011-12"
-la var year "Year survey was carried out"
-gen instrument = 25
-la var instrument "Wave and location of survey"
-label define instrument 1 "Tanzania NPS Wave 1" 2 "Tanzania NPS Wave 2" 3 "Tanzania NPS Wave 3" 4 "Tanzania NPS Wave 4" /*
-	*/ 5 "Ethiopia ESS Wave 1" 6 "Ethiopia ESS Wave 2" 7 "Ethiopia ESS Wave 3" /*
-	*/ 8 "Nigeria GHS Wave 1" 9 "Nigeria GHS Wave 2" 10 "Nigeria GHS Wave 3" /*
-	*/ 11 "Tanzania TBS AgDev (Lake Zone)" 12 "Tanzania TBS AgDev (Northern Zone)" 13 "Tanzania TBS AgDev (Southern Zone)" /*
-	*/ 14 "Ethiopia ACC Baseline" /*
-	*/ 15 "India RMS Baseline (Bihar)" 16 "India RMS Baseline (Odisha)" 17 "India RMS Baseline (Uttar Pradesh)" 18 "India RMS Baseline (West Bengal)" /*
-	*/ 19 "Nigeria NIBAS AgDev (Nassarawa)" 20 "Nigeria NIBAS AgDev (Benue)" 21 "Nigeria NIBAS AgDev (Kaduna)" /*
-	*/ 22 "Nigeria NIBAS AgDev (Niger)" 23 "Nigeria NIBAS AgDev (Kano)" 24 "Nigeria NIBAS AgDev (Katsina)" /*
-    */ 25 "Uganda Wave 3" 
+gen survey = "LSMS-ISA" 
+gen year = "2011-12" 
+gen instrument = 53 
+//Only runs if label isn't already defined.
+capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2" 13 "Tanzania NPS Wave 3" 14 "Tanzania NPS Wave 4" 15 "Tanzania NPS Wave 5" /*
+	*/ 21 "Ethiopia ESS Wave 1" 22 "Ethiopia ESS Wave 2" 23 "Ethiopia ESS Wave 3" 24 "Ethiopia ESS Wave 4" 25 "Ethiopia ESS Wave 5" /*
+	*/ 31 "Nigeria GHS Wave 1" 32 "Nigeria GHS Wave 2" 33 "Nigeria GHS Wave 3" 34 "Nigeria GHS Wave 4"/*
+	*/ 41 "Malawi IHS/IHPS Wave 1" 42 "Malawi IHS/IHPS Wave 2" 43 "Malawi IHS/IHPS Wave 3" 44 "Malawi IHS/IHPS Wave 4" /*
+    */ 51 "Uganda NPS Wave 1" 52 "Uganda NPS Wave 2" 53 "Uganda NPS Wave 3" 54 "Uganda NPS Wave 4" 55 "Uganda NPS Wave 5" /*W6 does not exist*/ 56 "Uganda NPS Wave 7" 57 "Uganda NPS Wave 8" /* 
+*/ 61 "Burkina Faso EMC Wave 1" /* 
+*/ 71 "Mali EACI Wave 1" 72 "Mali EACI Wave 2" /*
+*/ 81 "Niger ECVMA Wave 1" 82 "Niger ECVMA Wave 2"
 label values instrument instrument	
-*SAW Notes: We need an actual number for Uganda waves. 
-saveold "${UGA_W2_final_data}/Uganda_NPS_W2_household_variables.dta", replace
-use "${UGA_W2_final_data}/Uganda_NPS_W2_household_variables.dta", clear
+saveold "${UGA_W2_final_data}/UGA_W2_household_variables.dta", replace
 
 ********************************************************************************
                           *INDIVIDUAL-LEVEL VARIABLES*
@@ -6139,29 +6122,29 @@ foreach v of varlist $empty_vars {
 	replace `v' = .
 }
 
+gen clusterid = ea
+
+
 //////////Identifier Variables ////////
 *Add variables and ren household id so dta file can be appended with dta files from other instruments
-gen hhid_panel = HHID 
+ren HHID hhid
+gen hhid_panel = hhid 
 lab var hhid_panel "panel hh identifier" 
-ren PID indid
-gen geography = "Nigeria"
-gen survey = "LSMS-ISA"
-gen year = "2015-16"
-gen instrument = 25
-capture label define instrument 1 "Tanzania NPS Wave 1" 2 "Tanzania NPS Wave 2" 3 "Tanzania NPS Wave 3" 4 "Tanzania NPS Wave 4" /*
-	*/ 5 "Ethiopia ESS Wave 1" 6 "Ethiopia ESS Wave 2" 7 "Ethiopia ESS Wave 3" /*
-	*/ 8 "Nigeria GHS Wave 1" 9 "Nigeria GHS Wave 2" 10 "Nigeria GHS Wave 3" /*
-	*/ 11 "Tanzania TBS AgDev (Lake Zone)" 12 "Tanzania TBS AgDev (Northern Zone)" 13 "Tanzania TBS AgDev (Southern Zone)" /*
-	*/ 14 "Ethiopia ACC Baseline" /*
-	*/ 15 "India RMS Baseline (Bihar)" 16 "India RMS Baseline (Odisha)" 17 "India RMS Baseline (Uttar Pradesh)" 18 "India RMS Baseline (West Bengal)" /*
-	*/ 19 "Nigeria NIBAS AgDev (Nassarawa)" 20 "Nigeria NIBAS AgDev (Benue)" 21 "Nigeria NIBAS AgDev (Kaduna)" /*
-	*/ 22 "Nigeria NIBAS AgDev (Niger)" 23 "Nigeria NIBAS AgDev (Kano)" 24 "Nigeria NIBAS AgDev (Katsina)"  /*
-	*/ 25 "Uganda Wave 3" 
-
+gen geography = "Uganda"
+gen survey = "LSMS-ISA" 
+gen year = "2011-12" 
+gen instrument = 53 
+//Only runs if label isn't already defined.
+capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2" 13 "Tanzania NPS Wave 3" 14 "Tanzania NPS Wave 4" 15 "Tanzania NPS Wave 5" /*
+	*/ 21 "Ethiopia ESS Wave 1" 22 "Ethiopia ESS Wave 2" 23 "Ethiopia ESS Wave 3" 24 "Ethiopia ESS Wave 4" 25 "Ethiopia ESS Wave 5" /*
+	*/ 31 "Nigeria GHS Wave 1" 32 "Nigeria GHS Wave 2" 33 "Nigeria GHS Wave 3" 34 "Nigeria GHS Wave 4"/*
+	*/ 41 "Malawi IHS/IHPS Wave 1" 42 "Malawi IHS/IHPS Wave 2" 43 "Malawi IHS/IHPS Wave 3" 44 "Malawi IHS/IHPS Wave 4" /*
+    */ 51 "Uganda NPS Wave 1" 52 "Uganda NPS Wave 2" 53 "Uganda NPS Wave 3" 54 "Uganda NPS Wave 4" 55 "Uganda NPS Wave 5" /*W6 does not exist*/ 56 "Uganda NPS Wave 7" 57 "Uganda NPS Wave 8" /* 
+*/ 61 "Burkina Faso EMC Wave 1" /* 
+*/ 71 "Mali EACI Wave 1" 72 "Mali EACI Wave 2" /*
+*/ 81 "Niger ECVMA Wave 1" 82 "Niger ECVMA Wave 2"
 label values instrument instrument	
-*gen strataid=region
-gen clusterid=ea
-saveold "${UGA_W2_final_data}/Uganda_NPS_W2_individual_variables.dta", replace
+saveold "${UGA_W2_final_data}/UGA_W2_individual_variables.dta", replace
 
 ********************************************************************************
 *PLOT -LEVEL VARIABLES
@@ -6179,8 +6162,8 @@ merge m:1 HHID using "${UGA_W2_created_data}/Uganda_NPS_W2_weights.dta", keep (1
 merge 1:1 HHID parcel_id plot_id season using `crop_values', keep (1 3) nogen //  plot-season level
 merge 1:1 HHID parcel_id plot_id season using "${UGA_W2_created_data}/Uganda_NPS_W2_plot_decision_makers.dta", keep (1 3) nogen //  plot-season level
 merge m:1 HHID parcel_id plot_id using "${UGA_W2_created_data}/Uganda_NPS_W2_plot_labor_days.dta", keep (1 3) nogen // plot level
-
-/*DYA.12.2.2020*/ merge m:1 HHID using "${UGA_W2_final_data}/Uganda_NPS_W2_household_variables.dta", nogen keep (1 3) keepusing(ag_hh fhh farm_size_agland region ea)
+ren HHID hhid //ALT: Standard for AgQuery is lower case
+/*DYA.12.2.2020*/ merge m:1 hhid using "${UGA_W2_final_data}/Uganda_NPS_W2_household_variables.dta", nogen keep (1 3) keepusing(ag_hh fhh farm_size_agland region ea)
 /*DYA.12.2.2020*/ recode farm_size_agland (.=0) 
 /*DYA.12.2.2020*/ gen rural_ssp=(farm_size_agland<=4 & farm_size_agland!=0) & rural==1 
 
@@ -6411,23 +6394,24 @@ gen plot_labor_weight= w_labor_total*weight
 
 //////////Identifier Variables ////////
 *Add variables and ren household id so dta file can be appended with dta files from other instruments
-gen HHID_panel = HHID 
-lab var HHID_panel "panel hh identifier" 
+
+gen hhid_panel = hhid 
+lab var hhid_panel "panel hh identifier" 
 gen geography = "Uganda"
-gen survey = "LSMS-ISA"
-gen year = "2011-12"
-gen instrument = 25
-capture label define instrument 1 "Tanzania NPS Wave 1" 2 "Tanzania NPS Wave 2" 3 "Tanzania NPS Wave 3" 4 "Tanzania NPS Wave 4" /*
-	*/ 5 "Ethiopia ESS Wave 1" 6 "Ethiopia ESS Wave 2" 7 "Ethiopia ESS Wave 3" /*
-	*/ 8 "Nigeria GHS Wave 1" 9 "Nigeria GHS Wave 2" 10 "Nigeria GHS Wave 3" /*
-	*/ 11 "Tanzania TBS AgDev (Lake Zone)" 12 "Tanzania TBS AgDev (Northern Zone)" 13 "Tanzania TBS AgDev (Southern Zone)" /*
-	*/ 14 "Ethiopia ACC Baseline" /*
-	*/ 15 "India RMS Baseline (Bihar)" 16 "India RMS Baseline (Odisha)" 17 "India RMS Baseline (Uttar Pradesh)" 18 "India RMS Baseline (West Bengal)" /*
-	*/ 19 "Nigeria NIBAS AgDev (Nassarawa)" 20 "Nigeria NIBAS AgDev (Benue)" 21 "Nigeria NIBAS AgDev (Kaduna)" /*
-	*/ 22 "Nigeria NIBAS AgDev (Niger)" 23 "Nigeria NIBAS AgDev (Kano)" 24 "Nigeria NIBAS AgDev (Katsina)"   /*
-	*/ 25 "Uganda Wave 3"
+gen survey = "LSMS-ISA" 
+gen year = "2011-12" 
+gen instrument = 53 
+//Only runs if label isn't already defined.
+capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2" 13 "Tanzania NPS Wave 3" 14 "Tanzania NPS Wave 4" 15 "Tanzania NPS Wave 5" /*
+	*/ 21 "Ethiopia ESS Wave 1" 22 "Ethiopia ESS Wave 2" 23 "Ethiopia ESS Wave 3" 24 "Ethiopia ESS Wave 4" 25 "Ethiopia ESS Wave 5" /*
+	*/ 31 "Nigeria GHS Wave 1" 32 "Nigeria GHS Wave 2" 33 "Nigeria GHS Wave 3" 34 "Nigeria GHS Wave 4"/*
+	*/ 41 "Malawi IHS/IHPS Wave 1" 42 "Malawi IHS/IHPS Wave 2" 43 "Malawi IHS/IHPS Wave 3" 44 "Malawi IHS/IHPS Wave 4" /*
+    */ 51 "Uganda NPS Wave 1" 52 "Uganda NPS Wave 2" 53 "Uganda NPS Wave 3" 54 "Uganda NPS Wave 4" 55 "Uganda NPS Wave 5" /*W6 does not exist*/ 56 "Uganda NPS Wave 7" 57 "Uganda NPS Wave 8" /* 
+*/ 61 "Burkina Faso EMC Wave 1" /* 
+*/ 71 "Mali EACI Wave 1" 72 "Mali EACI Wave 2" /*
+*/ 81 "Niger ECVMA Wave 1" 82 "Niger ECVMA Wave 2"
 label values instrument instrument		
-saveold "${UGA_W2_final_data}/Uganda_NPS_W2_field_plot_variables.dta", replace 
+saveold "${UGA_W2_final_data}/UGA_W2_field_plot_variables.dta", replace 
 
 *SAW Notes: I still need to figure out if we want data at the plot-season level or at the plot-year level, then I will need to update the subsections that are merged in this section 
 ********************************************************************************
@@ -6440,8 +6424,8 @@ The code for outputting the summary statistics is in a separare dofile that is c
 */ 
 *Parameters
 
-global list_instruments "Uganda_NPS_W2"
-do "R:\Project\EPAR\Working Files\378 - LSMS Burkina Faso, Malawi, Uganda\_SUMMARY_STATS\378_Uganda_Wave2_summarystats_CPK8.21.23.do"
+global list_instruments "UGA_W2"
+do "$directory/EPAR_UW_335_Summary_statistics.do"
 
 
 
