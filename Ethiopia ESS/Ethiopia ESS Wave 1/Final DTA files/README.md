@@ -1,1 +1,3 @@
-Final .dta files will be saved here
+### Output datasets
+ 
+Anything created by the code gets stored here. "Created Data" saves the intermediate files, "Final Data" the finished household/individual/plot variables and summary statistics, and temp data contains alternate versions of the raw data files created by a code chunk in the beginning. The purpose of this chunk is to append additional information to the household and plot identifier variables such that only one variable is needed to uniquely identify an observation as opposed to a combination. 
