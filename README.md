@@ -1,4 +1,4 @@
-# 335_Agricultural-Indicator-Curation
+# EPAR LSMS Agricultural Indicator Data Curation
 
 This repository includes Stata do.files developed by the Evans School Policy Analysis & Research Group (EPAR) for the construction of a set of agricultural development indicators using data from the World Bank's Living Standards Measurement Study - Integrated Surveys on Agriculture (LSMS-ISA) surveys and produced in partnership with the host countries' national statistics bureaus. These files were developed as part of the EPAR Agricultural Development Indicator Curation project: https://evans.uw.edu/policy-impact/epar/research/agricultural-development-indicator-curation
 		
@@ -16,7 +16,7 @@ Code is currently available for five countries:
 	
 Note that Uganda and Malawi do files are being made available before the development process is fully complete; thus, the files may not run fully or may produce inaccurate estimates. Please verify all output. Refer to each wave's subfolder for documentation on the status of the code and any known issues with the raw data. 
 		
-If you use or modify our code, please cite us using the provided citation.
+If you use or modify our code, please cite us using the provided citation in the header of the do file.
 		
 This repository includes a separate folder for each country. Each of these folders includes master Stata .do files with all of the code used to generate the final set of indicators from the raw survey data for a given survey wave. See the USER GUIDE file in this repository for guidance on how to download the files in this repository and raw data available from the World Bank in order to run the .do files. 
 
