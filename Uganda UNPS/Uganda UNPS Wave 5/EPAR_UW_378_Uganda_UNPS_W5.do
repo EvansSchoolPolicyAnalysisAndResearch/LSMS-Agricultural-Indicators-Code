@@ -164,11 +164,12 @@ ssc install findname  // need this user-written ado file for some commands to wo
 // set directories
 * These paths correspond to the folders where the raw data files are located 
 * and where the created data and final data will be stored.
-global root_folder "335_Agricultural-Indicator-Curation"
-global UGA_W2_raw_data "$root_folder/Uganda UNPS/Uganda UNPS Wave 2/raw_data"
-global UGA_W2_final_data "$root_folder/Uganda UNPS/Uganda UNPS Wave 2/Final DTA Files/final_data"
-global UGA_W2_created_data "$root_folder/Uganda UNPS/Uganda UNPS Wave 2/Final DTA Files/created_data"
-global directory "$root_folder/_Summary_statistics/"
+global root_folder "//netid.washington.edu/wfs/EvansEPAR/Project/EPAR/Working Files/378 - LSMS Burkina Faso, Malawi, Uganda"
+
+global Uganda_NPS_W5_raw_data "$root_folder/uganda-wave5-2015-16/Raw DTA files"
+global Uganda_NPS_W5_final_data "$root_folder/uganda-wave5-2015-16/Final DTA Files/final_data"
+global Uganda_NPS_W5_created_data "$root_folder/uganda-wave5-2015-16/Final DTA Files/created_data"
+global directory "//netid.washington.edu/wfs/EvansEPAR/Project/EPAR/Working Files/RA Working Folders/Claire/Shrek/Gingerbread_man/_Summary_statistics/EPAR_UW_335_SUMMARY_STATISTICS.do"
 
 
 *Re-scaling survey weights to match population estimates
@@ -472,7 +473,7 @@ restore
 *ALL PLOTS
 ********************************************************************************
 /*Purpose:
-Crop values section is about finding out the value of sold crops. It saves the results in temporary storage that is deleted once the code stops running, so the entire section must be ran at once (conversion factors require output from Crop Values section).
+Crop values section is about finding out the value of sold crops. It saves the results in temporary storage that is deleted once the code stops running, so the entire section must be ran at once (conversion factors require output from Crop Values section). Unfortunately in W5, the question asking farmers about crop value is ambiguous resulting in responses about total crop sold values and per unit crop value sold. Because of this these values are on average must lower than they should be. Crop values are therefore useless in W5 so we add them to empty_vars in household and individual variables sections. 
 
 Plot variables section is about pretty much everything else you see below in all_plots.dta. It spends a lot of time creating proper variables around intercropped, monocropped, and relay cropped plots, as the actual data collected by the survey seems inconsistent here.
 
@@ -496,14 +497,14 @@ clonevar sold_value= a5aq8
 replace sold_value=a5bq8 if sold_value==. 
 gen sold_qty=a5aq7a
 replace sold_qty=a5bq7a if sold_qty==.
+replace sold_value =. if (sold_value ==0 & sold_qty==0)
+drop if sold_value == 0 & sold_qty !=0 // 2 deleted
 rename HHID hhid
 merge m:1 hhid using "${Uganda_NPS_W5_created_data}/Uganda_NPS_W5_hhids.dta", nogen keepusing(region district county county_name parish ea weight) keep(1 3)
 rename plotID plot_id
 rename parcelID parcel_id
+*4 crop codes that don't exist - 2 480 and 2 490 which aren't in the crop code list (checked ag manual)
 rename cropID crop_code
-recode crop_code  (741 742 744 = 740)  //  Same for bananas (740)
-label define cropID 740 "Bananas", modify //need to add new codes to the value label, cropID
-label values crop_code cropID //apply crop labels to crop_code_master
 drop if plot_id==. | parcel_id==. | crop_code==.	
 	
 **********************************
@@ -512,7 +513,7 @@ drop if plot_id==. | parcel_id==. | crop_code==.
 *This section calculates Price per kg (Sold value ($)/Qty Sold (kgs)) but using Standard Conversion Factor table instead of raw WB Conversion factor w3 -both harvested and sold.
  *Standard Conversion Factor Table: By using All 7 Available Uganda waves we calculated the median conversion factors at the crop-unit-regional level for both sold and harvested crops. For  crops-unit-region conversion factors that were missing observations, information we imputed the conversion factors at the crop-unit-national level values. 
 *This Standard coversion factor table will be used across all Uganda waves to estimate kilogram harvested, and price per kilogram median values. 
-
+*
 ***We merge Crop Sold Conversion Factor at the crop-unit-regional level***
 merge m:1 crop_code sold_unit_code region using "${Uganda_NPS_W5_created_data}/Conv_fact_sold_table.dta", keep(1 3) nogen 
 
@@ -599,8 +600,8 @@ rename cropID crop_code_plant //crop codes for what was planted
 rename HHID hhid
 drop if crop_code_plant == .
 clonevar crop_code_master = crop_code_plant //we want to keep the original crop IDs intact while reducing the number of categories in the master version
-recode crop_code_master  (741 742 744 = 740) //740 is bananas, which is being reduced from different types to just bananas. Same for peas (220).
-label define L_CROP_LIST 740 "Bananas", modify //need to add new codes to the value label, cropID
+*recode crop_code_master  (741 742 744 = 740) //740 is bananas, which is being reduced from different types to just bananas. Same for peas (220).
+*label define L_CROP_LIST 740 "Bananas", modify //need to add new codes to the value label, cropID
 label values crop_code_master L_CROP_LIST //apply crop labels to crop_code_master
 *tostring hhid, format(%18.0f) replace
 *Merge area variables (now calculated in plot areas section earlier)
@@ -1716,11 +1717,13 @@ lab var value_eggs_produced "Value of eggs produced"
 *lab var value_meat_produced "Value of meat produced"
 save "${Uganda_NPS_W5_created_data}/Uganda_NPS_W5_livestock_products", replace 
 
-*****************************    LIVESTOCK SOLD (LIVE)       *******************************
+****************************************************************************
+*LIVESTOCK SOLD (LIVE)*  
+***************************************************************************
 use "${Uganda_NPS_W5_raw_data}/AGSEC6A", clear
 append using "${Uganda_NPS_W5_raw_data}/AGSEC6B"
 append using "${Uganda_NPS_W5_raw_data}/AGSEC6C"
-//Making sure value labels for 6B and 6C get carried over. Just in case.
+/*Making sure value labels for 6B and 6C get carried over. Just in case.
 label define lvstid 13 "Exotic/Cross - Male Goats"/*
 						*/ 14 "Exotic/Cross - Female Goats"/*
 						*/ 15 "Exotic/Cross - Male Sheep"/*
@@ -1737,29 +1740,53 @@ label define lvstid 13 "Exotic/Cross - Male Goats"/*
 						*/ 26 "Other poultry and birds (turkeys/ducks/geese)"/*
 						*/ 27 "Rabbits"/*
 						*/ 28 "Beehives", add
+						*/
 tostring HHID, format(%18.0f) replace
-//Time periods differ across livestock type: Cattle & pack animals (12 months), small animals (6 months), poultry (3 months)
+//Time periods differ across livestock type: Cattle & pack animals (12 months), small animals (12 months), poultry (3 months)
 //Adjust time periods below to 12 months 
-ren LiveStockID livestock_code
+
+* Rename key variables for consistency across instruments
+rename LiveStockID livestock_code
+replace livestock_code = ALiveStock_Small_ID	if missing(livestock_code)
+replace livestock_code = APCode	if missing(livestock_code)
+
+* Get rid of observations missing a livestock_code
+drop if missing(livestock_code)
+
+* Combine value labels for livestock_codes from the three files
+* From Small Animals (Goat, sheep, pigs)
+levelsof ALiveStock_Small_ID, local(levs)
+foreach v of local levs {
+	label define LiveStockID `v' "`: label (ALiveStock_Small_ID) `v''", add
+}
+
+* From Poultry/Rabbits/etc.
+levelsof APCode, local(levs)
+foreach v of local levs {
+	label define LiveStockID `v' "`: label (APCode) `v''", add
+}
+
 ren a6aq2 animal_owned
 replace animal_owned=a6bq2 if animal_owned==.
 replace animal_owned=a6cq2 if animal_owned==.
-keep if animal_owned==1
+keep if animal_owned==1 // 5142 obs
 ren a6aq14a number_sold
-replace number_sold = 2*a6bq14a if number_sold==. & a6bq14a!=.
+replace number_sold = a6bq14a if number_sold==. & a6bq14a!=.
+*survey asks Did you sell any alive [...] during the last 3 months ? -- need to multiply by 4 to get to yearly number sold
 replace number_sold = 4*a6cq14a if number_sold==. & a6cq14a!=.
+*What was, on average the value of each *…+ sold? / mean of 787,733 USH per large animal, 90,256 USH per small animal, sum of 18,690 USH per chicken
 ren a6aq14b value_sold
 replace value_sold=a6bq14b if value_sold==.
 replace value_sold=a6cq14b if value_sold==.
 gen income_live_sales = value_sold*number_sold //total sales value of all sold
 
 ren a6aq15 number_slaughtered
-replace number_slaughtered = 2*a6bq15 if number_slaughtered==. & a6bq15!=.
-replace number_slaughtered = 4*a6cq15 if number_slaughtered==. & a6cq15!=.
+replace number_slaughtered = a6bq15 if number_slaughtered==. & a6bq15!=.
+replace number_slaughtered = a6cq15 if number_slaughtered==. & a6cq15!=.
 
 ren a6aq13a number_livestock_purchases
-replace number_livestock_purchases = 2*a6bq13a if number_livestock_purchases==.
-replace number_livestock_purchases = 4*a6cq13a if number_livestock_purchases==.
+replace number_livestock_purchases = a6bq13a if number_livestock_purchases==. & a6bq13a!=.
+replace number_livestock_purchases = 4*a6cq13a if number_livestock_purchases==. & a6cq13a!=.
 
 ren a6aq13b price_livestock
 replace price_livestock = a6bq13b if price_livestock==.
@@ -1857,10 +1884,12 @@ replace number_1yearago = a6bq6 if number_1yearago==.
 replace number_1yearago = a6cq6 if number_1yearago==. 
 gen number_today= a6aq3a
 replace number_today = a6bq3a if number_today==. 
-replace number_today = a6bq3a if number_today==. //No estimated price value by farmers questions or owned  at the start of the ag season like Nigeria_GHS_W3_raw_data
+replace number_today = a6cq3a if number_today==. 
+*replace number_today = a6bq3a if number_today==. //No estimated price value by farmers questions or owned  at the start of the ag season like Nigeria_GHS_W3_raw_data
 gen number_today_exotic = number_today if inlist(livestock_code,1,2,3,4,5,13,14,15,16,17)
 gen tlu_1yearago = number_1yearago * tlu_coefficient
 gen tlu_today = number_today * tlu_coefficient
+
 gen income_live_sales = a6aq14b // Value of each animal sold on average
 replace income_live_sales = a6bq14b*1 if income_live_sales==. & a6bq14b!=. //EFW 8.26.19 multiply by 2 because question asks in last 6 months
 replace income_live_sales = a6cq14b*1 if income_live_sales==. & a6cq14b!=. //EFW 8.26.19 multiplu by 4 because question asks in last 3 months
@@ -1878,14 +1907,131 @@ replace lost_other = a6cq11*4 if lost_other==. & a6cq11!=.
 gen lost_disease = a6aq12 //includes animals lost to disease
 replace lost_disease = a6bq12*2 if lost_disease==. & a6bq12!=. 
 replace lost_disease = a6cq12*4 if lost_disease==. & a6cq12!=.
-gen animals_lost = lost_theft + lost_other + lost_disease //includes animals died or lost due to theft,injury accident natural calamity and disease
+gen animals_lost12months = lost_theft + lost_other + lost_disease //includes animals died or lost due to theft,injury accident natural calamity and disease
+egen 	mean_12months			= rowmean(number_today number_1yearago)
 
-gen species = "lrum" if inlist(livestock_code,1,2,3,4,5,6,7,8,9,10)
-replace species = "srum" if inlist(livestock_code,13,14,15,16,18,19,20,21)
-replace species = "pigs" if inlist(livestock_code,17,22)
-replace species = "equine" if inlist(livestock_code,11,12)
-replace species = "poultry" if inlist(livestock_code,23,24,25,26)
-drop if strmatch(species,"") //Omitting fish and rabbits; might be better to include these (not a large number of hh's, though)
+*CPK - adding improved herd 
+preserve
+	* Only keep the cows
+	keep if livestock_code == 5 | livestock_code == 10
+	* Collapse to the household level, requires you to have separated out
+	* number_today_exotic 
+	bysort hhid : egen herd_cows_tot = sum(number_today)
+	
+	* Calculate the percentage of cows which are improved
+	gen share_imp_herd_cows	= number_today_exotic / herd_cows_tot
+	* collapse to household to deal with differences between exotic and 
+	* indigenous observations
+	collapse (max) share_imp_herd_cows, by (hhid)
+	tempfile cows
+	save `cows', replace
+restore
+
+merge m:1 hhid using `cows', nogen
+
+*Break into our species rather than instrument's livestock code
+gen species	= 			1 * (inrange(livestock_code, 1, 10)) 	+ /*
+					*/	2 * (inrange(livestock_code, 11, 12))	+ /*
+					*/	3 * (livestock_code == 13 | livestock_code == 14 | livestock_code == 15 | livestock_code == 16 | livestock_code == 18 | livestock_code == 19 | livestock_code == 20 | livestock_code == 21)	+ /*
+					*/  4 * (livestock_code == 17 | livestock_code ==22) 				+ /*
+					*/	5 * (inrange(livestock_code, 23, 27))
+
+label value species species
+
+preserve
+	* Collapse to the species level
+	collapse (firstnm) share_imp_herd_cows (sum) number_1yearago	/*
+		*/ animals_lost12months number_today_exotic lost_theft lost_other lost_disease				/*
+		*/ lvstck_holding = number_today, by(hhid species)
+	* Recalculate the mean number of animals for the last 12 months at the 
+	* collapsed level
+	egen mean_12months	= rowmean(lvstck_holding number_1yearago)
+	* Are there any improved animals of this species
+	gen any_imp_herd	= number_today_exotic != 0	& /*
+		*/ ~missing(number_today_exotic) & lvstck_holding != 0 &  /*
+		*/ ~missing(lvstck_holding)
+	* Create a local for the repeated variables - Leaves out any_imp_herd 
+	* because it is not used in all the loops/places that the others are
+	local ls_vars lvstck_holding mean_12months animals_lost12months 
+
+
+* Create data for the species data
+local species_list "lrum srum pigs equine poultry"
+local species_len : list sizeof local(species_list)
+
+label define species 	1 "Large ruminants (cows, oxen)"	/*
+					*/	2 "Equine (horses, donkeys)"		/*
+					*/	3 "Small ruminants (sheep, goats)"	/*
+					*/	4 "Pigs"							/*
+					*/	5 "Poultry (including rabbits)"
+
+* Disaggregate by species
+	foreach i in `ls_vars' lost_disease any_imp_herd {
+		* Use a loop to reshape the data
+		forvalues k=1(1)`species_len' {
+			local s	: word `k' of `species_list'
+			gen `i'_`s' = `i' if species == `k'
+		}
+	}
+	* Collapse again to the household level
+	collapse (max) any_imp_herd lost_disease (firstnm) *_lrum *_srum /*
+		*/ *_pigs *_equine *_poultry share_imp_herd_cows, by(hhid)
+
+	* Check if there are any improved large ruminants, small ruminants, or
+	* poultry.
+	egen any_imp_herd_all 	= rowmax(any_imp_herd_lrum any_imp_herd_srum /*
+		*/ any_imp_herd_poultry)
+	* Sum the large ruminants, small ruminants and poultry
+	egen lvstck_holding_all = rowtotal(lvstck_holding_lrum 	/*
+		*/ lvstck_holding_srum lvstck_holding_poultry)
+
+	* Gen blank versions of the name livestock variables for labeling. This
+	* way we can create the base labels then modify them for each species 
+	* in a loop rather than having to label each of these as at the species
+	* level by hand
+	foreach i in `ls_vars' {
+		gen `i' = .
+	}	
+
+	* Create the base labels
+	label variable lvstck_holding /*
+		*/"Total number of livestock holdings (# of animals)"
+	label variable any_imp_herd "At least one improved animal in herd"
+	label variable share_imp_herd_cows /*
+		*/ "Share of improved animals in total herd - Cows only"
+	label variable animals_lost12months /*
+		*/ "Total number of livestock lost to disease or injury"
+	label variable mean_12months /*
+		*/"Average number of livestock today and one year ago"
+	label variable lvstck_holding_all /*
+		*/ "Total number of livestock holdings (# of animals) - large ruminants small ruminants, poultry"
+	label variable any_imp_herd_all /*
+		*/ "1=hh has any improved lrum, srum or poultry"
+
+	foreach i in `ls_vars' any_imp_herd {
+		* Capture the value of current variables label
+		local l : var lab `i'
+		* Append species info and apply label to species
+		lab var `i'_lrum 	"`l' - large ruminants"
+		lab var `i'_srum 	"`l' - small ruminants"
+		lab var `i'_pigs 	"`l' - pigs"
+		lab var `i'_equine	"`l' - equine"
+		lab var `i'_poultry	"`l' - poultry"
+	}
+	* Relabling any_imp_herd to reflect it is all animals
+	label variable any_imp_herd /*
+		*/ "At least one improved animal in herd - all animals"
+	* Drop the variables created solely for labeling purposes
+	drop `ls_vars'
+
+	* Households which report missing numbers for some types of livestock should
+	* be counted as having no livestock
+	recode lvstck_holding* (.=0)
+	save "${Uganda_NPS_W5_created_data}/Uganda_NPS_W5_herd_characteristics",/*
+		*/ replace
+restore 
+
+
 rename income_live_sales price_per_animal // The variable it is already per animal sold units
 recode price_per_animal (0=.)
 
@@ -1901,7 +2047,7 @@ gen value_1yearago = number_1yearago * price_per_animal
 collapse (sum) number_today number_1yearago lost_theft lost_other lost_disease animals_lost lvstck_holding=number_today value* tlu*, by(hhid species)
 egen mean_12months=rowmean(number_today number_1yearago)
 save "${Uganda_NPS_W5_created_data}/Uganda_NPS_W5_herd_characteristics_long.dta", replace //AgQuery
-
+/*
 preserve
 keep hhid species number_today number_1yearago /*animals_lost*/ lost_disease lost_other lost_theft  lvstck_holding mean_12months
 global lvstck_vars number_today number_1yearago lost_other lost_theft lost_disease lvstck_holding mean_12months
@@ -1913,6 +2059,7 @@ gen lvstck_holding_all = lvstck_holding_lrum + lvstck_holding_srum + lvstck_hold
 la var lvstck_holding_all "Total number of livestock holdings (# of animals) - large ruminants, small ruminants, poultry"
 save "${Uganda_NPS_W5_created_data}/Uganda_NPS_W5_herd_characteristics.dta", replace 
 restore
+*/
 
 collapse (sum) tlu_1yearago tlu_today value_1yearago value_today, by (hhid)
 lab var tlu_1yearago "Tropical Livestock Units as of one year ago"
@@ -1978,6 +2125,7 @@ use "${Uganda_NPS_W5_raw_data}/gsec8.dta", clear
 gen wage_yesno = h8q5==1 // did any wage work in the last 12 months y/n
 ren h8q30a number_months // months worked for main job
 ren h8q30b number_weeks_per_month //weeks per month worked for main job
+* Why would we do this? Wouldn't we want to do weeks/month*months worked? Interestingly this column has a lot of missings 
 gen number_weeks = number_weeks_per_month*12
 egen hours_pastweek = rowtotal(h8q36a h8q36b h8q36c h8q36d h8q36e h8q36f h8q36g) if h8q36a!=. | h8q36b!=. | h8q36c!=. | h8q36d!=. | h8q36e!=. | h8q36f!=. | h8q36g!=.
 gen number_hours = hours_pastweek*number_weeks
@@ -2381,7 +2529,7 @@ gen feed_grazing = ( a7bq2a==1 |  a7bq2a==2 |  a7bq2b==1 |  a7bq2b==2)
 *SAW Difference between Uganda wave 3 and Wave 4 is that the latter ask about the 2 main feeding practices while wave 3 only ask for 1 main practice.
 lab var feed_grazing "1=HH feeds only or mainly by grazing"
 gen water_source_nat = (a7bq3b==5 | a7bq3b==6 | a7bq3b==7 | a7bq3b==9 | a7bq3c==5 | a7bq3c==6 | a7bq3c==7 | a7bq3c==9) 
-gen water_source_const = (a7bq3b==1 | a7bq3b==2 | a7bq3b==3 | a7bq3b==9 | a7bq3c==1 | a7bq3c==2 | a7bq3c==3 | a7bq3c==9)
+gen water_source_const = (a7bq3b==1 | a7bq3b==2 | a7bq3b==3 | a7bq3b==4 | a7bq3c==1 | a7bq3c==2 | a7bq3c==3 | a7bq3c==4)
 gen water_source_cover = (a7bq3b==4 | a7bq3b==8 | a7bq3b==10 | a7bq3c==4 | a7bq3c==8 | a7bq3c==10) 
 lab var water_source_nat "1=HH water livestock using natural source"
 lab var water_source_const "1=HH water livestock using constructed source"
@@ -3626,7 +3774,8 @@ save "${Uganda_NPS_W5_created_data}/Uganda_NPS_W5_hh_assets.dta", replace
 *HOUSEHOLD VARIABLES
 ********************************************************************************
 global empty_vars ""
-*global empty_vars $empty_vars "fishing_hh"
+gen fishing_hh=.
+global empty_vars $empty_vars value_crop_sales value_crop_production crop_value_lost val_harv_mono_* value_pro_* value_sal_* crop_income value_harv* fishing_hh
 
 use "${Uganda_NPS_W5_created_data}/Uganda_NPS_W5_hhids.dta", clear
 merge 1:1 hhid using "${Uganda_NPS_W5_created_data}/Uganda_NPS_W5_hh_adulteq.dta", nogen keep(1 3)
@@ -3720,8 +3869,8 @@ gen animals_lost12months =0
 gen mean_12months=0
 la var animals_lost12months "Total number of livestock  lost to disease"
 la var mean_12months "Average number of livestock  today and 1  year ago"
-gen any_imp_herd_all = . 
-foreach v in ls_exp_vac any_imp_herd{
+*gen any_imp_herd_all = . 
+foreach v in ls_exp_vac /*any_imp_herd*/{
 foreach i in lrum srum poultry {
 	gen `v'_`i' = .
 	}
@@ -4137,13 +4286,6 @@ gen labor_productivity = w_value_crop_production/w_labor_total
 lab var land_productivity "Land productivity (value production per ha cultivated)"
 lab var labor_productivity "Labor productivity (value production per labor-day)"   
 
-/*
-*milk productivity
-gen liters_per_largeruminant= .
-la var liters_per_largeruminant "Average quantity (liters) per year (household)"
-global empty_vars $empty_vars liters_per_largeruminant		
-*/
-
 *milk productivity
 gen liters_per_largeruminant= w_liters_milk_produced
 la var liters_per_largeruminant "Average quantity (liters) per year (household)"
@@ -4516,13 +4658,23 @@ la var poverty_under_npl "Household per-capita consumption is below national pov
 *dropping unnecessary varables
 drop *_inter_*
 
-/*
+
 *Recode to missing any variables that cannot be created in this instrument
 *replace empty vars with missing
 foreach v of varlist $empty_vars { 
 	replace `v' = .
 }
-*/
+
+foreach var in global empty_vars { 
+capture confirm `var'
+if _rc {
+gen `var' = . 
+}
+else {
+replace `var'=.
+}
+}
+
 // Removing intermediate variables to get below 5,000 vars
 keep hhid fhh clusterid strataid *weight* *wgt* region region district county county_name parish parish_code ea rural farm_size* *total_income* /*
 */ *percapita_income* *percapita_cons* *daily_percap_cons* *peraeq_cons* *daily_peraeq_cons* /*
@@ -4533,7 +4685,7 @@ keep hhid fhh clusterid strataid *weight* *wgt* region region district county co
 */ *wage_paid_aglabor* *labor_hired /*ar_h_wgt_* *yield_hv_**/ ar_pl_wgt_* *yield_pl_* *liters_per_* milk_animals poultry_owned *costs_dairy* *cost_per_lit* /*
 */ *egg_poultry_year* *inorg_fert_rate* *ha_planted* *cost_expli_hh* *cost_expli_ha* *monocrop_ha* *kgs_harv_mono* *cost_total_ha* /*
 */ *_exp* poverty_under_* *value_crop_production* *value_harv* *value_crop_sales* *value_sold* *kgs_harvest* *total_planted_area* /**total_harv_area**/ /*
-*/ *all_area_* grew_* agactivities_hh ag_hh crop_hh livestock_hh /*fishing_hh*/ *_milk_produced* *eggs_total_year *value_eggs_produced* /*
+*/ *all_area_* grew_* agactivities_hh ag_hh crop_hh livestock_hh fishing_hh *_milk_produced* *eggs_total_year *value_eggs_produced* /*
 */ *value_livestock_products* *value_livestock_sales* *total_cons* /*nb_cattle_today nb_poultry_today*/ bottom_40_percap bottom_40_peraeq /*
 */ ccf_loc ccf_usd ccf_1ppp ccf_2ppp *sales_livestock_products area_plan* /*area_harv**/  *value_pro* *value_sal*
 *SAW 3/14/23 Need to check for the ones available in Uganda but not in Nigeria.
@@ -4632,9 +4784,6 @@ lab var female_vac_animal "1 = Individual female farmers (livestock keeper) uses
 
 *replace empty vars with missing 
 global empty_vars *hybrid_seed* women_diet number_foodgroup 
-foreach v of varlist $empty_vars { 
-	replace `v' = .
-}
 
 //////////Identifier Variables ////////
 *Add variables and ren household id so dta file can be appended with dta files from other instruments
@@ -4661,9 +4810,12 @@ saveold "${Uganda_NPS_W5_final_data}/Uganda_NPS_W5_individual_variables.dta", re
 ********************************************************************************
 *PLOT -LEVEL VARIABLES
 ********************************************************************************
+global empty_vars ""
+global empty_vars $empty_vars plot_value_harvest* plot_productivity* w_plot_productivity* w_plot_value_harvest*
+
 *GENDER PRODUCTIVITY GAP
 use "${Uganda_NPS_W5_created_data}/Uganda_NPS_W5_all_plots.dta", replace
-collapse (sum) plot_value_harvest = value_harvest, by(hhid parcel_id plot_id season) // SAW 10.10.23 Usiing Standarized version of value harvested
+collapse (sum) plot_value_harvest = value_harvest, by(hhid parcel_id plot_id season) // SAW 10.10.23 Using Standarized version of value harvested
 tempfile crop_values 
 save `crop_values' // season level
 
@@ -4874,6 +5026,12 @@ foreach i in 1ppp 2ppp loc{
 *Create weight 
 gen plot_labor_weight= w_labor_total*weight
 
+*replace empty vars with missing 
+*Recode to missing any variables that cannot be created in this instrument
+foreach v of varlist $empty_vars { 
+	replace `v' = .
+}
+
 //////////Identifier Variables ////////
 *Add variables and ren household id so dta file can be appended with dta files from other instruments
 gen hhid_panel = hhid 
@@ -4903,4 +5061,4 @@ The code for outputting the summary statistics is in a separare dofile that is c
 */ 
 *Parameters
 global list_instruments  "Uganda_NPS_W5"
-do "$directory/EPAR_UW_335_Summary_statistics.do"
+do "//netid.washington.edu/wfs/EvansEPAR/Project/EPAR/Working Files/RA Working Folders/Claire/Shrek/Gingerbread_man/_Summary_statistics/EPAR_UW_335_SUMMARY_STATISTICS.do"

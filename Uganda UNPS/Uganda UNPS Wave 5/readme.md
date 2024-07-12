@@ -82,7 +82,7 @@ This section also includes crop plantation start date (month-year), crop harvest
 		/Uganda_NPS_W5_plot_areas.dta
 		/Uganda_NPS_W5_crop_prices_for_wages.dta
 - **CODING STATUS:** ![COMPLETE](https://placehold.co/15x15/c5f015/c5f015.png) `COMPLETE`
-- **KNOWN ISSUES:** No issues in this section. 
+- **KNOWN ISSUES:** Sold values are inaccurate in W5, on average much lower than they should be for the country. Because of this, sold values are added to empty variables and generated as missing.
 ### GROSS CROP REVENUE
 - **DESCRIPTION:** This section uses the same Price per kilogram methodology used in the All Plots section to estimate the "Gross value of crop production, summed over main and short season" and the "Value of crops sold so far, summed over main and short season" both at the household-crop level, and at the household level. It also estimates the value of lost harvested at the household level. 
 - **OUTPUT:** /Uganda_NPS_W5_cropsales_value.dta
