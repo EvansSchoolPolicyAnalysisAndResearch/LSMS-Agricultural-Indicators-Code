@@ -9,7 +9,7 @@
 				  Travis Reynolds, the World Bank's LSMS-ISA team, the FAO's RuLIS team, IFPRI, IRRI, and the Bill & Melinda Gates Foundation Agricultural Development Data and Policy team in discussing indicator construction decisions. 
 				  
 				  All coding errors remain ours alone.
-*Date			: This  Version - 9 October 2023
+*Date			: This  Version - 18th July 2024
 ----------------------------------------------------------------------------------------------------------------------------------------------------*/
 
 *Data source
@@ -146,7 +146,8 @@ global Nigeria_GHS_W4_pop_tot 198387623
 global Nigeria_GHS_W4_pop_rur 98511358
 global Nigeria_GHS_W4_pop_urb 99876265
 
-global drop_unmeas_plots 1 //If not 0, this variable will result in all plots not measured by GPS to be dropped; the implied conversion rates between nonstandard units and hectares (based on households with both measured and reported areas) appear to have changed substantially since Wave 3 and have resulted in some large yield estimates because the plots are very small. Easiest fix is to remove them.
+global drop_unmeas_plots 0 //If not 0, this variable will result in all plots not measured by GPS being dropped; the implied conversion rates between nonstandard units and hectares (based on households with both measured and reported areas) appear to have changed substantially since Wave 3 and have resulted in some large yield estimates because the plots are very small. Easiest fix is to remove them.
+
 ********************************************************************************
 *EXCHANGE RATE AND INFLATION FOR CONVERSION IN USD
 ********************************************************************************
@@ -406,7 +407,6 @@ if $drop_unmeas_plots !=0 {
 }
 save "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_plot_areas.dta", replace
 
-
 ********************************************************************************
 * PLOT DECISION MAKERS *
 ********************************************************************************
@@ -431,44 +431,39 @@ save "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_gender_merge.dta", replace
 
 *Using planting data 	
 use "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_plot_areas.dta", clear 	
+//drop if cultivate==0 //One plot is listed as uncultivated but is actually cultivated - we use gender of hh_head as dm for that plot
 //Post-Planting
 *First manager 
-gen indiv = s11aq6a
-merge m:1 hhid indiv using "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_gender_merge_temp.dta", gen(dm1_merge) keep(1 3) 
-gen dm1_female = female if s11aq6a!=.
-drop indiv 
-*Second manager 
-gen indiv = s11aq6b
-merge m:1 hhid indiv using "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_gender_merge_temp.dta", gen(dm2_merge) keep(1 3)			
-gen dm2_female = female & s11aq6b!=.
-drop indiv 
-//Post-Harvest (only reported for "new" plot)
-*First manager 
-gen indiv = sa1q2 
-merge m:1 hhid indiv using "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_gender_merge_temp.dta", gen(dm4_merge) keep(1 3)			
-gen dm3_female = female & sa1q2!=.
-drop indiv 
-*Second manager 
-gen indiv = sa1q2c_1
-merge m:1 hhid indiv using "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_gender_merge_temp.dta", gen(dm5_merge) keep(1 3)			
-gen dm4_female = female & sa1q2c_1!=.
-drop indiv 
-*Replace PP with PH if missing
-replace dm1_female=dm3_female if dm1_female==.
-replace dm2_female=dm4_female if dm1_female==.
+
+gen indiv1 = s11aq6a
+gen indiv2 = s11aq6b
+gen indiv3 = s11aq6c 
+gen indiv4 = s11aq6d
+replace indiv1 = sa1q2 if indiv1==. //Post-Harvest (only reported for "new" plot)
+replace indiv2 = sa1q2c_1 if indiv2==.
+replace indiv3 = sa1q2c_2 if indiv3==. //The ph questionnaire goes up to six for ph but we'll stick to the first four for consistency with the pp questionnaire 
+replace indiv4 = sa1q2c_3 if indiv4==.
+gen sole_dm = indiv1!=. & indiv2==. & indiv3==. & indiv4==.
+keep hhid plot_id indiv* cultivate //ALT: Based on crop reporting numbers I would take the cultivate response with a grain of salt. 
+reshape long indiv, i(hhid plot_id cultivate) j(indivno)
+collapse (min) indivno, by(hhid plot_id indiv cultivate) //Removing excess observations to accurately estimate the number of decisionmakers in mixed-managed plots. Taking the highest rank
+//At this point, we have the decisionmakers and their relative priority level, as the questionnaire asks to go in descending order of importance. This may be relevant for some applications (e.g., you want only the primary decisionmaker; keep if indivno==1), but we don't use it here.
+drop if indiv==.
+merge m:1 hhid indiv using "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_gender_merge.dta", gen(dm_merge) keep(1 3) 
+collapse (mean) female, by(hhid plot_id)
 *Constructing three-part gendered decision-maker variable; male only (=1) female only (=2) or mixed (=3)
-gen dm_gender = 1 if (dm1_female==0 | dm1_female==.) & (dm2_female==0 | dm2_female==.) & !(dm1_female==. & dm2_female==.)
-replace dm_gender = 2 if (dm1_female==1 | dm1_female==.) & (dm2_female==1 | dm2_female==.) & !(dm1_female==. & dm2_female==.)
-replace dm_gender = 3 if dm_gender==. & !(dm1_female==. & dm2_female==.)
+gen dm_gender = 3 if female !=1 & female!=0 & female!=.
+replace dm_gender = 1 if female == 0
+replace dm_gender = 2 if female == 1
 la def dm_gender 1 "Male only" 2 "Female only" 3 "Mixed gender"
 *replacing observations without gender of plot manager with gender of HOH
 merge m:1 hhid using "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_hhsize.dta", nogen keep(1 3)
-replace dm_gender=1 if fhh ==0 & dm_gender==. //0 changes
-replace dm_gender=2 if fhh ==1 & dm_gender==. //0 changes
+replace dm_gender=1 if fhh ==0 & dm_gender==. //28 changes
+replace dm_gender=2 if fhh ==1 & dm_gender==. //2 changes - all but one of these plots gets dropped, though.
 gen dm_male = dm_gender==1
 gen dm_female = dm_gender==2
 gen dm_mixed = dm_gender==3
-keep field_size plot_id hhid dm_* fhh 
+keep plot_id hhid dm_* //fhh 
 save "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_plot_decision_makers", replace
 
 ********************************************************************************
@@ -745,20 +740,22 @@ use "${Nigeria_GHS_W4_raw_data}/sect11f_plantingW4.dta", clear
 	replace crop_code_11f=crop_code_a3i if crop_code_11f==.
 	replace crop_code_a3i = crop_code_11f if crop_code_a3i==.
 	gen crop_code_master =crop_code_11f //Generic level
+	drop if crop_code_master == 1010 & ((hhid==50053 & plot_id==2) | (hhid==209107 & plot_id==1)) //Reported as mistaken entries in sa3iq4_os
+	drop if (hhid==330053 & plot_id==1) | (hhid==330067 & plot_id==2) //Additional reported as mistaken
 	recode crop_code_master (2170=2030) (2142 = 2141) (1121 1122 1123 1124=1120) //Only things that carry over from W3 are bananas/plantains, yams, and peppers. The generic pepper category 2040 in W3 is missing from this wave.
-	label define CROPCODE 1120 "1120. YAM", replace
+	replace crop_code_master = 4010 if strpos(sa3iq4_os, "FEED") 
+	label define CROPCODE 1120 "1120. YAM" 4010 "4010. FODDER", add
 	la values crop_code_master CROPCODE
 	merge m:1 hhid plot_id using "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_plot_areas.dta", nogen keep(3) //ALT 05.03.23
-	gen ha_planted = s11fq1/100*field_size
-	replace ha_planted = s11fq4/100*field_size if ha_planted==.
+	gen percent_field = s11fq1/100
+	replace percent_field = s11fq4/100 if percent_field==. 
+	gen ha_planted = percent_field*field_size
+	replace ha_planted = percent_field*field_size if ha_planted==.
 	//merge m:1 zone area_unit using "${Nigeria_GHS_W3_created_data}/Nigeria_GHS_W3_landcf.dta", nogen keep(1 3)
-	gen ha_harvest = ha_planted if sa3iq4b ==2 | sa3iiiq7==1 //Was area planted less than area harvested? 2=No / In the last 12 months, has your household harvested any <Tree Crop>? They don't ask for area harvested, so I assume that the whole area is harvested (not true for some crops)
-	replace ha_harvest=ha_planted*sa3iq5/100 if ha_harvest==.
-	replace ha_harvest = 0 if ha_harvest==.
-	/*gen month_planted = s11fq3a+(s11fq3b-2014)*12
-	gen month_harvested = sa3iq4a1 + (sa3iq4a2-2014)*12
-	gen months_grown = month_harvested-month_planted if s11fc5==1 //Ignoring permanent crops that may be grown multiple seasons
-	replace months_grown=. if months_grown <1 | month_planted==. | month_harvested==.*/
+	gen pct_harvest=1 if sa3iq4b ==2 | sa3iiiq7==1 //Was area planted less than area harvested? 2=No / In the last 12 months, has your household harvested any <Tree Crop>? They don't ask for area harvested, so I assume that the whole area is harvested (not true for some crops)
+	replace pct_harvest = sa3iq5/100 if sa3iq5!=. //1075 obs
+	replace pct_harvest = 0 if pct_harvest==.
+	replace pct_harvest = 1 if crop_code_master==4010 //Assuming fodder crops were fully "harvested"
 	preserve
 		gen obs=1
 		replace obs=0 if inrange(sa3iq4,1,5) & s11fq0==1
@@ -782,15 +779,15 @@ use "${Nigeria_GHS_W4_raw_data}/sect11f_plantingW4.dta", clear
 	bys hhid plot_id : egen permax = max(perm_crop)
 	
 	//bys hhid plot_id s11fq3a s11fq3b : gen plant_date_unique=_n
-	gen plant_date = ym(s11fq3_2, s11fq3_1)
-	format plant_date %tm
-	gen harv_date = ym(sa3iq4a2, sa3iq4a1)
-	format harv_date %tm
-	gen harv_end = ym(sa3iq6c2, sa3iq6c1)
-	format harv_end %tm
+	gen planting_year = s11fq3_2
+	gen planting_month = s11fq3_1
+	gen harvest_month_begin = sa3iq4a1
+	gen harvest_year_begin = sa3iq4a2
+	gen harvest_year_end = sa3iq6c2
+	gen harvest_month_end = sa3iq6c1
 	
-	bys hhid plot_id plant_date : gen plant_date_unique = _n
-	bys hhid plot_id harv_date : gen harv_date_unique = _n
+	bys hhid plot_id planting_year planting_month : gen plant_date_unique = _n
+	bys hhid plot_id harvest_year_begin harvest_month_begin : gen harv_date_unique = _n
 	bys hhid plot_id : egen plant_dates = max(plant_date_unique)
 	bys hhid plot_id : egen harv_dates = max(harv_date_unique)
 	replace purestand=0 if (crops_plot>1 & (plant_dates>1 | harv_dates>1))  | (crops_plot>1 & permax==1)  //Multiple crops planted or harvested in the same month are not relayed; may omit some crops that were purestands that preceded or followed a mixed crop.
@@ -802,23 +799,31 @@ use "${Nigeria_GHS_W4_raw_data}/sect11f_plantingW4.dta", clear
 	replace purestand=0 if purestand==.
 	drop crops_plot /*crops_avg*/ plant_dates harv_dates plant_date_unique harv_date_unique permax
 	//Okay, now we should be able to relatively accurately rescale plots.
-	replace ha_planted = ha_harvest if ha_planted==. //182 changes
-	replace ha_harvest = ha_planted if sa3iq6d1 !=. //ALT 02.10.22: Assume people with "still to harvest" values will harvest the entire plot.
+	//replace ha_planted = ha_harvest if ha_planted==. //182 changes
+	//replace ha_harvest = ha_planted if sa3iq6d1 !=. //ALT 02.10.22: Assume people with "still to harvest" values will harvest the entire plot.
 	//Let's first consider that planting might be misreported but harvest is accurate
 	//ALT: n/a to W4:
 	//replace ha_planted = ha_harvest if ha_planted > field_size & ha_harvest < ha_planted & ha_harvest!=. //4,476 changes
-	gen percent_field=ha_planted/field_size
+	//gen percent_field=ha_planted/field_size
 *Generating total percent of purestand and monocropped on a field
-	bys hhid plot_id: egen total_percent = total(percent_field)
+	//bys hhid plot_id: egen total_percent = total(percent_field)
 //Dealing with crops which have monocropping larger than plot size or monocropping that fills plot size and still has intercropping to add
-	replace percent_field = percent_field/total_percent if total_percent>1 & purestand==0
-	replace percent_field = 1 if percent_field>1 & purestand==1
+
+	//replace percent_field = percent_field/total_percent if //total_percent>1 & purestand==0
+	//replace percent_field = 1 if percent_field>1 & purestand==1
 	//45 changes made
+	//replace ha_planted = percent_field*field_size
+	//replace ha_harvest = ha_planted if ha_harvest > ha_planted
 
-
-	replace ha_planted = percent_field*field_size
-	replace ha_harvest = ha_planted if ha_harvest > ha_planted
-
+		//ALT Update 7/4/24:
+	bys hhid plot_id : egen tot_ha_planted = sum(ha_planted)
+	replace percent_field = ha_planted/tot_ha_planted if tot_ha_planted > field_size & purestand==0
+	replace percent_field = 1 if tot_ha_planted > field_size & purestand==1
+	
+	replace ha_planted = percent_field*field_size if (tot_ha_planted > field_size)
+	gen ha_harvest = ha_planted *pct_harvest 
+	replace ha_harvest = 0 if ha_harvest ==.
+	
 	*renaming unit code for merge
 	//ALT 10.14.21: Tree crop harvests are recorded in both s11f (planting) and sa3iii (harvest); thus, it's likely that s11f has a lot of old harvests (range 2010-2018; mean 2017.365) that we wouldn't want to consider here. However, 465 obs note 2018 (vs 300 in harvest questionnaire), so I replace with sa3iii except when sa3iii is empty and the harvest year is 2018
 	ren sa3iq6ii unit
@@ -2818,6 +2823,7 @@ save "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_livestock_feed_water_house.d
 //This section combines all the variables that we're interested in at manager level
 //(inorganic fertilizer, improved seed) into a single operation.
 //Doing improved seed and agrochemicals at the same time.
+**# Bookmark #1
 use "${Nigeria_GHS_W4_raw_data}/sect11f_plantingw4.dta", clear
 gen use_imprv_seed=s11fq3b==1
 ren plotid plot_id
@@ -6793,8 +6799,8 @@ foreach v of global wins_var_top1_bott1_2 {
 		foreach g of global allyield {
 			gen w_`v'_`g'_`c'=`v'_`g'_`c'
 			foreach r of local list_levels {
-				replace w_`v'_`g'_`c' = max(p1_lev_`r',p1_nat) if w_`v'_`g'_`c' < max(p1_lev_`r',p1_nat) &  w_`v'_`g'_`c'!=0 
-				replace w_`v'_`g'_`c' =  min(p2_lev_`r',p2_nat) if (w_`v'_`g'_`c' >  min(p2_lev_`r',p2_nat) & w_`v'_`g'_`c' !=.) 
+				replace w_`v'_`g'_`c' = max(p1_lev_`r',p1_nat) if zone==`r' & w_`v'_`g'_`c' < max(p1_lev_`r',p1_nat) &  w_`v'_`g'_`c'!=0 
+				replace w_`v'_`g'_`c' =  min(p2_lev_`r',p2_nat) if zone==`r' & (w_`v'_`g'_`c' >  min(p2_lev_`r',p2_nat) & w_`v'_`g'_`c' !=.) 
 			}
 			local l`v'_`g'_`c'  : var lab `v'_`g'_`c'
 			lab var  w_`v'_`g'_`c' "`l`v'_`g'_`c'' - Winzorized top and bottom 1%"
@@ -7317,14 +7323,12 @@ replace bottom_40_peraeq = 1 if r(r1) > w_daily_peraeq_cons & rural==1
 gen clusterid=ea
 gen strataid=state
 
-*dropping unnecessary varables
-drop *_inter_*
 
 *create missing crop variables (no cowpea or yam)
 foreach x of varlist *maize* {
 	foreach c in wheat beans {
-		gen `x'_xx = .
-		ren *maize*_xx *`c'*
+		gen `x'_x = .
+		ren *maize*_x *`c'*
 	}
 }
 
@@ -7348,7 +7352,7 @@ keep hhid fhh clusterid strataid *weight_pop_rururb* *_weight* *wgt* zone state 
 */ *_exp* poverty_under_1_9 *value_crop_production* *value_harv* *value_crop_sales* *value_sold* *kgs_harvest* *total_planted_area* *total_harv_area* /*
 */ *all_area_* grew_* agactivities_hh ag_hh crop_hh livestock_hh fishing_hh *_milk_produced* *eggs_total_year *value_eggs_produced* /*
 */ *value_livestock_products* *value_livestock_sales* *total_cons* nb_cattle_today /*HKS 6.6.23*/ nb_largerum_t nb_smallrum_t nb_chickens_t  *sales_livestock_products nb_cows_today lvstck_holding_srum  nb_smallrum_today nb_chickens_today nb_poultry_today bottom_40_percap bottom_40_peraeq /*
-*/ ccf_loc ccf_usd ccf_1ppp ccf_2ppp *sales_livestock_products  *value_pro* *value_sal*
+*/ ccf_loc ccf_usd ccf_1ppp ccf_2ppp *sales_livestock_products  *value_pro* *value_sal* *inter* *pure*
 
 ren weight_pop_rururb weight
 
@@ -7362,21 +7366,21 @@ gen survey = "LSMS-ISA"
 la var survey "Survey type (LSMS or AgDev)"
 gen year = "2018-19"
 la var year "Year survey was carried out"
-gen instrument = 25
+gen instrument = 33 
 la var instrument "Wave and location of survey"
-label define instrument 1 "Tanzania NPS Wave 1" 2 "Tanzania NPS Wave 2" 3 "Tanzania NPS Wave 3" 4 "Tanzania NPS Wave 4" /*
-	*/ 5 "Ethiopia ESS Wave 1" 6 "Ethiopia ESS Wave 2" 7 "Ethiopia ESS Wave 3" /*
-	*/ 8 "Nigeria GHS Wave 1" 9 "Nigeria GHS Wave 2" 10 "Nigeria GHS Wave 3" /*
-	*/ 11 "Tanzania TBS AgDev (Lake Zone)" 12 "Tanzania TBS AgDev (Northern Zone)" 13 "Tanzania TBS AgDev (Southern Zone)" /*
-	*/ 14 "Ethiopia ACC Baseline" /*
-	*/ 15 "India RMS Baseline (Bihar)" 16 "India RMS Baseline (Odisha)" 17 "India RMS Baseline (Uttar Pradesh)" 18 "India RMS Baseline (West Bengal)" /*
-	*/ 19 "Nigeria NIBAS AgDev (Nassarawa)" 20 "Nigeria NIBAS AgDev (Benue)" 21 "Nigeria NIBAS AgDev (Kaduna)" /*
-	*/ 22 "Nigeria NIBAS AgDev (Niger)" 23 "Nigeria NIBAS AgDev (Kano)" 24 "Nigeria NIBAS AgDev (Katsina)" /*
-	*/ 25 "Nigeria GHS Wave 4"
+//Only runs if label isn't already defined.
+capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2" 13 "Tanzania NPS Wave 3" 14 "Tanzania NPS Wave 4" 15 "Tanzania NPS Wave 5" /*
+	*/ 21 "Ethiopia ESS Wave 1" 22 "Ethiopia ESS Wave 2" 23 "Ethiopia ESS Wave 3" 24 "Ethiopia ESS Wave 4" 25 "Ethiopia ESS Wave 5" /*
+	*/ 31 "Nigeria GHS Wave 1" 32 "Nigeria GHS Wave 2" 33 "Nigeria GHS Wave 3" 34 "Nigeria GHS Wave 4"/*
+	*/ 41 "Malawi IHS/IHPS Wave 1" 42 "Malawi IHS/IHPS Wave 2" 43 "Malawi IHS/IHPS Wave 3" 44 "Malawi IHS/IHPS Wave 4" /*
+    */ 51 "Uganda NPS Wave 1" 52 "Uganda NPS Wave 2" 53 "Uganda NPS Wave 3" 54 "Uganda NPS Wave 4" 55 "Uganda NPS Wave 5" /*W6 does not exist*/ 56 "Uganda NPS Wave 7" 57 "Uganda NPS Wave 8" /* 
+*/ 61 "Burkina Faso EMC Wave 1" /* 
+*/ 71 "Mali EACI Wave 1" 72 "Mali EACI Wave 2" /*
+*/ 81 "Niger ECVMA Wave 1" 82 "Niger ECVMA Wave 2"
 label values instrument instrument	
 *saveold "${Nigeria_GHS_W4_final_data}/Nigeria_GHS_W4_household_variables.dta", replace
 
-gen ssp = (farm_size_agland <= 2 & farm_size_agland != 0) & (nb_largerum_today <= 10 & nb_largerum_t <= 10 & nb_chickens_today <= 50) // HKS 6.16.23
+gen ssp = (farm_size_agland <= 2 & farm_size_agland != 0) & (nb_largerum_today <= 10 & nb_chickens_today <= 50) // HKS 6.16.23
 saveold "${Nigeria_GHS_W4_final_data}/Nigeria_GHS_W4_household_variables.dta", replace
 
 *Stop
@@ -7474,18 +7478,17 @@ ren indiv indid
 gen geography = "Nigeria"
 gen survey = "LSMS-ISA"
 gen year = "2018-19"
-gen instrument = 25
-//This code block now exists in two places, and so this will generate an error when the file is done from the beginning
-//Capture will check to see if it's already been generated and continue executing if it has.
-capture label define instrument 1 "Tanzania NPS Wave 1" 2 "Tanzania NPS Wave 2" 3 "Tanzania NPS Wave 3" 4 "Tanzania NPS Wave 4" /*
-	*/ 5 "Ethiopia ESS Wave 1" 6 "Ethiopia ESS Wave 2" 7 "Ethiopia ESS Wave 3" /*
-	*/ 8 "Nigeria GHS Wave 1" 9 "Nigeria GHS Wave 2" 10 "Nigeria GHS Wave 3" /*
-	*/ 11 "Tanzania TBS AgDev (Lake Zone)" 12 "Tanzania TBS AgDev (Northern Zone)" 13 "Tanzania TBS AgDev (Southern Zone)" /*
-	*/ 14 "Ethiopia ACC Baseline" /*
-	*/ 15 "India RMS Baseline (Bihar)" 16 "India RMS Baseline (Odisha)" 17 "India RMS Baseline (Uttar Pradesh)" 18 "India RMS Baseline (West Bengal)" /*
-	*/ 19 "Nigeria NIBAS AgDev (Nassarawa)" 20 "Nigeria NIBAS AgDev (Benue)" 21 "Nigeria NIBAS AgDev (Kaduna)" /*
-	*/ 22 "Nigeria NIBAS AgDev (Niger)" 23 "Nigeria NIBAS AgDev (Kano)" 24 "Nigeria NIBAS AgDev (Katsina)" /*
-	*/ 25 "Nigeria GHS Wave 4"
+gen instrument = 34 
+//Only runs if label isn't already defined.			
+capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2" 13 "Tanzania NPS Wave 3" 14 "Tanzania NPS Wave 4" 15 "Tanzania NPS Wave 5" /*
+	*/ 21 "Ethiopia ESS Wave 1" 22 "Ethiopia ESS Wave 2" 23 "Ethiopia ESS Wave 3" 24 "Ethiopia ESS Wave 4" 25 "Ethiopia ESS Wave 5" /*
+	*/ 31 "Nigeria GHS Wave 1" 32 "Nigeria GHS Wave 2" 33 "Nigeria GHS Wave 3" 34 "Nigeria GHS Wave 4"/*
+	*/ 41 "Malawi IHS/IHPS Wave 1" 42 "Malawi IHS/IHPS Wave 2" 43 "Malawi IHS/IHPS Wave 3" 44 "Malawi IHS/IHPS Wave 4" /*
+    */ 51 "Uganda NPS Wave 1" 52 "Uganda NPS Wave 2" 53 "Uganda NPS Wave 3" 54 "Uganda NPS Wave 4" 55 "Uganda NPS Wave 5" /*W6 does not exist*/ 56 "Uganda NPS Wave 7" 57 "Uganda NPS Wave 8" /* 
+*/ 61 "Burkina Faso EMC Wave 1" /* 
+*/ 71 "Mali EACI Wave 1" 72 "Mali EACI Wave 2" /*
+*/ 81 "Niger ECVMA Wave 1" 82 "Niger ECVMA Wave 2"
+						   
 label values instrument instrument	
 gen strataid=state
 gen clusterid=ea
@@ -7786,18 +7789,16 @@ lab var hhid_panel "panel hh identifier"
 gen geography = "Nigeria"
 gen survey = "LSMS-ISA"
 gen year = "2018-19"
-gen instrument = 25
-//This code block now exists in two places, and so this will generate an error when the file is done from the beginning
-//Capture will check to see if it's already been generated and continue executing if it has.
-capture label define instrument 1 "Tanzania NPS Wave 1" 2 "Tanzania NPS Wave 2" 3 "Tanzania NPS Wave 3" 4 "Tanzania NPS Wave 4" /*
-	*/ 5 "Ethiopia ESS Wave 1" 6 "Ethiopia ESS Wave 2" 7 "Ethiopia ESS Wave 3" /*
-	*/ 8 "Nigeria GHS Wave 1" 9 "Nigeria GHS Wave 2" 10 "Nigeria GHS Wave 3" /*
-	*/ 11 "Tanzania TBS AgDev (Lake Zone)" 12 "Tanzania TBS AgDev (Northern Zone)" 13 "Tanzania TBS AgDev (Southern Zone)" /*
-	*/ 14 "Ethiopia ACC Baseline" /*
-	*/ 15 "India RMS Baseline (Bihar)" 16 "India RMS Baseline (Odisha)" 17 "India RMS Baseline (Uttar Pradesh)" 18 "India RMS Baseline (West Bengal)" /*
-	*/ 19 "Nigeria NIBAS AgDev (Nassarawa)" 20 "Nigeria NIBAS AgDev (Benue)" 21 "Nigeria NIBAS AgDev (Kaduna)" /*
-	*/ 22 "Nigeria NIBAS AgDev (Niger)" 23 "Nigeria NIBAS AgDev (Kano)" 24 "Nigeria NIBAS AgDev (Katsina)" /*
-	*/ 25 "Nigeria GHS Wave 4"
+gen instrument = 34 
+//Only runs if label isn't already defined.																	
+capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2" 13 "Tanzania NPS Wave 3" 14 "Tanzania NPS Wave 4" 15 "Tanzania NPS Wave 5" /*
+	*/ 21 "Ethiopia ESS Wave 1" 22 "Ethiopia ESS Wave 2" 23 "Ethiopia ESS Wave 3" 24 "Ethiopia ESS Wave 4" 25 "Ethiopia ESS Wave 5" /*
+	*/ 31 "Nigeria GHS Wave 1" 32 "Nigeria GHS Wave 2" 33 "Nigeria GHS Wave 3" 34 "Nigeria GHS Wave 4"/*
+	*/ 41 "Malawi IHS/IHPS Wave 1" 42 "Malawi IHS/IHPS Wave 2" 43 "Malawi IHS/IHPS Wave 3" 44 "Malawi IHS/IHPS Wave 4" /*
+    */ 51 "Uganda NPS Wave 1" 52 "Uganda NPS Wave 2" 53 "Uganda NPS Wave 3" 54 "Uganda NPS Wave 4" 55 "Uganda NPS Wave 5" /*W6 does not exist*/ 56 "Uganda NPS Wave 7" 57 "Uganda NPS Wave 8" /* 
+*/ 61 "Burkina Faso EMC Wave 1" /* 
+*/ 71 "Mali EACI Wave 1" 72 "Mali EACI Wave 2" /*
+*/ 81 "Niger ECVMA Wave 1" 82 "Niger ECVMA Wave 2"
 label values instrument instrument		
 saveold "${Nigeria_GHS_W4_final_data}/Nigeria_GHS_W4_field_plot_variables.dta", replace
 

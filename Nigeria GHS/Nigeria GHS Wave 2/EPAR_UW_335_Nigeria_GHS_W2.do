@@ -11,7 +11,8 @@
 				  
 				  All coding errors remain ours alone.
 
-*Date			: 26 April 2022
+*Date			: 18th July 2024
+*Dataset Version	: NGA_2012_GHSP-W2_v02_M
 ----------------------------------------------------------------------------------------------------------------------------------------------------*/
 
 
@@ -50,58 +51,58 @@ Below are the list of the main files created by running this Master do.file
  					
 *INTERMEDIATE FILES					MAIN FILES CREATED
 *-------------------------------------------------------------------------------------
-*HOUSEHOLD IDS						Nigeria_GHS_W2_hhids.dta
-*INDIVIDUAL IDS						Nigeria_GHS_W2_person_ids.dta
-*HOUSEHOLD SIZE						Nigeria_GHS_W2_hhsize.dta
-*HEAD OF HOUSEHOLD					Nigeria_GHS_W2_male_head.dta
-*PARCEL AREAS						Nigeria_GHS_W2_plot_areas.dta
+*HOUSEHOLD IDS					Nigeria_GHS_W2_hhids.dta
+*INDIVIDUAL IDS					Nigeria_GHS_W2_person_ids.dta
+*HOUSEHOLD SIZE					Nigeria_GHS_W2_hhsize.dta
+*HEAD OF HOUSEHOLD				Nigeria_GHS_W2_male_head.dta
+*PARCEL AREAS					Nigeria_GHS_W2_plot_areas.dta
 *PLOT-CROP DECISION MAKERS			Nigeria_GHS_W2_plot_decision_makers.dta
-*PLOT-CROP PLANTING/HARVEST DATA	Nigeria_GHS_W2_all_plots.dta
-*GROSS CROP REVENUE					Nigeria_GHS_W2_cropsales_value.dta
-									Nigeria_GHS_W2_hh_crop_values_production.dta
-									Nigeria_GHS_W2_hh_crop_production.dta
-*CROP EXPENSES						Nigeria_GHS_W2_hh_cost_labor.dta
-									Nigeria_GHS_W2_plot_cost_inputs.dta *Plot
-									Nigeria_GHS_W2_hh_cost_inputs.dta *Household
-*TLU (Tropical Livestock Units)		Nigeria_GHS_W2_TLU_Coefficients.dta
-									Nigeria_GHS_W2_herd_characteristics.dta
-*LIVESTOCK INCOME					Nigeria_GHS_W2_livestock_expenses.dta
-									Nigeria_GHS_W2_hh_livestock_products.dta
-									Nigeria_GHS_W2_livestock_sales.dta
-									Nigeria_GHS_W2_livestock_income.dta
-*FISH INCOME						Nigeria_GHS_W3_fishing_expenses_1.dta	
-									Nigeria_GHS_W3_fishing_expenses_2.dta						
+*PLOT-CROP PLANTING/HARVEST DATA		Nigeria_GHS_W2_all_plots.dta
+*GROSS CROP REVENUE				Nigeria_GHS_W2_cropsales_value.dta
+						Nigeria_GHS_W2_hh_crop_values_production.dta
+						Nigeria_GHS_W2_hh_crop_production.dta
+*CROP EXPENSES					Nigeria_GHS_W2_hh_cost_labor.dta
+						Nigeria_GHS_W2_plot_cost_inputs.dta *Plot
+						Nigeria_GHS_W2_hh_cost_inputs.dta *Household
+*TLU (Tropical Livestock Units)			Nigeria_GHS_W2_TLU_Coefficients.dta
+						Nigeria_GHS_W2_herd_characteristics.dta
+*LIVESTOCK INCOME				Nigeria_GHS_W2_livestock_expenses.dta
+						Nigeria_GHS_W2_hh_livestock_products.dta
+						Nigeria_GHS_W2_livestock_sales.dta
+						Nigeria_GHS_W2_livestock_income.dta
+*FISH INCOME					Nigeria_GHS_W3_fishing_expenses_1.dta	
+						Nigeria_GHS_W3_fishing_expenses_2.dta						
 *SELF-EMPLOYMENT INCOME				Nigeria_GHS_W2_self_employment_income.dta
-									Nigeria_GHS_W2_agproduct_income.dta
-*WAGE INCOME						Nigeria_GHS_W2_wage_income.dta
-									Nigeria_GHS_W2_agwage_income.dta
-*OTHER INCOME						Nigeria_GHS_W2_remittance_income.dta
-									Nigeria_GHS_W2_other_income.dta
-									Nigeria_GHS_W2_land_rental_income.dta
+						Nigeria_GHS_W2_agproduct_income.dta
+*WAGE INCOME					Nigeria_GHS_W2_wage_income.dta
+						Nigeria_GHS_W2_agwage_income.dta
+*OTHER INCOME					Nigeria_GHS_W2_remittance_income.dta
+						Nigeria_GHS_W2_other_income.dta
+						Nigeria_GHS_W2_land_rental_income.dta
 *FARM SIZE / LAND SIZE				Nigeria_GHS_W2_land_size.dta
-									Nigeria_GHS_W2_farmsize_all_agland.dta
-									Nigeria_GHS_W2_land_size_all.dta
-*FARM LABOR							Nigeria_GHS_W2_farmlabor_postplanting.dta
-									Nigeria_GHS_W2_farmlabor_postharvest
-									Nigeria_GHS_W2_family_hired_labor.dta
-*VACCINE USAGE						Nigeria_GHS_W2_farmer_vaccine.dta
-*ANIMAL HEALTH						Nigeria_GHS_W2_livestock_diseases
-*INPUT USE BY MANAGERS/HOUSEHOLDS	Nigeria_GHS_W2_farmer_fert_use.dta
-									Nigeria_GHS_W2_input_use.dta
+						Nigeria_GHS_W2_farmsize_all_agland.dta
+						Nigeria_GHS_W2_land_size_all.dta
+*FARM LABOR					Nigeria_GHS_W2_farmlabor_postplanting.dta
+						Nigeria_GHS_W2_farmlabor_postharvest
+						Nigeria_GHS_W2_family_hired_labor.dta
+*VACCINE USAGE					Nigeria_GHS_W2_farmer_vaccine.dta
+*ANIMAL HEALTH					Nigeria_GHS_W2_livestock_diseases
+*INPUT USE BY MANAGERS/HOUSEHOLDS		Nigeria_GHS_W2_farmer_fert_use.dta
+						Nigeria_GHS_W2_input_use.dta
 *REACHED BY AG EXTENSION			Nigeria_GHS_W2_any_ext.dta
 *MOBILE PHONE OWNERSHIP				Nigeria_GHS_W2_mobile_own.dta
-*USE OF FORMAL FINANACIAL SERVICES	Nigeria_GHS_W2_fin_serv.dta
+*USE OF FORMAL FINANACIAL SERVICES		Nigeria_GHS_W2_fin_serv.dta
 *LIVESTOCK PRODUCTIVITY				Nigeria_GHS_W2_milk_animals.dta
-									Nigeria_GHS_W2_egg_animals.dta
-*CROP PRODUCTION COSTS PER HECTARE	Nigeria_GHS_W2_cropcosts.dta
-*FERTILIZER APPLICATION RATES		Nigeria_GHS_W2_fertilizer_application.dta 
-*HOUSEHOLD'S DIET DIVERSITY SCORE	Nigeria_GHS_W2_household_diet.dta
-*WOMEN'S CONTROL OVER INCOME		Nigeria_GHS_W2_control_income.dta
+						Nigeria_GHS_W2_egg_animals.dta
+*CROP PRODUCTION COSTS PER HECTARE		Nigeria_GHS_W2_cropcosts.dta
+*FERTILIZER APPLICATION RATES			Nigeria_GHS_W2_fertilizer_application.dta 
+*HOUSEHOLD'S DIET DIVERSITY SCORE		Nigeria_GHS_W2_household_diet.dta
+*WOMEN'S CONTROL OVER INCOME			Nigeria_GHS_W2_control_income.dta
 *WOMEN'S AG DECISION-MAKING			Nigeria_GHS_W2_make_ag_decision.dta
 *WOMEN'S ASSET OWNERSHIP			Nigeria_GHS_W2_make_ownasset.dta
 *SHANNON DIVERSITY INDEX			Nigeria_GHS_W2_shannon_diversity_index
-*CONSUMPTION						Nigeria_GHS_W2_consumption.dta 
-*ASSETS								Nigeria_GHS_W2_hh_assets.dta
+*CONSUMPTION					Nigeria_GHS_W2_consumption.dta 
+*ASSETS						Nigeria_GHS_W2_hh_assets.dta
 *GENDER PRODUCTIVITY GAP 			Nigeria_GHS_W2_gender_productivity_gap.dta
 
 *FINAL FILES						MAIN FILES CREATED
@@ -126,7 +127,7 @@ global directory			"\\netid.washington.edu\wfs\EvansEPAR\Project\EPAR\Working Fi
 
 //set directories
 *Nigeria General HH survey (NG LSMS)  Wave 2
-global Nigeria_GHS_W2_raw_data "$directory/Nigeria GHS/Nigeria GHS Wave 2/Raw DTA Files/NGA_2012_GHSP-W2_v02_M"
+global Nigeria_GHS_W2_raw_data "$directory/Nigeria GHS/Nigeria GHS Wave 2/Raw DTA Files/"
 global Nigeria_GHS_W2_created_data  "$directory/Nigeria GHS/Nigeria GHS Wave 2/Final DTA Files/created_data"
 global Nigeria_GHS_W2_final_data  "$directory/Nigeria GHS/Nigeria GHS Wave 2/Final DTA Files/final_data" 
   
@@ -1418,8 +1419,8 @@ preserve
 	local cn : word `k' of $topcropname_area
 	local cn_full : word `k' of $topcropname_area_full
 	keep if cropcode==`c'			
-	ren monocrop_ha `cn'_monocrop_ha
-	drop if `cn'_monocrop_ha==0 		
+	ren monocrop_ha `cn'_monocrop_ha 
+	drop if `cn'_monocrop_ha==0 |  `cn'_monocrop_ha==.	
 	ren kgs_harv_mono kgs_harv_mono_`cn'
 	ren val_harv_mono val_harv_mono_`cn'
 	gen `cn'_monocrop=1
@@ -1433,6 +1434,10 @@ preserve
 		gen `i'_mixed = `i' if dm_gender==3
 	}
 	
+	gen dm_male = dm_gender==1 
+	gen dm_female = dm_gender==2
+	gen dm_mixed = dm_gender==3
+	
 	la var `cn'_monocrop_ha "Total `cn' monocrop hectares - Household"
 	la var `cn'_monocrop "Household has at least one `cn' monocrop"
 	la var kgs_harv_mono_`cn' "Total kilograms of `cn' harvested - Household"
@@ -1442,7 +1447,14 @@ preserve
 		la var kgs_harv_mono_`cn'_`g' "Total kilograms of `cn' harvested on `g' managed plots - Household"
 		la var val_harv_mono_`cn'_`g' "Total value of `cn' harvested on `g' managed plots - Household"
 	}
-	collapse (sum) *monocrop* kgs_harv* val_harv*, by(hhid)
+	collapse (sum) *monocrop* kgs_harv* val_harv* (max) dm*, by(hhid)
+	foreach i in kgs_harv_mono_`cn' val_harv_mono_`cn' {
+	foreach j in male female mixed {
+	replace `i'_`j' = . if dm_`j'==0
+	}
+	}
+	recode `cn'_monocrop_ha* (0=.)
+	drop dm*
 	save "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_`cn'_monocrop_hh_area.dta", replace
 restore
 }
@@ -5279,15 +5291,16 @@ gen strataid=state
 
 *dropping unnecessary variables and recoding to missing any variables that cannot be created in this instrument
 //ALT: I think these vars were removed in the recode
-drop *_inter_* /*value_rented_land value_owned_land* /*
+//drop *_inter_* 
+/*value_rented_land value_owned_land* /*
 */ value_hired* value_fam* /*
 */ household_diet_cut_off* */
 
 *create missing crop variables (no wheat or beans)
 foreach x of varlist *maize* {
 	foreach c in wheat beans {
-		gen `x'_xx = .
-		ren *maize*_xx *`c'*
+		gen `x'_x = .
+		ren *maize*_x *`c'*
 	}
 }
 global empty_vars $empty_vars *wheat* *beans* 
@@ -5314,7 +5327,7 @@ keep hhid fhh clusterid strataid *weight* *wgt* zone state lga ea rural farm_siz
 */ *_exp* poverty_under_1_9 poverty_under_2_15 poverty_under_npl *value_crop_production* *value_harv* *value_crop_sales* *value_sold* *kgs_harvest* *total_planted_area* *total_harv_area* /*
 */ *all_area_* grew_* agactivities_hh ag_hh crop_hh livestock_hh fishing_hh *_milk_produced* *eggs_total_year *value_eggs_produced* /*
 */ *value_livestock_products* *value_livestock_sales* *total_cons* nb_cattle_today *sales_livestock_products nb_cows_today lvstck_holding_srum  nb_smallrum_today nb_chickens_today nb_poultry_today /*HKS 6.6.23*/ nb_largerum_t nb_smallrum_t nb_chickens_t bottom_40_percap bottom_40_peraeq /*
-*/ ccf_loc ccf_usd ccf_1ppp ccf_2ppp *sales_livestock_products area_plan* area_harv*  *value_pro* *value_sal*
+*/ ccf_loc ccf_usd ccf_1ppp ccf_2ppp *sales_livestock_products area_plan* area_harv*  *value_pro* *value_sal* *inter*
 
 drop weight
 ren weight_pop_rururb weight
@@ -5323,18 +5336,20 @@ ren weight_pop_rururb weight
 *Add variables and ren household id so dta file can be appended with dta files from other instruments
 gen hhid_panel = hhid 
 lab var hhid_panel "panel hh identifier" 
-gen geography = "Nigeria"
-gen survey = "LSMS-ISA"
-gen year = "2012-13"
-gen instrument = 9
-label define instrument 1 "Tanzania NPS Wave 1" 2 "Tanzania NPS Wave 2" 3 "Tanzania NPS Wave 3" 4 "Tanzania NPS Wave 4" /*
-	*/ 5 "Ethiopia ESS Wave 1" 6 "Ethiopia ESS Wave 2" 7 "Ethiopia ESS Wave 3" /*
-	*/ 8 "Nigeria GHS Wave 1" 9 "Nigeria GHS Wave 2" 10 "Nigeria GHS Wave 3" /*
-	*/ 11 "Tanzania TBS AgDev (Lake Zone)" 12 "Tanzania TBS AgDev (Northern Zone)" 13 "Tanzania TBS AgDev (Southern Zone)" /*
-	*/ 14 "Ethiopia ACC Baseline" /*
-	*/ 15 "India RMS Baseline (Bihar)" 16 "India RMS Baseline (Odisha)" 17 "India RMS Baseline (Uttar Pradesh)" 18 "India RMS Baseline (West Bengal)" /*
-	*/ 19 "Nigeria NIBAS AgDev (Nassarawa)" 20 "Nigeria NIBAS AgDev (Benue)" 21 "Nigeria NIBAS AgDev (Kaduna)" /*
-	*/ 22 "Nigeria NIBAS AgDev (Niger)" 23 "Nigeria NIBAS AgDev (Kano)" 24 "Nigeria NIBAS AgDev (Katsina)" 
+gen geography = "Nigeria" 
+gen survey = "LSMS-ISA" 
+gen year = "2012-13" 
+gen instrument = 32
+//Only runs if label isn't already defined.
+capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2" 13 "Tanzania NPS Wave 3" 14 "Tanzania NPS Wave 4" 15 "Tanzania NPS Wave 5" /*
+	*/ 21 "Ethiopia ESS Wave 1" 22 "Ethiopia ESS Wave 2" 23 "Ethiopia ESS Wave 3" 24 "Ethiopia ESS Wave 4" 25 "Ethiopia ESS Wave 5" /*
+	*/ 31 "Nigeria GHS Wave 1" 32 "Nigeria GHS Wave 2" 33 "Nigeria GHS Wave 3" 34 "Nigeria GHS Wave 4"/*
+	*/ 41 "Malawi IHS/IHPS Wave 1" 42 "Malawi IHS/IHPS Wave 2" 43 "Malawi IHS/IHPS Wave 3" 44 "Malawi IHS/IHPS Wave 4" /*
+    */ 51 "Uganda NPS Wave 1" 52 "Uganda NPS Wave 2" 53 "Uganda NPS Wave 3" 54 "Uganda NPS Wave 4" 55 "Uganda NPS Wave 5" /*W6 does not exist*/ 56 "Uganda NPS Wave 7" 57 "Uganda NPS Wave 8" /* 
+*/ 61 "Burkina Faso EMC Wave 1" /* 
+*/ 71 "Mali EACI Wave 1" 72 "Mali EACI Wave 2" /*
+*/ 81 "Niger ECVMA Wave 1" 82 "Niger ECVMA Wave 2" 
+
 label values instrument instrument	
 *saveold "${Nigeria_GHS_W2_final_data}/Nigeria_GHS_W2_household_variables.dta", replace
 gen ssp = (farm_size_agland <= 2 & farm_size_agland != 0) & (nb_largerum_today <= 10 & nb_largerum_t <= 10 & nb_chickens_today <= 50) // HKS 6.16.23
@@ -5380,8 +5395,8 @@ global empty_vars women_diet number_foodgroup
 *create missing crop variables (no wheat or beans)
 foreach x of varlist *maize* {
 foreach c in wheat beans {
-	gen `x'_xx = .
-	ren *maize*_xx *`c'*
+	gen `x'_x = .
+	ren *maize*_x *`c'*
 }
 }
 
@@ -5422,19 +5437,20 @@ ren weight_pop_rururb weight
 *Add variables and ren household id so dta file can be appended with dta files from other instruments
 gen hhid_panel = hhid 
 lab var hhid_panel "panel hh identifier" 
-ren indiv indid
-gen geography = "Nigeria"
-gen survey = "LSMS-ISA"
-gen year = "2012-13"
-gen instrument = 9
-label define instrument 1 "Tanzania NPS Wave 1" 2 "Tanzania NPS Wave 2" 3 "Tanzania NPS Wave 3" 4 "Tanzania NPS Wave 4" /*
-	*/ 5 "Ethiopia ESS Wave 1" 6 "Ethiopia ESS Wave 2" 7 "Ethiopia ESS Wave 3" /*
-	*/ 8 "Nigeria GHS Wave 1" 9 "Nigeria GHS Wave 2" 10 "Nigeria GHS Wave 3" /*
-	*/ 11 "Tanzania TBS AgDev (Lake Zone)" 12 "Tanzania TBS AgDev (Northern Zone)" 13 "Tanzania TBS AgDev (Southern Zone)" /*
-	*/ 14 "Ethiopia ACC Baseline" /*
-	*/ 15 "India RMS Baseline (Bihar)" 16 "India RMS Baseline (Odisha)" 17 "India RMS Baseline (Uttar Pradesh)" 18 "India RMS Baseline (West Bengal)" /*
-	*/ 19 "Nigeria NIBAS AgDev (Nassarawa)" 20 "Nigeria NIBAS AgDev (Benue)" 21 "Nigeria NIBAS AgDev (Kaduna)" /*
-	*/ 22 "Nigeria NIBAS AgDev (Niger)" 23 "Nigeria NIBAS AgDev (Kano)" 24 "Nigeria NIBAS AgDev (Katsina)" 
+gen geography = "Nigeria" 
+gen survey = "LSMS-ISA" 
+gen year = "2012-13" 
+gen instrument = 32
+//Only runs if label isn't already defined.
+capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2" 13 "Tanzania NPS Wave 3" 14 "Tanzania NPS Wave 4" 15 "Tanzania NPS Wave 5" /*
+	*/ 21 "Ethiopia ESS Wave 1" 22 "Ethiopia ESS Wave 2" 23 "Ethiopia ESS Wave 3" 24 "Ethiopia ESS Wave 4" 25 "Ethiopia ESS Wave 5" /*
+	*/ 31 "Nigeria GHS Wave 1" 32 "Nigeria GHS Wave 2" 33 "Nigeria GHS Wave 3" 34 "Nigeria GHS Wave 4"/*
+	*/ 41 "Malawi IHS/IHPS Wave 1" 42 "Malawi IHS/IHPS Wave 2" 43 "Malawi IHS/IHPS Wave 3" 44 "Malawi IHS/IHPS Wave 4" /*
+    */ 51 "Uganda NPS Wave 1" 52 "Uganda NPS Wave 2" 53 "Uganda NPS Wave 3" 54 "Uganda NPS Wave 4" 55 "Uganda NPS Wave 5" /*W6 does not exist*/ 56 "Uganda NPS Wave 7" 57 "Uganda NPS Wave 8" /* 
+*/ 61 "Burkina Faso EMC Wave 1" /* 
+*/ 71 "Mali EACI Wave 1" 72 "Mali EACI Wave 2" /*
+*/ 81 "Niger ECVMA Wave 1" 82 "Niger ECVMA Wave 2" 
+
 label values instrument instrument	
 gen strataid=state
 gen clusterid=ea
@@ -5669,19 +5685,19 @@ ren weight_pop_rururb weight
 *Add variables and ren household id so dta file can be appended with dta files from other instruments
 gen hhid_panel = hhid 
 lab var hhid_panel "panel hh identifier" 
-gen geography = "Nigeria"
-gen survey = "LSMS-ISA"
-gen year = "2012-13"
-gen instrument = 9
+gen geography = "Nigeria" 
+gen survey = "LSMS-ISA" 
+gen year = "2012-13" 
+gen instrument = 32
 //Only runs if label isn't already defined.
-capture label define instrument 1 "Tanzania NPS Wave 1" 2 "Tanzania NPS Wave 2" 3 "Tanzania NPS Wave 3" 4 "Tanzania NPS Wave 4" /*
-	*/ 5 "Ethiopia ESS Wave 1" 6 "Ethiopia ESS Wave 2" 7 "Ethiopia ESS Wave 3" /*
-	*/ 8 "Nigeria GHS Wave 1" 9 "Nigeria GHS Wave 2" 10 "Nigeria GHS Wave 3" /*
-	*/ 11 "Tanzania TBS AgDev (Lake Zone)" 12 "Tanzania TBS AgDev (Northern Zone)" 13 "Tanzania TBS AgDev (Southern Zone)" /*
-	*/ 14 "Ethiopia ACC Baseline" /*
-	*/ 15 "India RMS Baseline (Bihar)" 16 "India RMS Baseline (Odisha)" 17 "India RMS Baseline (Uttar Pradesh)" 18 "India RMS Baseline (West Bengal)" /*
-	*/ 19 "Nigeria NIBAS AgDev (Nassarawa)" 20 "Nigeria NIBAS AgDev (Benue)" 21 "Nigeria NIBAS AgDev (Kaduna)" /*
-	*/ 22 "Nigeria NIBAS AgDev (Niger)" 23 "Nigeria NIBAS AgDev (Kano)" 24 "Nigeria NIBAS AgDev (Katsina)" 
+capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2" 13 "Tanzania NPS Wave 3" 14 "Tanzania NPS Wave 4" 15 "Tanzania NPS Wave 5" /*
+	*/ 21 "Ethiopia ESS Wave 1" 22 "Ethiopia ESS Wave 2" 23 "Ethiopia ESS Wave 3" 24 "Ethiopia ESS Wave 4" 25 "Ethiopia ESS Wave 5" /*
+	*/ 31 "Nigeria GHS Wave 1" 32 "Nigeria GHS Wave 2" 33 "Nigeria GHS Wave 3" 34 "Nigeria GHS Wave 4"/*
+	*/ 41 "Malawi IHS/IHPS Wave 1" 42 "Malawi IHS/IHPS Wave 2" 43 "Malawi IHS/IHPS Wave 3" 44 "Malawi IHS/IHPS Wave 4" /*
+    */ 51 "Uganda NPS Wave 1" 52 "Uganda NPS Wave 2" 53 "Uganda NPS Wave 3" 54 "Uganda NPS Wave 4" 55 "Uganda NPS Wave 5" /*W6 does not exist*/ 56 "Uganda NPS Wave 7" 57 "Uganda NPS Wave 8" /* 
+*/ 61 "Burkina Faso EMC Wave 1" /* 
+*/ 71 "Mali EACI Wave 1" 72 "Mali EACI Wave 2" /*
+*/ 81 "Niger ECVMA Wave 1" 82 "Niger ECVMA Wave 2" 
 label values instrument instrument		
 drop s11aq5c-sa1q8 sa1q10c-sa1q38f
 saveold "${Nigeria_GHS_W2_final_data}/Nigeria_GHS_W2_field_plot_variables.dta", replace
@@ -5697,6 +5713,5 @@ The code for outputting the summary statistics is in a separare dofile that is c
 */ 
 *Parameters
 global list_instruments  "Nigeria_GHS_W2"
-*do "${directory}\_Summary_Statistics\EPAR_UW_335_SUMMARY_STATISTICS_01.17.2020_alt.do"
- do "${directory}\_Summary_Statistics\EPAR_UW_335_SUMMARY_STATISTICS_03.23.23.do"	
+ do "${directory}\_Summary_Statistics\EPAR_UW_335_SUMMARY_STATISTICS.do"	
  

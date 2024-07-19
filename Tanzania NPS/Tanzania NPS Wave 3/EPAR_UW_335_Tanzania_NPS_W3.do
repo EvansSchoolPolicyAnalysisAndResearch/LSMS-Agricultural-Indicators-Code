@@ -8,8 +8,9 @@
 *Acknowledgments: We acknowledge the helpful contributions of Pierre Biscaye, David Coomes, Ushanjani Gollapudi, Jack Knauer, Josh Merfeld, Isabella Sun, Chelsea Sweeney, Emma Weaver, Ayala Wineman, 
 				  Travis Reynolds, the World Bank's LSMS-ISA team, the FAO's RuLIS team, IFPRI, IRRI, and the Bill & Melinda Gates Foundation Agricultural Development Data and Policy team in discussing indicator construction decisions. 
 				  
-				  All coding errors remain ours alone.
-*Date			: This  Version - 21 October 2020
+			All coding errors remain ours alone.
+*Date			: This  Version - 18th July 2024
+*Dataset Version	: TZA_2012_NPS-R3_v01_M_STATA8_English_labels
 ----------------------------------------------------------------------------------------------------------------------------------------------------*/
 
 
@@ -59,10 +60,10 @@ set more off
 set maxvar 8000	
 
 *Set location of raw data and output
-global directory			    "\\netid.washington.edu\wfs\EvansEPAR\Project\EPAR\Working Files\335 - Ag Team Data Support\Waves"
+global directory			    "335_Agricultural-Indicator-Data-Curation" //Update this to match your github repo path
 
 *These paths correspond to the folders where the raw data files are located and where the created data and final data will be stored.
-global Tanzania_NPS_W3_raw_data 			"$directory/Tanzania NPS/Tanzania NPS Wave 3/Raw DTA Files/TZA_2012_NPS-R3_v01_M_STATA8_English_labels" 
+global Tanzania_NPS_W3_raw_data 		"$directory/Tanzania NPS/Tanzania NPS Wave 3/Raw DTA Files" 
 global Tanzania_NPS_W3_created_data 		"$directory/Tanzania NPS/Tanzania NPS Wave 3/Final DTA files/created_data" 
 global Tanzania_NPS_W3_final_data  		"$directory/Tanzania NPS/Tanzania NPS Wave 3/Final DTA files/final_data"
 
@@ -6746,16 +6747,17 @@ replace hhid_panel = hhid_new if hhid_new=="1908006003201001-2"
 drop hhid_new household
 gen geography = "Tanzania"
 gen survey = "LSMS-ISA"
-gen year = "2012-13"
-gen instrument = 3
-capture label define instrument 1 "Tanzania NPS Wave 1" 2 "Tanzania NPS Wave 2" 3 "Tanzania NPS Wave 3" 4 "Tanzania NPS Wave 4" /*
-	*/ 5 "Ethiopia ESS Wave 1" 6 "Ethiopia ESS Wave 2" 7 "Ethiopia ESS Wave 3" /*
-	*/ 8 "Nigeria GHS Wave 1" 9 "Nigeria GHS Wave 2" 10 "Nigeria GHS Wave 3" /*
-	*/ 11 "Tanzania TBS AgDev (Lake Zone)" 12 "Tanzania TBS AgDev (Northern Zone)" 13 "Tanzania TBS AgDev (Southern Zone)" /*
-	*/ 14 "Ethiopia ACC Baseline" /*
-	*/ 15 "India RMS Baseline (Bihar)" 16 "India RMS Baseline (Odisha)" 17 "India RMS Baseline (Uttar Pradesh)" 18 "India RMS Baseline (West Bengal)" /*
-	*/ 19 "Nigeria NIBAS AgDev (Nassarawa)" 20 "Nigeria NIBAS AgDev (Benue)" 21 "Nigeria NIBAS AgDev (Kaduna)" /*
-	*/ 22 "Nigeria NIBAS AgDev (Niger)" 23 "Nigeria NIBAS AgDev (Kano)" 24 "Nigeria NIBAS AgDev (Katsina)" 
+gen year = "2012-13" 
+gen instrument = 13
+//Only runs if label isn't already defined.
+capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2" 13 "Tanzania NPS Wave 3" 14 "Tanzania NPS Wave 4" 15 "Tanzania NPS Wave 5" /*
+	*/ 21 "Ethiopia ESS Wave 1" 22 "Ethiopia ESS Wave 2" 23 "Ethiopia ESS Wave 3" 24 "Ethiopia ESS Wave 4" 25 "Ethiopia ESS Wave 5" /*
+	*/ 31 "Nigeria GHS Wave 1" 32 "Nigeria GHS Wave 2" 33 "Nigeria GHS Wave 3" 34 "Nigeria GHS Wave 4"/*
+	*/ 41 "Malawi IHS/IHPS Wave 1" 42 "Malawi IHS/IHPS Wave 2" 43 "Malawi IHS/IHPS Wave 3" 44 "Malawi IHS/IHPS Wave 4" /*
+    */ 51 "Uganda NPS Wave 1" 52 "Uganda NPS Wave 2" 53 "Uganda NPS Wave 3" 54 "Uganda NPS Wave 4" 55 "Uganda NPS Wave 5" /*W6 does not exist*/ 56 "Uganda NPS Wave 7" 57 "Uganda NPS Wave 8" /* 
+*/ 61 "Burkina Faso EMC Wave 1" /* 
+*/ 71 "Mali EACI Wave 1" 72 "Mali EACI Wave 2" /*
+*/ 81 "Niger ECVMA Wave 1" 82 "Niger ECVMA Wave 2"
 label values instrument instrument	
 saveold "${Tanzania_NPS_W3_final_data}/Tanzania_NPS_W3_field_plot_variables.dta", replace
 
@@ -6766,8 +6768,9 @@ saveold "${Tanzania_NPS_W3_final_data}/Tanzania_NPS_W3_field_plot_variables.dta"
 /*
 All the pre-processed files include all households, individuals, and plots in the sample. 
 The summary statistics are outputted only for the sub_population of households, individuals, and plots in rural areas. 
-The code for outputting the summary statistics is in a separare dofile that is called here
+The code for outputting the summary statistics is in a separare dofile that is called here.
+Note that this operation takes a long time to complete and is not necessary unless you need summary statistics
 */ 
 *Parameters
-//global list_instruments  "Tanzania_NPS_W3"
-//do "${directory}\EPAR_UW_335_SUMMARY_STATISTICS_01.17.2020.do" 
+global list_instruments  "Tanzania_NPS_W3"
+do "${directory}/_Summary_statistics/EPAR_UW_335_SUMMARY_STATISTICS.do" 
