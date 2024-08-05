@@ -1940,7 +1940,7 @@ foreach instrument of global list_instruments {
 		gen Instrument="Uganda UNPS Wave 5"
 		gen Year = "2015-16"
 	}
-	if "`instrument'"=="UGS_W3" {
+	if "`instrument'"=="UGA_W3" {
 		gen Geography="Uganda"
 		gen Survey="LSMS-ISA"
 		gen Instrument="Uganda UNPS Wave 3"
