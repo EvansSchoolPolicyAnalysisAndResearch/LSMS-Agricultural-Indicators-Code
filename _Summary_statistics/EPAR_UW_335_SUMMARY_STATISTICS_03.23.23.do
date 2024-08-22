@@ -5,8 +5,6 @@ set more off
 set maxvar 32767	 
 set matsize 10000	 
 
-* Set directories 
-global directory "\\netid.washington.edu\wfs\EvansEPAR\Project\EPAR\Working Files\335 - Ag Team Data Support\Waves\_Summary_statistics"
 
 **************
 *SUMMARY STATISTICS
@@ -1750,7 +1748,6 @@ foreach instrument of global list_instruments {
 	* List of final files to use in the reporting and output file of summary statistics
 	global final_outputfile      "$`instrument'_final_data/`instrument'_summary_stats.xlsx" 
 	*** Adding other meta-data
-	display "`instrument'"
 	import excel "$final_outputfile", sheet("Sheet1") firstrow clear
 	ren A variablenameinthedtafile
 	merge 1:1 variablenameinthedtafile using "${directory}\EPAR_UW_335_master_list_indicators.dta", nogen
@@ -1760,6 +1757,7 @@ foreach instrument of global list_instruments {
 		gen Instrument="Ethiopia ESS Wave 4"	
 		gen Year="2018-19"
 	}
+	
 	if "`instrument'"=="Ethiopia_ESS_W3" { 
 		gen Geography="Ethiopia" 
 		gen Survey="LSMS-ISA"
@@ -1788,7 +1786,13 @@ foreach instrument of global list_instruments {
 		gen Geography="Malawi" 
 		gen Survey="LSMS-ISA"
 		gen Instrument="Malawi IHS Wave 3"	
-		gen Year="2016-17"
+		gen Year="2017-18"
+	}
+		if "`instrument'"=="MWI_IHS_IHPS_W4" { 
+		gen Geography="Malawi" 
+		gen Survey="LSMS-ISA"
+		gen Instrument="Malawi IHS Wave 4"	
+		gen Year="2019-20"
 	}
 	if "`instrument'"=="Nigeria_GHS_W4" { 
 		gen Geography="Nigeria" 
@@ -1934,36 +1938,19 @@ foreach instrument of global list_instruments {
 		gen Instrument="Uganda UNPS Wave 8"
 		gen Year="2019-20"
 	}
-	if "`instrument'"=="Uganda_NPS_W5" {
+	if "`instrument'"=="Uganda_UNPS_W5" {
 		gen Geography="Uganda"
 		gen Survey="LSMS-ISA"
 		gen Instrument="Uganda UNPS Wave 5"
 		gen Year = "2015-16"
 	}
-	if "`instrument'"=="UGA_W3" {
+	if "`instrument'"=="Uganda_UNPS_W3" {
 		gen Geography="Uganda"
 		gen Survey="LSMS-ISA"
 		gen Instrument="Uganda UNPS Wave 3"
 		gen Year="2011-12"
 	}
-	if "`instrument'"=="Uganda_NPS_W4" {
-		gen Geography="Uganda"
-		gen Survey="LSMS-ISA"
-		gen Instrument="Uganda NPS Wave 4"
-		gen Year="2013-14"
-	}
-	if "`instrument'"=="MWI_IHS_IHPS_W3" {
-		gen Geography="Malawi"
-		gen Survey="LSMS-ISA"
-		gen Instrument="Malawi IHS/IHPS Wave 3"
-		gen Year="2016-17"
-	}
-		if "`instrument'"=="UGA_W2" {
-		gen Geography="Uganda"
-		gen Survey="LSMS-ISA"
-		gen Instrument="Uganda UNPS Wave 2"
-		gen Year="2010-11"
-	}
+
 	order Geography Survey Instrument Year indicatorcategory indicatorname units commoditydisaggregation genderdisaggregation hhfarmsizedisaggregation ruraltotalpopulation subpopulationforestimate currencyconversion levelofindicator weight variablenameinthedtafile mean semean_strata sd p25 p50 p75 min max N 
 	gen N_less_30=N<30
 	*sort row_num
@@ -1975,17 +1962,17 @@ foreach instrument of global list_instruments {
 	save "$`instrument'_final_data/`instrument'_summary_stats_with_labels.dta", replace
 }
 
-/*
-*Append all summary statistics
+
+/*Append all summary statistics
 use "$Ethiopia_ESS_W3_final_data/Ethiopia_ESS_W3_summary_stats_with_labels.dta", clear
 foreach instrument of global list_instruments {
 	append using "$`instrument'_final_data/`instrument'_summary_stats_with_labels.dta"
 }
 duplicates drop 
-compress
+compress*/
 
 save "${directory}/335_SUMMARY_STATISTICS_ALL_INSTRUMENTS", replace
 *Export to excel
 *export excel using "${directory}\335_SUMMARY_STATISTICS_ALL_INSTRUMENTS.xls", firstrow(variables) replace
 export delimited using "${directory}\335_SUMMARY_STATISTICS_ALL_INSTRUMENTS.csv", replace
-*/
+
