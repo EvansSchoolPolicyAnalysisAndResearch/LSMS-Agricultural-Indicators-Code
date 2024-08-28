@@ -260,7 +260,7 @@ global identifier_master "{directory}"
 * HKS 7/6/23: appending panel files (IHPS) in to IHS data; renaming HHID hhid
 global appended_data "${directory}\Malawi IHS\Malawi IHS Wave 4\Raw DTA Files\appended_data"
 local directory_raw "${directory}\Malawi IHS\Malawi IHS Wave 4\Raw DTA Files\raw_data"
-local directory_panel "${directory}\malawi-ihps-all-datasets"
+local directory_panel "${directory}\Malawi IHS\malawi-ihps-all-datasets"
 cd "${directory}\"
 local panel_files : dir "${directory}\malawi-ihps-all-datasets" files "*_19.dta", respectcase
 
