@@ -1970,6 +1970,12 @@ foreach instrument of global list_instruments {
 		gen Instrument="Uganda UNPS Wave 2"
 		gen Year="2010-11"
 	}
+	if "`instrument'"=="Malawi_IHPS_W2" {
+	gen Geography="Malawi"
+	gen Survey="LSMS-ISA"
+	gen Instrument="Malawi IHPSS Wave 2"
+	gen Year="2010-11"
+	}
 	order Geography Survey Instrument Year indicatorcategory indicatorname units commoditydisaggregation genderdisaggregation hhfarmsizedisaggregation ruraltotalpopulation subpopulationforestimate currencyconversion levelofindicator weight variablenameinthedtafile mean semean_strata sd p25 p50 p75 min max N 
 	gen N_less_30=N<30
 	*sort row_num
