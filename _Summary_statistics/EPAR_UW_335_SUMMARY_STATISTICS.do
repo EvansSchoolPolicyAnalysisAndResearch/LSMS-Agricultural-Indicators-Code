@@ -1784,6 +1784,12 @@ foreach instrument of global list_instruments {
 		gen Instrument="Ethiopia ACC Baseline"	
 		gen Year="2016"
 	}
+	if "`instrument'"=="Malawi_IHS_W1" {
+		gen Geography="Malawi" 
+		gen Survey="LSMS-ISA"
+		gen Instrument="Malawi IHS/IHPS Wave 1"	
+		gen Year="2010-11"
+	}
 	if "`instrument'"=="Malawi_IHS_W3" { 
 		gen Geography="Malawi" 
 		gen Survey="LSMS-ISA"
