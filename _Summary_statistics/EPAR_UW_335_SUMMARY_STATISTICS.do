@@ -1754,6 +1754,12 @@ foreach instrument of global list_instruments {
 	import excel "$final_outputfile", sheet("Sheet1") firstrow clear
 	ren A variablenameinthedtafile
 	merge 1:1 variablenameinthedtafile using "${directory}\EPAR_UW_335_master_list_indicators.dta", nogen
+		if "`instrument'"=="Ethiopia_ESS_W5" { 
+		gen Geography="Ethiopia" 
+		gen Survey="LSMS-ISA"
+		gen Instrument="Ethiopia ESS Wave 5"	
+		gen Year="2021-22"
+	}
 	if "`instrument'"=="Ethiopia_ESS_W4" { 
 		gen Geography="Ethiopia" 
 		gen Survey="LSMS-ISA"
