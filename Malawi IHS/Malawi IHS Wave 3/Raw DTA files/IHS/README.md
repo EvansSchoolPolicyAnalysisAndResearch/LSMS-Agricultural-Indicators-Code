@@ -1,0 +1,1 @@
+Save the _IHS_ dataset here. The IHS data is located at (https://microdata.worldbank.org/index.php/catalog/2936)[https://microdata.worldbank.org/index.php/catalog/2936]. Remove the dta files from the subfolders and put them all into a single directory.

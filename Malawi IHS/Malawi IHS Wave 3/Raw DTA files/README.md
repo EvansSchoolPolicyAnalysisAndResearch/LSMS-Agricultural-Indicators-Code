@@ -1,1 +1,1 @@
-Save unzipped raw .dta files in this folder
+This folder contains all versions of the raw datasets - IHS and IHPS, then combined and panel-corrected (see Malawi readme) data in the temp_data folder when the code is run.

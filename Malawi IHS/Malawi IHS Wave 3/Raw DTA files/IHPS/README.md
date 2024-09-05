@@ -1,0 +1,1 @@
+Save the _IHPS_ dataset here. The IHPS data is located at (https://microdata.worldbank.org/index.php/catalog/3819)[https://microdata.worldbank.org/index.php/catalog/3819]. This link contains data for all four Malawi LSMS waves.

@@ -96,9 +96,9 @@ Complete
 - **Output:**    
 `MWI_IHS_IHPS_W3_plot_decision_makers.dta`  
 - **Coding Status:**    
-In Progress   
+Complete
 - **Known Issues:**  
-Currently revising the code to account for missing values and eliminate unmatched observation
+MWI Wave 3 has three decisionmakers and two owners. All the decisionmakers are accounted for. The decisionmakers are only replaced with owners when the decisionmakers are absent. This is incosistent with W1 which only has one decisionmaker and one owner. 
 
 ### Formalized Land Rights  
 - Determines whether a plot holder has a formal title and records formal landholder gender  
@@ -135,12 +135,14 @@ Self-employment income does not report crop sales. No "still-to-harvest" value r
 - **Coding Status:**     
 Complete   
 - **Known Issues:**    
-None    
+Survey question on how many animals owned by household at start of the season are not available. Livestock holidings are valued using observed sales prices.   
 
 ### Gross Crop Revenue
 - Total value of crops sold  
-- **Output:**  
-`MWI_IHS_IHPS_W3_crop_losses.dta`  
+- **Output:**    
+`MWI_IHS_IHPS_W3_hh_crop_production.dta`       
+`MWI_IHS_IHPS_W3_hh_crop_values_production.dta`     
+`MWI_IHS_IHPS_W3_crop_losses.dta`      
 - **Coding Status:**  
 Complete
 - **Known Issues:**   
@@ -148,15 +150,17 @@ None
 
 ### Crop Expenses
 - Total expenses divided among implicit/explicit and expense type, attributed at the plot level where possible.  
-- **Output:**  
-`MWI_IHS_IHPS_W3_input_quantities.dta`  
-`MWI_IHS_IHPS_W3_hh_cost_inputs_long.dta`  
-`MWI_IHS_IHPS_W3_hh_cost_inputs_long_complete.dta`  
+- **Output:**     
+`MWI_IHS_IHPS_W3_hh_cost_labor.dta`     
+`MWI_IHS_IHPS_W3_input_quantities.dta`      
+`MWI_IHS_IHPS_W3_hh_cost_inputs_long.dta`      
+`MWI_IHS_IHPS_W3_hh_cost_inputs_long_complete.dta`     
+`MWI_IHS_IHPS_W3_hh_cost_inputs.dta`       
 - **Coding Status:**  
-In progress  
+Complete   
 - **Known Issues:**
 	* LABOR: Labor expense estimates are severely understated for several reasons: 1. the survey instrument did not ask for number of hired labors. Therefore, the constructed value of hired labor for some households could represent all hired labor costs or per laborer hired labor costs. 2. We typically use the value of hired labor to imput the value of family and nonhired (exchange) labor. However, due to issues with how hired labor is contructed, we cannot use these values to impute the value of family or nonhired (exchange) labor.
-	* PLOT RENTS: Some rainy season data is missing. The final output on plot rents has too few of observations as compared to reported plot rents in the raw data. Releies on completion of plot decisionmakers
+	* PLOT RENTS: Some rainy season data is missing. The final output on plot rents has too few of observations as compared to reported plot rents in the raw data. 
 
 ### Monocropped Plots
 - Plot variables and expenses, along with some additional plot attributes as recorded in the plot roster, for only plots with a single reported crop and for only crops specified in the priority crop globals. For this wave, we also estimate the total nutrition application from fertilizers.  
@@ -165,7 +169,7 @@ In progress
 - **Coding Status:**  
 Complete   
 - **Known Issues:**  
-Will be reviewed after updating Plot Decisionmakers section. 
+None 
 
 ### Livestock Income
 - Values of production from reported sales of eggs, milk, other livestock products, and slaughtered livestock.  
@@ -174,17 +178,17 @@ Will be reviewed after updating Plot Decisionmakers section.
 - **Coding Status:**  
 Complete  
 - **Known Issues:**  
-None   
+Data on slaughtered livestock or ward information not available for W3. 
 
 ### Fish Income  
 - Total value of fish caught and time spent fishing  
-- **Output:**   
-`MWI_IHS_IHPS_W3_inputs_fish_income.dta`  
-`MWI_IHS_IHPS_W3_fish_trading_income.dta`  
+- **Output:**     
+`MWI_IHS_IHPS_W3_inputs_fish_income.dta`      
+`MWI_IHS_IHPS_W3_fish_trading_income.dta`      
 - **Coding Status:**   
 Complete 
 - **Known Issues:**  
-None  
+Fish price_per_unit is already averge price per unit, no additional calculations are required. 
 
 ### Self-Employment Income  
 - Value of income from owned businesses and postharvest crop processing  
@@ -214,7 +218,6 @@ None
 Complete  
 - **Known Issues:**  
 Land Rents reported in garden level. Very small number of households actually reported land rental income.
-
 
 ### Off Farm Hours
 - Estimated hours spent on non-agricultural activities annualized, and number of household members working hours off the farm.
@@ -250,7 +253,7 @@ Currently reporting off farm hours per week - may want to impute for annual valu
 - **Coding Status:**   
 Complete 
 - **Known Issues:**  
-None 
+None
 
 ### Animal Health (Diseases)
 - Rates of disease incidence for foot and mouth, lumpy skin, black quarter, brucelosis
@@ -259,13 +262,13 @@ None
 - **Coding Status:**   
 Complete 
 - **Known Issues:**  
-None 
+Disease code different than that from questionnaire. Brucelosis and small pox data is missing. 
 
 ### Plot Managers 
 - This section combines the use of improved seed and plot decision makers at the manager level. 
-- **Output:**  
-`MWI_IHS_IHPS_W3_farmer_improved_hybrid_seed_use.dta`
-`MWI_IHS_IHPS_W3_input_use.dta`
+- **Output:**      
+`MWI_IHS_IHPS_W3_farmer_improved_hybrid_seed_use.dta`    
+`MWI_IHS_IHPS_W3_input_use.dta`    
 - **Coding Status:** 
 Complete 
 - **Known Issues:**
@@ -296,7 +299,7 @@ None
 - **Coding Status:**   
 Complete 
 - **Known Issues:**  
-None  
+No digital or insurance in Malawi, unable to compute those variables. W4 does not have questions about credit or MM.  
 
 ### Milk Productivity  
 - Rates of milk production by time and number of animals owned  
@@ -305,7 +308,7 @@ None
 - **Coding Status:**   
 Complete
 - **Known Issues:**  
-None  
+Only cow milk in MWI, large ruminants are not included.   
 
 ### Egg Productivity  
 - Rates of egg production by time and number of animals owned  
@@ -357,16 +360,16 @@ None
 - **Output:**     
 `MWI_IHS_IHPS_W3_household_diet.dta`
 - **Coding Status:** 
-Pending Review
+Complete
 - **Known Issues:**
-None 
+No individual consumption but instead household level consumption of various food items. Thus, only the proportion of household eating nutritious food can be estimated.  
 
 ### Women's Control Over Income
 - Women's decisionmaking ability over the proceeds of crop sales, wages, business income, and other income sources.
 - **Output:**     
 `MWI_IHS_IHPS_W3_control_income.dta`
 - **Coding Status:** 
-Pending Review
+Complete
 - **Known Issues:**
 None
 
@@ -377,7 +380,7 @@ None
 - **Coding Status:** 
 Complete 
 - **Known Issues:**
-None
+Missing data on plot ownership and negotiating. In most cases, MWI LSMS 3 lists the first three decision makers. Indicator may be biased downward if some women would participate in decisions but are not listed among the first two.
 
 ### Women's Ownership of Assets
 - Capital asset ownership rates among women
@@ -386,16 +389,17 @@ None
 - **Coding Status:**
 Complete 
 - **Known Issues:**
-None
+Missing data on plot ownership and negotiating. In most cases, MWI LSMS 3 lists the first three decision makers. Indicator may be biased downward if some women would participate in decisions but are not listed among the first two.
 
 ### Crop Yields
 - Converts plot variables file to wider format for backwards compatibility
-- **Output:**     
-`MWI_IHS_IHPS_W3_trees.dta`
-`MWI_IHS_IHPS_W3_crop_harvest_area_yield.dta`
-`MWI_IHS_IHPS_W3_yield_hh_crop_level.dta`
+- **Output:**       
+`MWI_IHS_IHPS_W3_trees.dta`    
+`MWI_IHS_IHPS_W3_crop_harvest_area_yield.dta`         
+`MWI_IHS_IHPS_W3_yield_hh_crop_level.dta`       
+`MWI_IHS_IHPS_W3_hh_crop_values_production_type_crop.dta`      
 - **Coding Status:** 
-Incomplete 
+Complete
 - **Known Issues:**
 None
 
@@ -413,9 +417,9 @@ None
 - **Output:**      
 `MWI_IHS_IHPS_W3_consumption.dta`
 - **Coding Status:** 
-Complete
+Incomplete
 - **Known Issues:** 
-None
+Doesn't include postharvest and postplanting consumption. 
 
 ### Household food provision
 - Calculates months that the household experienced food insecurity.
@@ -444,4 +448,39 @@ Complete
 - **Known Issues:** 
 None
  
+### Household Variables
+- Compiles all relevant variables from previous intermediate files on the level of an individual household.
+- **Output:**    
+`MWI_IHS_IHPS_W3_household_variables.dta`    
+- **Coding Status:** 
+Complete 
+- **Known Issues:** 
+None
 
+### Individual Level Variables  
+* Compiles all relevant variables that are available on an individual level from previous intermediate files.
+- **Output:**    
+`MWI_IHS_IHPS_W3_individual_variables.dta`    
+- **Coding Status:** 
+Complete 
+- **Known Issues:** 
+None
+
+### Plot Level Variables  
+* Compiles all relevant variables that are available on a plot level from previous intermediate files.
+- **Output:**    
+`MWI_IHS_IHPS_W3_field_plot_variables.dta`   
+- **Coding Status:** 
+Complete 
+- **Known Issues:** 
+None 
+
+### Summary Statistics  
+*  This section produces a file in two formats, .dta and .xlsx, that provide descriptive statistics (mean, standard deviation, quartiles, min, max) for each variable produced in the Household Variables, Individual Level Variables, and Plot Level Variables sections.
+- **Output:**     
+`MWI_IHS_IHPS_W3_summary_stats_with_labels.dta`      
+`MWI_IHS_IHPS_W3_summary_stats.xlsx`    
+- **Coding Status:** 
+In progress
+- **Known Issues:** 
+None 
