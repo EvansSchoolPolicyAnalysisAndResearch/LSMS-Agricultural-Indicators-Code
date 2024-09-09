@@ -8,8 +8,8 @@
 *Acknowledgments: We acknowledge the helpful contributions of Pierre Biscaye, David Coomes, Jack Knauer, Josh Merfeld, Isabella Sun, Chelsea Sweeney, Emma Weaver, Ayala Wineman, 
 				  Travis Reynolds, the World Bank's LSMS-ISA team, the FAO's RuLIS team, IFPRI, IRRI, and the Bill & Melinda Gates Foundation Agricultural Development Data and Policy team in discussing indicator construction decisions. 
 				  All coding errors remain ours alone.
-*Date			: This  Version - 18th July 2024
-*Dataset Version	: TZA_2008_NPS1_v02_M_STATA_English_labels 	
+*Date			: This Version - 07 August 2024
+*Dataset Version: TZA_2008_NPS1_v02_M_STATA_English_labels 	
 ----------------------------------------------------------------------------------------------------------------------------------------------------*/
 
 
@@ -164,11 +164,11 @@ set more off
 set maxvar 8000
 
 *Set location of raw data and output
-global directory				"335_Agricultural-Indicator-Curation" //Update this to match your github repo location
+global directory				"LSMS-Agricultural-Indicators-Code" //Update this to match your github repo location
 
 //set directories
 *These paths correspond to the folders where the raw data files are located and where the created data and final data will be stored.
-global Tanzania_NPS_W1_raw_data 	   	 "$directory/Tanzania NPS/Tanzania NPS Wave 1/Raw DTA Files/"
+global Tanzania_NPS_W1_raw_data 	   	 "$directory/Tanzania NPS/Tanzania NPS Wave 1/Raw DTA Files"
 global Tanzania_NPS_W1_created_data  		 "$directory/Tanzania NPS/Tanzania NPS Wave 1/Final DTA Files/created_data"
 global Tanzania_NPS_W1_final_data  		 "$directory/Tanzania NPS/Tanzania NPS Wave 1/Final DTA Files/final_data"
 

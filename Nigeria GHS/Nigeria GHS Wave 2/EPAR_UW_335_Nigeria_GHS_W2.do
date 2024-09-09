@@ -123,11 +123,11 @@ set maxvar 10000
 ssc install findname
 
 *Set location of raw data and output
-global directory			"\\netid.washington.edu\wfs\EvansEPAR\Project\EPAR\Working Files\335 - Ag Team Data Support\Waves"
+global directory			"LSMS-Agricultural-Indicators-Code" //Update this to match the path to your local repo
 
 //set directories
 *Nigeria General HH survey (NG LSMS)  Wave 2
-global Nigeria_GHS_W2_raw_data "$directory/Nigeria GHS/Nigeria GHS Wave 2/Raw DTA Files/"
+global Nigeria_GHS_W2_raw_data "$directory/Nigeria GHS/Nigeria GHS Wave 2/Raw DTA Files/NGA_2012_GHSP-W2_v02_M"
 global Nigeria_GHS_W2_created_data  "$directory/Nigeria GHS/Nigeria GHS Wave 2/Final DTA Files/created_data"
 global Nigeria_GHS_W2_final_data  "$directory/Nigeria GHS/Nigeria GHS Wave 2/Final DTA Files/final_data" 
   
@@ -205,11 +205,14 @@ gen rural = (sector==2)
 lab var rural "1= Rural"
 keep hhid zone state lga ea wt_wave2 rural
 ren wt_wave2 weight
-save "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_hhsize2.dta", replace
+drop if weight == . //Non-surveyed households
+recast double weight
+save "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_hhids.dta", replace
 
 ********************************************************************************
 * WEIGHTS *
 ********************************************************************************
+/* //ALT: Redundant 
 use "${Nigeria_GHS_W2_raw_data}/HHTrack.dta", clear
 merge m:1 hhid using "${Nigeria_GHS_W2_raw_data}/secta_plantingw2.dta"
 gen rural = (sector==2)
@@ -217,7 +220,7 @@ lab var rural "1= Rural"
 keep hhid zone state lga ea wt_wave2 rural
 ren wt_wave2 weight
 save  "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_weights.dta", replace
-
+*/
 
 ********************************************************************************
 * INDIVIDUAL IDS *
@@ -257,7 +260,7 @@ collapse (sum) hh_members (max) fhh, by (hhid)
 lab var hh_members "Number of household members"
 lab var fhh "1= Female-headed household"
 *DYA.11.1.2020 Re-scaling survey weights to match population estimates
-merge 1:1 hhid using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_weights.dta", nogen
+merge 1:1 hhid using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_hhids.dta", nogen
 *Adjust to match total population
 total hh_members [pweight=weight]
 matrix temp =e(b)
@@ -279,10 +282,11 @@ egen weight_pop_rururb=rowtotal(weight_pop_rur weight_pop_urb)
 total hh_members [pweight=weight_pop_rururb]  
 lab var weight_pop_rururb "Survey weight - adjusted to match rural and urban population"
 drop weight_pop_rur weight_pop_urb
+recast double weight*
 *drop hh_members
 *merge 1:1 hhid using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_hhsize2.dta", nogen
 save "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_hhsize.dta", replace
-merge 1:1 hhid using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_weights.dta", nogen
+keep hhid zone state lga ea weight* rural
 save "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_weights.dta", replace
 *end hh_member correction
 
@@ -4504,6 +4508,7 @@ save "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_food_dep.dta", replace
 		replace `c'_exp_`i' = . if `c'_monocrop_ha_`i'==.
 		}
 	}
+	//ALT 07.30.24: This line is causing an error 
 	//drop rental_cost_land* cost_seed* value_fertilizer* cost_trans_fert* value_herbicide* value_pesticide* value_manure_purch* cost_trans_manure*
 	drop val_anml* val_mech* val_labor* val_herb* val_inorg* /*val_orgfert**/ val_plotrent* val_seeds* val_transfert* val_seedtrans* //
 	*Land rights
@@ -4626,6 +4631,7 @@ gen liters_per_cow= .
 gen liters_per_buffalo= . 
 gen milk_animals = . 
 global empty_vars $empty_vars *costs_dairy* *costs_dairy_percow* share_imp_dairy *liters_per_cow *liters_per_buffalo milk_animals
+**# Bookmark #1
 
 *Egg productivity
 merge 1:1 hhid using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_egg_animals.dta", nogen keep(1 3)
@@ -4633,8 +4639,8 @@ gen liters_milk_produced = milk_months_produced * milk_quantity_produced
 lab var liters_milk_produced "Total quantity (liters) of milk per year (household)"
 gen eggs_total_year =eggs_quantity_produced * eggs_months_produced
 lab var eggs_total_year "Total number of eggs that was produced (household)"
-gen egg_poultry_year = .
-gen poultry_owned = .
+//gen egg_poultry_year = .
+//gen poultry_owned = .
 global empty_vars $empty_vars *egg_poultry_year poultry_owned
  
 *Costs of crop production per hectare
@@ -5020,6 +5026,8 @@ forvalues k=1(1)$nb_topcrops {
 recode costs_dairy_percow cost_per_lit_milk (.=0) if dairy_hh==1
 recode costs_dairy_percow cost_per_lit_milk (nonmissing=.) if dairy_hh==0
 
+gen egg_poultry_year = . // SRK 8.8.24 - just to get section to run 
+
 *now winsorize ratios only at top 1% 
 global wins_var_ratios_top1 /*
 */ inorg_fert_rate cost_total_ha cost_expli_ha cost_expli_hh_ha /*		
@@ -5231,8 +5239,9 @@ gen w_aglabor_weight_female=. //cannot create in this instrument
 lab var w_aglabor_weight_female "Hired labor-adjusted household weights -female workers"
 gen w_aglabor_weight_male=. // cannot create in this instrument
 lab var w_aglabor_weight_male "Hired labor-adjusted household weights -male workers"
-gen weight_milk=.
-gen weight_egg=.
+gen weight_milk= milk_animals*weight
+gen poultry_owned=. // SRK 8.8.24 - just to make this section run
+gen weight_egg= poultry_owned*weight
 *generate area weights for monocropped plots
 foreach cn in $topcropname_area {
 	gen ar_pl_mono_wgt_`cn'_all = weight*`cn'_monocrop_ha
@@ -5329,8 +5338,12 @@ keep hhid fhh clusterid strataid *weight* *wgt* zone state lga ea rural farm_siz
 */ *value_livestock_products* *value_livestock_sales* *total_cons* nb_cattle_today *sales_livestock_products nb_cows_today lvstck_holding_srum  nb_smallrum_today nb_chickens_today nb_poultry_today /*HKS 6.6.23*/ nb_largerum_t nb_smallrum_t nb_chickens_t bottom_40_percap bottom_40_peraeq /*
 */ ccf_loc ccf_usd ccf_1ppp ccf_2ppp *sales_livestock_products area_plan* area_harv*  *value_pro* *value_sal* *inter*
 
-drop weight
+gen ssp = (farm_size_agland <= 2 & farm_size_agland != 0) & (nb_largerum_today <= 10 & nb_smallrum_today <= 10 & nb_chickens_today <= 50)
+
+ren weight weight_sample 
+la var weight_sample "Original survey sampling weight"
 ren weight_pop_rururb weight
+la var weight "Weight adjusted by rural and urban population"
 
 //////////Identifier Variables ////////
 *Add variables and ren household id so dta file can be appended with dta files from other instruments
@@ -5351,8 +5364,6 @@ capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2
 */ 81 "Niger ECVMA Wave 1" 82 "Niger ECVMA Wave 2" 
 
 label values instrument instrument	
-*saveold "${Nigeria_GHS_W2_final_data}/Nigeria_GHS_W2_household_variables.dta", replace
-gen ssp = (farm_size_agland <= 2 & farm_size_agland != 0) & (nb_largerum_today <= 10 & nb_largerum_t <= 10 & nb_chickens_today <= 50) // HKS 6.16.23
 
 saveold "${Nigeria_GHS_W2_final_data}/Nigeria_GHS_W2_household_variables.dta", replace // HKS 6.16.23 
 
@@ -5430,8 +5441,10 @@ lab var female_vac_animal "1 = Individual female farmers (livestock keeper) uses
 foreach v of varlist $empty_vars { 
 	replace `v' = .
 }
-drop weight
+ren weight weight_sample 
+la var weight_sample "Original survey sampling weight"
 ren weight_pop_rururb weight
+la var weight "Weight adjusted by rural and urban population"
 
 //////////Identifier Variables ////////
 *Add variables and ren household id so dta file can be appended with dta files from other instruments
@@ -5678,8 +5691,10 @@ foreach i in 1ppp 2ppp loc{
 	gen w_plot_labor_prod_male_`i'=w_plot_labor_prod_`i' if dm_gender==1
 	gen w_plot_labor_prod_mixed_`i'=w_plot_labor_prod_`i' if dm_gender==3
 }
-drop weight
+ren weight weight_sample 
+la var weight_sample "Original survey sampling weight"
 ren weight_pop_rururb weight
+la var weight "Weight adjusted by rural and urban population"
 
 //////////Identifier Variables ////////
 *Add variables and ren household id so dta file can be appended with dta files from other instruments

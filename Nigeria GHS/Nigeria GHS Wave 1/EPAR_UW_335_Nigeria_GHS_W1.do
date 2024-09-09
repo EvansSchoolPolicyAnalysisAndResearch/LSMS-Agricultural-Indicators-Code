@@ -121,10 +121,10 @@ set more off
 set maxvar 10000
 
 *Set location of raw data and output
-global directory			"335_Agricultural-Indicator-Data-Curation" //Update this to match your local repo
+global directory			"LSMS-Agricultural-Indicators-Code" //Update this to match your local repo
 //set directories
 *Nigeria General HH survey (NG LSMS)  Wave 1
-global Nigeria_GHS_W1_raw_data 		"$directory/Nigeria GHS/Nigeria GHS Wave 1/Raw DTA Files"  //ALT: IMPORTANT NOTE: We assume this folder contains all the dta files in all the subfolders. You'll need to move the files from the download into a single folder for this do file to work.
+global Nigeria_GHS_W1_raw_data 		"$directory/Nigeria GHS/Nigeria GHS Wave 1/Raw DTA Files/NGA_2010_GHSP-W1_v03_M_STATA"  //ALT: IMPORTANT NOTE: We assume this folder contains all the dta files in all the subfolders. You'll need to move the files from the download into a single folder for this do file to work.
 global Nigeria_GHS_W1_created_data  	"$directory/Nigeria GHS/Nigeria GHS Wave 1/Final DTA Files/created_data"
 global Nigeria_GHS_W1_final_data  	"$directory/Nigeria GHS/Nigeria GHS Wave 1/Final DTA Files/final_data"
     
@@ -194,13 +194,14 @@ save  "${Nigeria_GHS_W1_created_data}/Nigeria_GHS_W1_hhids.dta", replace
 ********************************************************************************
 * WEIGHTS *
 ********************************************************************************
+/* ALT: Redundant 
 use "${Nigeria_GHS_W1_raw_data}/secta_plantingw1.dta", clear
 gen rural = (sector==2)
 lab var rural "1= Rural"
 keep hhid zone state lga ea wt_wave1 rural
 ren wt_wave1 weight
 save  "${Nigeria_GHS_W1_created_data}/Nigeria_GHS_W1_weights.dta", replace
-
+*/
 
 ********************************************************************************
 * INDIVIDUAL IDS *
@@ -249,10 +250,9 @@ egen weight_pop_rururb=rowtotal(weight_pop_rur weight_pop_urb)
 total hh_members [pweight=weight_pop_rururb]  
 lab var weight_pop_rururb "Survey weight - adjusted to match rural and urban population"
 drop weight_pop_rur weight_pop_urb
+recast double weight*
 save "${Nigeria_GHS_W1_created_data}/Nigeria_GHS_W1_hhsize.dta", replace
-//ALT: update to save edits to downstream
-use  "${Nigeria_GHS_W1_created_data}/Nigeria_GHS_W1_weights.dta", clear
-merge 1:1 hhid using "${Nigeria_GHS_W1_created_data}/Nigeria_GHS_W1_hhsize.dta", nogen keepusing(weight_pop_rururb)
+keep hhid zone state lga ea weight* rural
 save "${Nigeria_GHS_W1_created_data}/Nigeria_GHS_W1_weights.dta", replace
 
 
@@ -561,7 +561,7 @@ append using "${Nigeria_GHS_W1_raw_data}/sect11g_plantingW1.dta"
 	gen replanted = (max_lost==1 & crops_plot>0)
 	preserve 
 		keep if replanted == 1 & lost_crop == 1 //we'll keep this for planting area, which might cause the plot to go over 100% planted 
-		keep zone state lga ea hhid crop_code ha_planted lost_crop
+		keep zone state lga ea hhid crop_code plot_id ha_planted lost_crop
 		tempfile lost_crops
 		save `lost_crops'
 	restore
@@ -579,7 +579,6 @@ append using "${Nigeria_GHS_W1_raw_data}/sect11g_plantingW1.dta"
 	bys hhid plot_id : egen permax = max(perm_crop)
 	bys hhid plot_id date_planted : gen plant_date_unique=_n
 	bys hhid plot_id : egen plant_dates = max(plant_date_unique)
-	//ALT Stopping point 03.24.23: Still need to finish monocropping assessment, verify that everything looks good, include dry season crops
 	replace purestand=0 if (crops_plot>1 & !(plant_dates>1))  | (crops_plot>1 & permax==1)  //Multiple crops planted or harvested in the same month are not relayed; may omit some crops that were purestands that preceded or followed a mixed crop.
 	gen any_mixed = !(s11fq2==1 | s11fq2==3)
 	bys hhid plot_id : egen any_mixed_max = max(any_mixed)
@@ -714,7 +713,9 @@ restore
 	bys hhid plot_id : gen percent_inputs = percent_field/percent_area
 	drop percent_area //Assumes that inputs are +/- distributed by the area planted. Probably not true for mixed tree/field crops, but reasonable for plots that are all field crops
 	//Labor should be weighted by growing season length, though. 
+	tab plot_id
 	append using `lost_crops'
+	tab plot_id 
 	recode lost_crop (.=0)
 	merge m:1 hhid plot_id using "${Nigeria_GHS_W1_created_data}/Nigeria_GHS_W1_plot_decision_makers.dta", nogen keep(1 3) keepusing(dm_gender)
 	save "${Nigeria_GHS_W1_created_data}/Nigeria_GHS_W1_all_plots.dta",replace
@@ -2803,7 +2804,8 @@ use "${Nigeria_GHS_W1_created_data}/Nigeria_GHS_W1_all_plots.dta", clear
 drop if lost_crop==1
 collapse (sum) ha_planted, by(hhid plot_id dm_gender)
 merge 1:1 hhid plot_id using "${Nigeria_GHS_W1_created_data}/Nigeria_GHS_W1_input_quantities.dta", nogen keep(1 3) //11 plots have expenses but don't show up in the all_plots roster.
-gen dm_gender2 = "male" if dm_gender==1
+gen dm_gender2 = "unknown"
+replace dm_gender2 = "male" if dm_gender==1
 replace dm_gender2 = "female" if dm_gender==2
 replace dm_gender2 = "mixed" if dm_gender==3
 drop dm_gender
@@ -2814,7 +2816,7 @@ ren pest_rate pest_kg_
 ren herb_rate herb_kg_
 drop if ha_planted==0 //Zeroes got introduced somewhere.
 reshape wide ha_planted_ fert_inorg_kg_ /*fert_org_kg_*/ pest_kg_ herb_kg_, i(hhid plot_id) j(dm_gender2) string
-collapse (sum) *male *mixed, by(hhid)
+collapse (sum) *male *mixed *unknown, by(hhid)
 recode ha_planted* (0=.)
 foreach i in ha_planted fert_inorg_kg /*fert_org_kg*/ pest_kg herb_kg {
 	egen `i' = rowtotal(`i'_*)
@@ -2827,6 +2829,7 @@ foreach x of varlist ha_planted ha_planted_male ha_planted_female ha_planted_mix
 		replace `x' = r(r2) if  `x' > r(r2) & `x' !=.    
 }
 */
+drop *unknown* //needed for household totals but not disaggregation 
 lab var fert_inorg_kg "Inorganic fertilizer (kgs) for household"
 *lab var fert_org_kg "Organic fertilizer (kgs) for household" 
 lab var pest_kg "Pesticide (kgs) for household"
@@ -3281,12 +3284,13 @@ save "${Nigeria_GHS_W1_created_data}/Nigeria_GHS_W1_trees.dta", replace
 
 use "${Nigeria_GHS_W1_created_data}/Nigeria_GHS_W1_all_plots.dta", clear
 //Legacy stuff- agquery gets handled above.
-gen mixed = "inter" if purestand==0
+gen mixed = "inter"  //Note to adjust this for lost crops 
 replace mixed="pure" if purestand==1
-drop if dm_gender ==. //106 obs deleted.
-gen dm_gender2="mixed"
+
+gen dm_gender2="unknown"
 replace dm_gender2="male" if dm_gender==1
 replace dm_gender2="female" if dm_gender==2
+replace dm_gender2="mixed" if dm_gender==3
 collapse (sum) area_harv_=ha_harvest area_plan_=ha_planted harvest_=quant_harv_kg, by(hhid dm_gender2 mixed crop_code)
 reshape wide harvest_ area_harv_ area_plan_, i(hhid dm_gender2 crop_code) j(mixed) string
 ren area* area*_
@@ -3302,6 +3306,7 @@ foreach i in harvest area_plan area_harv {
 	}
 	
 }
+drop *unknown* //only used for hh totals 
 save "${Nigeria_GHS_W1_created_data}/Nigeria_GHS_W1_hh_crop_area_plan.dta", replace
 
 
@@ -4876,11 +4881,16 @@ keep hhid fhh clusterid strataid *weight* *wgt* zone state lga ea rural farm_siz
 */ *all_area_* grew_* agactivities_hh ag_hh crop_hh livestock_hh fishing_hh *_milk_produced* *eggs_total_year *value_eggs_produced* /*
 */ *value_livestock_products* *value_livestock_sales* *total_cons* nb_cows_today nb_cattle_today nb_poultry_today /*HKS 6.6.23*/ nb_largerum_t nb_smallrum_t nb_chickens_t bottom_40_percap bottom_40_peraeq /*
 */ ccf_loc ccf_usd ccf_1ppp ccf_2ppp *sales_livestock_products area_plan* area_harv*  *value_pro* *value_sal* *inter*
-drop weight
+
+
+ren weight weight_sample 
+la var weight_sample "Original survey sampling weight"
 ren weight_pop_rururb weight
+la var weight "Weight adjusted by rural and urban population"
+
 //////////Identifier Variables ////////
 *Add variables and ren household id so dta file can be appended with dta files from other instruments
-ggen hhid_panel = hhid 
+gen hhid_panel = hhid 
 lab var hhid_panel "panel hh identifier" 
 gen geography = "Nigeria" 
 gen survey = "LSMS-ISA" 
@@ -4897,7 +4907,7 @@ capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2
 */ 81 "Niger ECVMA Wave 1" 82 "Niger ECVMA Wave 2"
 label values instrument instrument	
 *saveold "${Nigeria_GHS_W1_final_data}/Nigeria_GHS_W1_household_variables.dta", replace // HKS 6.16.23
-gen ssp = (farm_size_agland <= 2 & farm_size_agland != 0) & (nb_largerum_today <= 10 & nb_largerum_t <= 10 & nb_chickens_today <= 50) // HKS 6.16.23
+gen ssp = (farm_size_agland <= 2 & farm_size_agland != 0) & (nb_largerum_today <= 10 & nb_smallrum_today <= 10 & nb_chickens_today <= 50) // HKS 6.16.23
 
 saveold "${Nigeria_GHS_W1_final_data}/Nigeria_GHS_W1_household_variables.dta", replace // HKS 6.16.23
 
@@ -4971,8 +4981,10 @@ foreach v in $empty_vars {
 	if _rc gen `v' =.
 }
 
-drop weight
+ren weight weight_sample 
+la var weight_sample "Original survey sampling weight"
 ren weight_pop_rururb weight
+la var weight "Weight adjusted by rural and urban population"
 
 //////////Identifier Variables ////////
 *Add variables and ren household id so dta file can be appended with dta files from other instruments
@@ -5246,12 +5258,14 @@ foreach i in 1ppp 2ppp loc {
 	gen w_plot_labor_prod_mixed_`i'=w_plot_labor_prod_`i' if dm_gender==3
 }
 
-drop weight
+ren weight weight_sample 
+la var weight_sample "Original survey sampling weights"
 ren weight_pop_rururb weight
+la var weight "Weight adjusted by rural and urban populations"
 
 //////////Identifier Variables ////////
 *Add variables and ren household id so dta file can be appended with dta files from other instruments
-ggen hhid_panel = hhid 
+gen hhid_panel = hhid 
 lab var hhid_panel "panel hh identifier" 
 gen geography = "Nigeria" 
 gen survey = "LSMS-ISA" 

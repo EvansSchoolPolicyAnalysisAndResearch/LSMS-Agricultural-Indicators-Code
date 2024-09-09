@@ -14,6 +14,7 @@
 				  All coding errors remain ours alone.
 
 *Date			: 18th July 2024
+*Dataset version: NGA_2015_GHSP-W3_v02_M_Stata
 ----------------------------------------------------------------------------------------------------------------------------------------------------*/
 
 
@@ -68,7 +69,7 @@ set maxvar 10000
 
 
 *Set location of raw data and output
-global directory			"\\netid.washington.edu\wfs\EvansEPAR\Project\EPAR\Working Files\335 - Ag Team Data Support\Waves"
+global directory			"LSMS-Agricultural-Indicators-Code" //Update this to match the path to your local repo
 global Nigeria_GHS_W3_raw_data 			"$directory/Nigeria GHS/Nigeria GHS Wave 3/Raw DTA files/NGA_2015_GHSP-W3_v02_M_Stata"
 global Nigeria_GHS_W3_created_data 		"$directory/Nigeria GHS/Nigeria GHS Wave 3/Final DTA files/created_data"
 global Nigeria_GHS_W3_final_data  		"$directory/Nigeria GHS/Nigeria GHS Wave 3/Final DTA files/final_data"
@@ -134,19 +135,23 @@ gen rural = (sector==2)
 lab var rural "1= Rural"
 keep hhid zone state lga ea wt_wave3 rural
 ren wt_wave3 weight
+drop if weight==. //Non-surveyed households
+recast double weight
 save  "${Nigeria_GHS_W3_created_data}/Nigeria_GHS_W3_hhids.dta", replace
 
 ********************************************************************************
 * WEIGHTS *
 ********************************************************************************
+/* //ALT: Redundant 
 use "${Nigeria_GHS_W3_raw_data}/HHTrack.dta", clear
 merge m:1 hhid using "${Nigeria_GHS_W3_raw_data}/sectaa_plantingw3.dta"
 gen rural = (sector==2)
 lab var rural "1= Rural"
 keep hhid zone state lga ea wt_wave3 rural
 ren wt_wave3 weight
+recast double weight
 save  "${Nigeria_GHS_W3_created_data}/Nigeria_GHS_W3_weights.dta", replace
-
+*/
 
 ********************************************************************************
 * INDIVIDUAL IDS *
@@ -207,8 +212,9 @@ egen weight_pop_rururb=rowtotal(weight_pop_rur weight_pop_urb)
 total hh_members [pweight=weight_pop_rururb]  
 lab var weight_pop_rururb "Survey weight - adjusted to match rural and urban population"
 drop weight_pop_rur weight_pop_urb
+recast double weight*
 save "${Nigeria_GHS_W3_created_data}/Nigeria_GHS_W3_hhsize.dta", replace
-merge 1:1 hhid using "${Nigeria_GHS_W3_created_data}/Nigeria_GHS_W3_weights.dta", nogen
+keep hhid zone state lga ea weight* rural
 save "${Nigeria_GHS_W3_created_data}/Nigeria_GHS_W3_weights.dta", replace
 *end hh_member correction
 //use "${Nigeria_GHS_W3_raw_data}/sect1_harvestw3.dta", clear
@@ -2783,7 +2789,6 @@ collapse (sum) ha_planted ha_harvest, by(hhid plot_id purestand field_size)
 reshape long ha_, i(hhid plot_id purestand field_size) j(area_type) string
 tempfile plot_areas
 save `plot_areas'
-**# Bookmark #1
 use "${Nigeria_GHS_W3_created_data}/Nigeria_GHS_W3_plot_cost_inputs_long.dta", clear
 collapse (sum) cost_=val, by(hhid plot_id dm_gender exp)
 reshape wide cost_, i(hhid plot_id dm_gender) j(exp) string
@@ -3481,6 +3486,7 @@ foreach i in harvest area_plan area_harv {
 	}
 	
 }
+recast double harvest* area*
 save "${Nigeria_GHS_W3_created_data}/Nigeria_GHS_W3_hh_crop_area_plan.dta", replace
 
 
@@ -5156,8 +5162,9 @@ gen w_aglabor_weight_female=. // cannot create in this instrument
 lab var w_aglabor_weight_female "Hired labor-adjusted household weights -female workers"
 gen w_aglabor_weight_male=. // cannot create in this instrument 
 lab var w_aglabor_weight_male "Hired labor-adjusted household weights -male workers"
-gen weight_milk=. //cannot create in this instrument
-gen weight_egg=. //cannot create in this instrument
+gen poultry_owned=. // SRK 8.8.24 - just to make code run thru end of hh var section
+//gen weight_milk = milk_animals*weight
+//gen weight_egg = poultry_owned*weight
 *generate area weights for monocropped plots
 foreach cn in $topcropname_area {
 	gen ar_pl_mono_wgt_`cn'_all = weight*`cn'_monocrop_ha
@@ -5223,9 +5230,6 @@ replace bottom_40_peraeq = 1 if r(r1) > w_daily_peraeq_cons & rural==1
 gen clusterid=ea
 gen strataid=state
 
-*dropping unnecessary varables
-//drop *_inter_*
-
 *create missing crop variables (no cowpea or yam)
 foreach x of varlist *maize* {
 	foreach c in wheat beans {
@@ -5249,16 +5253,19 @@ keep hhid fhh clusterid strataid *weight* *wgt* zone state lga ea rural farm_siz
 */ feed* water* lvstck_housed* ext_* use_fin_* lvstck_holding* *mortality_rate* *lost_disease* disease* any_imp* formal_land_rights_hh /*
 */ *livestock_expenses* *ls_exp_vac* *prop_farm_prod_sold /*DYA.10.26.2020*/ *hrs_*   months_food_insec *value_assets* hhs_* *dist_agrodealer /*
 */ encs* num_crops_* multiple_crops* imprv_seed_* hybrid_seed_* *labor_total *farm_area *labor_productivity* *land_productivity* /*
-*/ *wage_paid_aglabor* *labor_hired ar_h_wgt_* *yield_hv_* ar_pl_wgt_* *yield_pl_* *liters_per_* milk_animals /* HKS 6.18.23: poultry_owned*/ *costs_dairy* *cost_per_lit* /*
+*/ *wage_paid_aglabor* *labor_hired ar_h_wgt_* *yield_hv_* ar_pl_wgt_* *yield_pl_* *liters_per_* milk_animals poultry_owned *costs_dairy* *cost_per_lit* /*
 */ *egg_poultry_year* *inorg_fert_rate* *ha_planted* *cost_expli_hh* *cost_expli_ha* *monocrop_ha* *kgs_harv_mono* *cost_total_ha* /*
 */ *_exp* poverty_under_* *value_crop_production* *value_harv* *value_crop_sales* *value_sold* *kgs_harvest* *total_planted_area* *total_harv_area* /*
 */ *all_area_* grew_* agactivities_hh ag_hh crop_hh livestock_hh fishing_hh *_milk_produced* *eggs_total_year *value_eggs_produced* /*
-*/ *value_livestock_products* *value_livestock_sales* *total_cons* nb_cattle_today *sales_livestock_products nb_cows_today lvstck_holding_srum  nb_smallrum_today nb_chickens_today nb_poultry_today /*HKS 6.6.23*/ nb_largerum_t nb_smallrum_t nb_chickens_t bottom_40_percap bottom_40_peraeq /*
-*/ ccf_loc ccf_usd ccf_1ppp ccf_2ppp *sales_livestock_products area_plan* area_harv*  *value_pro* *value_sal* *inter*
+*/ *value_livestock_products* *value_livestock_sales* *total_cons* nb_cattle_today *sales_livestock_products nb_cows_today lvstck_holding_srum  nb_smallrum_today nb_chickens_today /*
+*/ nb_poultry_today nb_largerum_today nb_smallrum_today nb_chickens_t bottom_40_percap bottom_40_peraeq /*
+*/ ccf_loc ccf_usd ccf_1ppp ccf_2ppp *sales_livestock_products area_plan* area_harv*  *value_pro* *value_sal* *inter* // SRK 8.8.24 - just to make code run thru end of hh var section
 
-gen ssp = (farm_size_agland <= 2 & farm_size_agland != 0) & (nb_largerum_today <= 10 & nb_largerum_t <= 10 & nb_chickens_today <= 50) // HKS 6.16.23
-drop weight
+gen ssp = (farm_size_agland <= 2 & farm_size_agland != 0) & (nb_largerum_today <= 10 & nb_smallrum_today <= 10 & nb_chickens_today <= 50) // HKS 6.16.23
+ren weight weight_sample 
+la var weight_sample "Original survey sampling weight"
 ren weight_pop_rururb weight
+la var weight "Weight adjusted by rural and urban population"
 //////////Identifier Variables ////////
 *Add variables and ren household id so dta file can be appended with dta files from other instruments
 gen hhid_panel = hhid 
@@ -5363,8 +5370,10 @@ foreach v of varlist $empty_vars {
 	replace `v' = .
 }
 
-drop weight
+ren weight weight_sample 
+la var weight_sample "Original survey sampling weight"
 ren weight_pop_rururb weight
+la var weight "Weight adjusted by rural and urban population"
 
 //////////Identifier Variables ////////
 *Add variables and ren household id so dta file can be appended with dta files from other instruments
@@ -5634,8 +5643,12 @@ foreach i in 1ppp 2ppp loc{
 
 *Create weight 
 gen plot_labor_weight= w_labor_total*weight_pop_rururb
-drop weight
+
+ren weight weight_sample 
+la var weight_sample "Original survey sampling weight"
 ren weight_pop_rururb weight
+la var weight "Weight adjusted by rural and urban population"
+
 //////////Identifier Variables ////////
 *Add variables and ren household id so dta file can be appended with dta files from other instruments
 gen hhid_panel = hhid 

@@ -1754,6 +1754,13 @@ foreach instrument of global list_instruments {
 	import excel "$final_outputfile", sheet("Sheet1") firstrow clear
 	ren A variablenameinthedtafile
 	merge 1:1 variablenameinthedtafile using "${directory}\EPAR_UW_335_master_list_indicators.dta", nogen
+  if "`instrument'"=="BurkinaF_EMC_W1" { 
+		gen Geography="Burkina Faso" 
+		gen Survey="LSMS-ISA"	
+		gen Instrument="Burkina Faso EMC Wave 1"
+		gen Year="2014"
+	}
+  
 		if "`instrument'"=="Ethiopia_ESS_W5" { 
 		gen Geography="Ethiopia" 
 		gen Survey="LSMS-ISA"
@@ -1784,25 +1791,15 @@ foreach instrument of global list_instruments {
 		gen Instrument="Ethiopia ESS Wave 1"	
 		gen Year="2011-12"
 	}
-	if "`instrument'"=="Ethiopia_ACC" { 
+	
+  if "`instrument'"=="Ethiopia_ACC" { 
 		gen Geography="Ethiopia" 
 		gen Survey="AgDev Baseline"
 		gen Instrument="Ethiopia ACC Baseline"	
 		gen Year="2016"
 	}
-	if "`instrument'"=="Malawi_IHS_W1" {
-		gen Geography="Malawi" 
-		gen Survey="LSMS-ISA"
-		gen Instrument="Malawi IHS/IHPS Wave 1"	
-		gen Year="2010-11"
-	}
-	if "`instrument'"=="Malawi_IHS_W3" { 
-		gen Geography="Malawi" 
-		gen Survey="LSMS-ISA"
-		gen Instrument="Malawi IHS Wave 3"	
-		gen Year="2016-17"
-	}
-	if "`instrument'"=="Nigeria_GHS_W4" { 
+	
+  if "`instrument'"=="Nigeria_GHS_W4" { 
 		gen Geography="Nigeria" 
 		gen Survey="LSMS-ISA"
 		gen Instrument="Nigeria GHS Wave 4"	
@@ -1826,42 +1823,13 @@ foreach instrument of global list_instruments {
 		gen Instrument="Nigeria GHS Wave 1"	
 		gen Year="2010-11"
 	}
-	if "`instrument'"=="Nigeria_AgDev_S6" { 
-		gen Geography="Nigeria - Katsina" 
-		gen Survey="AgDev Baseline"
-		gen Instrument="Nigeria NIBAS AgDev"	
-		gen Year="2016"
-	}
-	if "`instrument'"=="Nigeria_AgDev_S5" { 
-		gen Geography="Nigeria - Kano" 
-		gen Survey="AgDev Baseline"
-		gen Instrument="Nigeria NIBAS AgDev"	
-		gen Year="2016"
-	}
-	if "`instrument'"=="Nigeria_AgDev_S4" { 
-		gen Geography="Nigeria - Niger" 
-		gen Survey="AgDev Baseline"
-		gen Instrument="Nigeria NIBAS AgDev"	
-		gen Year="2016"
-	}
-	if "`instrument'"=="Nigeria_AgDev_S3" { 
-		gen Geography="Nigeria - Kaduna" 
-		gen Survey="AgDev Baseline"
-		gen Instrument="Nigeria NIBAS AgDev"	
-		gen Year="2016"
-	}
-	if "`instrument'"=="Nigeria_AgDev_S2" { 
-		gen Geography="Nigeria - Benue" 
-		gen Survey="AgDev Baseline"
-		gen Instrument="Nigeria NIBAS AgDev"	
-		gen Year="2016"
-	}
-	if "`instrument'"=="Nigeria_AgDev_S1" { 
-		gen Geography="Nigeria - Nassarawa" 
-		gen Survey="AgDev Baseline"
-		gen Instrument="Nigeria NIBAS AgDev"	
-		gen Year="2016"
-	}
+  
+  if "`instrument'"=="Tanzania_NPS_W5" {
+    gen Geography="Tanzania"
+    gen Survey="LSMS-ISA"
+    gen Instrument="Tanzania NPS Wave 5"
+    gen Year="2019-20"
+  }
 	if "`instrument'"=="Tanzania_NPS_W4" { 
 		gen Geography="Tanzania" 
 		gen Survey="LSMS-ISA"
@@ -1886,102 +1854,84 @@ foreach instrument of global list_instruments {
 		gen Instrument="Tanzania NPS Wave 1"	
 		gen Year="2008-09"
 	}
-	if "`instrument'"=="Tanzania_AgDevz3" { 
-		gen Geography="Tanzania - Southern Highlands" 
-		gen Survey="AgDev Baseline"
-		gen Instrument="Tanzania TBS AgDev"	
-		gen Year="2016"
-	}
-	if "`instrument'"=="Tanzania_AgDevz2" { 
-		gen Geography="Tanzania - Northern Zone" 
-		gen Survey="AgDev Baseline"
-		gen Instrument="Tanzania TBS AgDev"	
-		gen Year="2016"
-	}
-	if "`instrument'"=="Tanzania_AgDevz1" { 
-		gen Geography="Tanzania - Lake Zone" 
-		gen Survey="AgDev Baseline"
-		gen Instrument="Tanzania TBS AgDev"	
-		gen Year="2016"
-	}
-	if "`instrument'"=="India_AgDev_S4" { 
-		gen Geography="India - West Bengal" 
-		gen Survey="AgDev Baseline"
-		gen Instrument="India RMS AgDev"	
-		gen Year="2016"
-	}
-	if "`instrument'"=="India_AgDev_S3" { 
-		gen Geography="India - Uttar Pradesh" 
-		gen Survey="AgDev Baseline"
-		gen Instrument="India RMS AgDev"	
-		gen Year="2016"
-	}
-	if "`instrument'"=="India_AgDev_S2" { 
-		gen Geography="India - Odisha" 
-		gen Survey="AgDev Baseline"
-		gen Instrument="India RMS AgDev"	
-		gen Year="2016"
-	}
-	if "`instrument'"=="India_AgDev_S1" { 
-		gen Geography="India - Bihar" 
-		gen Survey="AgDev Baseline"
-		gen Instrument="India RMS AgDev"	
-		gen Year="2016"
-	}
-	if "`instrument'"=="BurkinaF_EMC_W1" { 
-		gen Geography="Burkina Faso" 
-		gen Survey="LSMS-ISA"	
-		gen Instrument="Burkina Faso EMC Wave 1"
-		gen Year="2014"
-	}
-	if "`instrument'"=="Tanzania_NPS_W5" {
-		gen Geography="Tanzania"
-		gen Survey="LSMS-ISA"
-		gen Instrument="Tanzania NPS Wave 5"
-		gen Year="2019-20"
-	}
-	if "`instrument'"=="Uganda_UNPS_W8" {
+  
+	if "`instrument'"=="Uganda_NPS_W8" {
 		gen Geography="Uganda"
 		gen Survey="LSMS-ISA"
 		gen Instrument="Uganda UNPS Wave 8"
 		gen Year="2019-20"
 	}
+  
+  if "`instrument'"=="Uganda_NPS_W7" {
+  	gen Geography="Uganda"
+		gen Survey="LSMS-ISA"
+		gen Instrument="Uganda UNPS Wave 7"
+		gen Year = "2018-19"
+  }
+  
 	if "`instrument'"=="Uganda_NPS_W5" {
 		gen Geography="Uganda"
 		gen Survey="LSMS-ISA"
 		gen Instrument="Uganda UNPS Wave 5"
 		gen Year = "2015-16"
 	}
-	if "`instrument'"=="UGA_W3" {
-		gen Geography="Uganda"
-		gen Survey="LSMS-ISA"
-		gen Instrument="Uganda UNPS Wave 3"
-		gen Year="2011-12"
-	}
-	if "`instrument'"=="Uganda_NPS_W4" {
+  
+  if "`instrument'"=="Uganda_NPS_W4" {
 		gen Geography="Uganda"
 		gen Survey="LSMS-ISA"
 		gen Instrument="Uganda NPS Wave 4"
 		gen Year="2013-14"
 	}
+  
+	if "`instrument'"=="Uganda_NPS_W3" {
+		gen Geography="Uganda"
+		gen Survey="LSMS-ISA"
+		gen Instrument="Uganda UNPS Wave 3"
+		gen Year="2011-12"
+	}
+	
+  if "`instrument'"=="Uganda_NPS_W2" {
+		gen Geography="Uganda"
+		gen Survey="LSMS-ISA"
+		gen Instrument="Uganda UNPS Wave 2"
+		gen Year="2010-11"
+	}
+  
+  if "`instrument'"=="Uganda_NPS_W1" {
+		gen Geography="Uganda"
+		gen Survey="LSMS-ISA"
+		gen Instrument="Uganda UNPS Wave 3"
+		gen Year="2009-10"
+	}
+  
+  if "`instrument'"=="MWI_IHS_IHPS_W4" {
+    gen Geography="Malawi"
+    gen Survey="LSMS-ISA"
+    gen Instrument="Malawi IHS/IHPS Wave 4"
+    gen year="2019"
+  }
+  
 	if "`instrument'"=="MWI_IHS_IHPS_W3" {
 		gen Geography="Malawi"
 		gen Survey="LSMS-ISA"
 		gen Instrument="Malawi IHS/IHPS Wave 3"
 		gen Year="2016-17"
 	}
-		if "`instrument'"=="UGA_W2" {
-		gen Geography="Uganda"
-		gen Survey="LSMS-ISA"
-		gen Instrument="Uganda UNPS Wave 2"
-		gen Year="2010-11"
-	}
-	if "`instrument'"=="Malawi_IHPS_W2" {
+
+if "`instrument'"=="Malawi_IHPS_W2" {
 	gen Geography="Malawi"
 	gen Survey="LSMS-ISA"
-	gen Instrument="Malawi IHPSS Wave 2"
-	gen Year="2010-11"
-	}
+	gen Instrument="Malawi IHPS Wave 2"
+	gen Year="2013"
+}
+
+if "`instrument'"="Malawi_IHS_W1" {
+  gen Geography="Malawi"
+  gen Survey="LSMS-ISA"
+  gen Instrument="Malawi IHS Wave 1"
+  gen Year="2010-11"
+}
+
 	order Geography Survey Instrument Year indicatorcategory indicatorname units commoditydisaggregation genderdisaggregation hhfarmsizedisaggregation ruraltotalpopulation subpopulationforestimate currencyconversion levelofindicator weight variablenameinthedtafile mean semean_strata sd p25 p50 p75 min max N 
 	gen N_less_30=N<30
 	*sort row_num
@@ -1992,18 +1942,3 @@ foreach instrument of global list_instruments {
 	drop all_zero_2_missing
 	save "$`instrument'_final_data/`instrument'_summary_stats_with_labels.dta", replace
 }
-
-/*
-*Append all summary statistics
-use "$Ethiopia_ESS_W3_final_data/Ethiopia_ESS_W3_summary_stats_with_labels.dta", clear
-foreach instrument of global list_instruments {
-	append using "$`instrument'_final_data/`instrument'_summary_stats_with_labels.dta"
-}
-duplicates drop 
-compress
-
-save "${directory}/335_SUMMARY_STATISTICS_ALL_INSTRUMENTS", replace
-*Export to excel
-*export excel using "${directory}\335_SUMMARY_STATISTICS_ALL_INSTRUMENTS.xls", firstrow(variables) replace
-export delimited using "${directory}\335_SUMMARY_STATISTICS_ALL_INSTRUMENTS.csv", replace
-*/

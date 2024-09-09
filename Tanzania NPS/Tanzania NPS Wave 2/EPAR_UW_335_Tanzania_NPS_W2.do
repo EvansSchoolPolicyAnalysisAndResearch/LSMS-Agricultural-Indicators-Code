@@ -170,7 +170,7 @@ set more off
 set maxvar 8000	
 
 *Set location of raw data and output
-global directory	"335_Agricultural-Indicator-Data-Curation" //Update this to match your local folder
+global directory "LSMS-Agricultural-Indicators-Code" //Update this to match the path to your local repo
 
 //set directories
 *These paths correspond to the folders where the raw data files are located and where the created data and final data will be stored.

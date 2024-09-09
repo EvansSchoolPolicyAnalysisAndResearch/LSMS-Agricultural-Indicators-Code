@@ -202,6 +202,7 @@ save "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_cropname_table.dta", replace
 ********************************************************************************
 * WEIGHTS *
 ********************************************************************************
+/*
 use "${Nigeria_GHS_W4_raw_data}\secta_plantingw4.dta", clear
 gen rural = (sector==2)
 lab var rural "1= Rural"
@@ -211,7 +212,7 @@ ren wt_wave4 weight
 drop if weight==.  //287 hh as expected
 count // 4,976 obs as expected
 save  "${Nigeria_GHS_W4_created_data}\Nigeria_GHS_W4_weights.dta", replace
-
+*/
 
 
 
@@ -223,6 +224,7 @@ gen rural = (sector==2)
 lab var rural "1= Rural"
 keep hhid zone state lga ea wt_wave4 rural
 ren wt_wave4 weight
+drop if weight == . 
 *DYA.11.21.2020 from the the BID
 *"The final sample consisted of 4,976 households of which 1,425 were from the long panel sample and 3,551 from the refresh sample."
 *Now sure why we have 5,263 obs in this file.
@@ -230,7 +232,7 @@ ren wt_wave4 weight
 *The EAs were highly concentrated in the North East and North Central Zones where conflict (insurgency and farmer-herder attacks) were prevalent during this period.
 *But these likely show up this this file explaing why with have 287 a additional households.
 duplicates report hhid
-merge 1:1 hhid using  "${Nigeria_GHS_W4_created_data}\Nigeria_GHS_W4_weights.dta", keep(2 3) nogen  // keeping hh surveyed
+//merge 1:1 hhid using  "${Nigeria_GHS_W4_created_data}\Nigeria_GHS_W4_weights.dta", keep(2 3) nogen  // keeping hh surveyed
 save  "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_hhids.dta", replace
 
 
@@ -289,8 +291,7 @@ total hh_members [pweight=weight_pop_rururb]
 lab var weight_pop_rururb "Survey weight - adjusted to match rural and urban population"
 drop weight_pop_rur weight_pop_urb
 save "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_hhsize.dta", replace
-
-merge 1:1 hhid using "${Nigeria_GHS_W4_created_data}\Nigeria_GHS_W4_weights.dta", nogen
+keep hhid zone state lga ea weight* rural
 save "${Nigeria_GHS_W4_created_data}\Nigeria_GHS_W4_weights.dta", replace
 
 ********************************************************************************
@@ -1052,7 +1053,6 @@ value_harv~t |     14,217    58533.01    208885.5   31.52444   1.33e+07
 	//Labor should be weighted by growing season length, though. 
 	recode ha_planted (0=.) //A few obs where the plantation area isn't given and the presence of other crops on the plot prevents us from inferring area.
 	merge m:1 hhid plot_id using "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_plot_decision_makers.dta", nogen keep(1 3) keepusing(dm_gender)
-
 	save "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_all_plots.dta",replace
 
 ********************************************************************************
@@ -1398,7 +1398,6 @@ save "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_hh_cost_labor.dta", replace
 	* SEED, LAND, ANIMALS, MACHINES, CHEMICALS, AND FERTILIZERS	*
 	*************************************************************
 	***Seeds***
-**# Bookmark #2
 use "${Nigeria_GHS_W4_raw_data}/sect11e1_plantingw4.dta", clear
 ren s11eq21 valseedexp
 gen improved = mod(seedid, 2)==1 //All "improved" codes end in 1
@@ -1899,7 +1898,7 @@ preserve
 	di "`cn_full'"
 	keep if cropcode==`c'			
 	ren monocrop_ha `cn'_monocrop_ha
-	drop if `cn'_monocrop_ha==0 		
+	drop if `cn'_monocrop_ha==0 | `cn'_monocrop_ha==.	
 	ren kgs_harv_mono kgs_harv_mono_`cn'
 	ren val_harv_mono val_harv_mono_`cn'
 	gen `cn'_monocrop=1
@@ -1912,6 +1911,10 @@ preserve
 		gen `i'_mixed = `i' if dm_gender==3
 	}
 	
+	gen dm_male = dm_gender==1 
+	gen dm_female = dm_gender==2
+	gen dm_mixed = dm_gender==3
+	
 	la var `cn'_monocrop_ha "Total `cn' monocrop hectares - Household"
 	la var `cn'_monocrop "Household has at least one `cn' monocrop"
 	la var kgs_harv_mono_`cn' "Total kilograms of `cn' harvested - Household"
@@ -1921,7 +1924,14 @@ preserve
 		la var kgs_harv_mono_`cn'_`g' "Total kilograms of `cn' harvested on `g' managed plots - Household"
 		la var val_harv_mono_`cn'_`g' "Total value of `cn' harvested on `g' managed plots - Household"
 	}
-	collapse (sum) *monocrop* kgs_harv* val_harv*, by(hhid)
+	collapse (sum) *monocrop* kgs_harv* val_harv* (max) dm*, by(hhid)
+	foreach i in kgs_harv_mono_`cn' val_harv_mono_`cn' {
+	foreach j in male female mixed {
+	replace `i'_`j' = . if dm_`j'==0
+	}
+	}
+	recode `cn'_monocrop_ha* (0=.)
+	drop dm*
 	capture save "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_`cn'_monocrop_hh_area.dta", replace
 restore
 }
@@ -2823,7 +2833,6 @@ save "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_livestock_feed_water_house.d
 //This section combines all the variables that we're interested in at manager level
 //(inorganic fertilizer, improved seed) into a single operation.
 //Doing improved seed and agrochemicals at the same time.
-**# Bookmark #1
 use "${Nigeria_GHS_W4_raw_data}/sect11f_plantingw4.dta", clear
 gen use_imprv_seed=s11fq3b==1
 ren plotid plot_id
@@ -4883,28 +4892,31 @@ ren value_crop_production value_pro
 ren value_crop_sales value_sal
 separate value_pro, by(commodity)
 separate value_sal, by(commodity)
+//Topcrop abbrs:
+//global topcropname_area "maize rice sorgum millet cowpea grdnt yam swtptt cassav banana cocoa soy" /
+
 foreach s in pro sal {
-	ren value_`s'1 value_`s'_bana
-	ren value_`s'2 value_`s'_beanc
-	ren value_`s'3 value_`s'_casav
+	ren value_`s'1 value_`s'_banana
+	ren value_`s'2 value_`s'_beanc 
+	ren value_`s'3 value_`s'_cassav
 	ren value_`s'4 value_`s'_cocoa
 	ren value_`s'5 value_`s'_cyam
 	ren value_`s'6 value_`s'_coton
 	ren value_`s'7 value_`s'_fruit 
-	ren value_`s'8 value_`s'_gdnut
+	ren value_`s'8 value_`s'_grdnt
 	ren value_`s'9 value_`s'_maize 
-	ren value_`s'10 value_`s'_mill 
+	ren value_`s'10 value_`s'_millet 
 	ren value_`s'11 value_`s'_oilc 
 	ren value_`s'12 value_`s'_onuts
 	ren value_`s'13 value_`s'_oths 
 	//ren value_`s'14 value_`s'_plant: This got incorporated into banana
 	ren value_`s'14 value_`s'_pota  
-	ren value_`s'15 value_`s'_rice 
-	ren value_`s'16 value_`s'_sorg 
-	ren value_`s'17 value_`s'_sybea
+	ren value_`s'15 value_`s'_rice
+	ren value_`s'16 value_`s'_sorgum 
+	ren value_`s'17 value_`s'_soy
 	ren value_`s'18 value_`s'_spice
 	ren value_`s'19 value_`s'_suga
-	ren value_`s'20 value_`s'_spota
+	ren value_`s'20 value_`s'_swtptt
 	ren value_`s'21 value_`s'_vegs
 *	ren value_`s'23 value_`s'_whea 
 	ren value_`s'22 value_`s'_yam
@@ -7262,9 +7274,9 @@ gen w_aglabor_weight_female=. // cannot create in this instrument
 lab var w_aglabor_weight_female "Hired labor-adjusted household weights -female workers"
 gen w_aglabor_weight_male=. // cannot create in this instrument 
 lab var w_aglabor_weight_male "Hired labor-adjusted household weights -male workers"
-//ALT: Not sure where these came from; they cause an ambiguous abbreviation error in the summary stats.
-//gen weight_milk=. //cannot create in this instrument
-//gen weight_egg=. //cannot create in this instrument
+**# Bookmark #2
+gen weight_milk=milk_animals * weight
+gen weight_egg = poultry_owned*weight
 *generate area weights for monocropped plots
 foreach cn in $topcropname_area {
 	gen ar_pl_mono_wgt_`cn'_all = weight*`cn'_monocrop_ha
@@ -7323,7 +7335,6 @@ replace bottom_40_peraeq = 1 if r(r1) > w_daily_peraeq_cons & rural==1
 gen clusterid=ea
 gen strataid=state
 
-
 *create missing crop variables (no cowpea or yam)
 foreach x of varlist *maize* {
 	foreach c in wheat beans {
@@ -7341,7 +7352,7 @@ foreach v of varlist $empty_vars {
 }
 
 // Removing intermediate variables to get below 5,000 vars
-keep hhid fhh clusterid strataid *weight_pop_rururb* *_weight* *wgt* zone state lga ea rural farm_size* *total_income* /*
+keep hhid fhh clusterid strataid weight *weight_pop_rururb* *_weight* *wgt* zone state lga ea rural farm_size* *total_income* /*
 */ *percapita_income* *percapita_cons* *daily_percap_cons* *peraeq_cons* *daily_peraeq_cons* /*
 */ *income* *share* *proportion_cropvalue_sold *farm_size_agland hh_members adulteq *labor_family *labor_hired use_inorg_fert vac_* /*
 */ feed* water* lvstck_housed* ext_* use_fin_* lvstck_holding* *mortality_rate* *lost_disease* disease* any_imp* formal_land_rights_hh /*
@@ -7349,12 +7360,15 @@ keep hhid fhh clusterid strataid *weight_pop_rururb* *_weight* *wgt* zone state 
 */ encs* num_crops_* multiple_crops* imprv_seed_* hybrid_seed_* *labor_total *farm_area *labor_productivity* *land_productivity* /*
 */ *wage_paid_aglabor* *labor_hired ar_h_wgt_* *yield_hv_* ar_pl_wgt_* *yield_pl_* *liters_per_* milk_animals poultry_owned *costs_dairy* *cost_per_lit* /*
 */ *egg_poultry_year* *inorg_fert_rate* *ha_planted* *cost_expli_hh* *cost_expli_ha* *monocrop_ha* *kgs_harv_mono* *cost_total_ha* /*
-*/ *_exp* poverty_under_1_9 *value_crop_production* *value_harv* *value_crop_sales* *value_sold* *kgs_harvest* *total_planted_area* *total_harv_area* /*
+*/ *_exp* poverty_under_1_9 poverty_under_2_15 *value_crop_production* *value_harv* *value_crop_sales* *value_sold* *kgs_harvest* *total_planted_area* *total_harv_area* /*
 */ *all_area_* grew_* agactivities_hh ag_hh crop_hh livestock_hh fishing_hh *_milk_produced* *eggs_total_year *value_eggs_produced* /*
 */ *value_livestock_products* *value_livestock_sales* *total_cons* nb_cattle_today /*HKS 6.6.23*/ nb_largerum_t nb_smallrum_t nb_chickens_t  *sales_livestock_products nb_cows_today lvstck_holding_srum  nb_smallrum_today nb_chickens_today nb_poultry_today bottom_40_percap bottom_40_peraeq /*
 */ ccf_loc ccf_usd ccf_1ppp ccf_2ppp *sales_livestock_products  *value_pro* *value_sal* *inter* *pure*
 
+ren weight weight_sample
 ren weight_pop_rururb weight
+la var weight_sample "Original survey weight"
+la var weight "Weight adjusted to match rural/urban populations"
 
 //////////Identifier Variables ////////
 *Add variables and ren household id so dta file can be appended with dta files from other instruments
@@ -7397,8 +7411,6 @@ merge 1:1 hhid indiv using "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_farmer
 merge 1:1 hhid indiv using "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_farmer_improvedseed_use.dta", nogen  keep(1 3)
 merge 1:1 hhid indiv using "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_farmer_vaccine.dta", nogen  keep(1 3)
 merge m:1 hhid using "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_hhids.dta", nogen keep (1 3)
-//ALT: Experimental code
-drop weight
 merge m:1 hhid using "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_weights.dta", nogen keepusing(weight_pop_rururb)
 //End experimental code
 
@@ -7468,7 +7480,11 @@ global empty_vars *hybrid_seed* women_diet number_foodgroup
 foreach v of varlist $empty_vars { 
 	replace `v' = .
 }
+
+ren weight weight_sample 
 ren weight_pop_rururb weight
+la var weight_sample "Original survey weight"
+la var weight "Weight adjusted to match rural/urban populations"
 
 //////////Identifier Variables ////////
 *Add variables and ren household id so dta file can be appended with dta files from other instruments
@@ -7780,8 +7796,10 @@ foreach i in 1ppp 2ppp loc{
 
 *Create weight 
 gen plot_labor_weight= w_labor_total*weight_pop_rururb
-drop weight
+ren weight weight_sample 
 ren weight_pop_rururb weight
+la var weight_sample "Original survey weight"
+la var weight "Weight adjusted to match rural/urban populations"
 //////////Identifier Variables ////////
 *Add variables and ren household id so dta file can be appended with dta files from other instruments
 gen hhid_panel = hhid 

@@ -10,7 +10,8 @@
 				  Travis Reynolds, the World Bank's LSMS-ISA team, the FAO's RuLIS team, IFPRI, IRRI, and the Bill & Melinda Gates Foundation Agricultural Development Data and Policy team in discussing indicator construction decisions. 
 				  
 				  All coding errors remain ours alone.
-*Date			: This  Version 30 Jan 2022
+*Date			: This  Version 7 Aug 2024
+*Dataset Version: TZA_2019_NPD-SDD_v06_M_STATA12
 ----------------------------------------------------------------------------------------------------------------------------------------------------*/
 
 
@@ -120,9 +121,9 @@ ssc install findname  // need this user-written ado file for some commands to wo
 
 
 *Set location of raw data and output
-global directory			    "\\netid.washington.edu\wfs\EvansEPAR\Project\EPAR\Working Files\335 - Ag Team Data Support\Waves"
+global directory			    "LSMS-Agricultural-Indicators-Code"
 //set directories: These paths correspond to the folders where the raw data files are located and where the created data and final data will be stored.
-global Tanzania_NPS_W5_raw_data 			"$directory/Tanzania NPS/Tanzania NPS Wave 5/Raw DTA Files/TZA_2019_NPD-SDD_v06_M_STATA12"
+global Tanzania_NPS_W5_raw_data 			"$directory/Tanzania NPS/Tanzania NPS Wave 5/Raw DTA Files/"
 global Tanzania_NPS_W5_created_data 		"$directory/Tanzania NPS/Tanzania NPS Wave 5/Final DTA Files/created_data"
 global Tanzania_NPS_W5_final_data  			"$directory/Tanzania NPS/Tanzania NPS Wave 5/Final DTA Files/final_data"
 
@@ -4883,21 +4884,21 @@ keep y5_hhid fhh clusterid strataid *weight* *wgt* region region_name district d
 //////////Identifier Variables ////////
 *Add variables and ren household id so dta file can be appended with dta files from other instruments
 ren y5_hhid hhid
-gen geography = "Tanzania"
-gen survey = "LSMS-ISA"
-gen year = "2018-19"
-gen instrument = 26
-label define instrument 1 "Tanzania NPS Wave 1" 2 "Tanzania NPS Wave 2" 3 "Tanzania NPS Wave 3" 4 "Tanzania NPS Wave 4" /*
-	*/ 5 "Ethiopia ESS Wave 1" 6 "Ethiopia ESS Wave 2" 7 "Ethiopia ESS Wave 3" /*
-	*/ 8 "Nigeria GHS Wave 1" 9 "Nigeria GHS Wave 2" 10 "Nigeria GHS Wave 3" /*
-	*/ 11 "Tanzania TBS AgDev (Lake Zone)" 12 "Tanzania TBS AgDev (Northern Zone)" 13 "Tanzania TBS AgDev (Southern Zone)" /*
-	*/ 14 "Ethiopia ACC Baseline" /*
-	*/ 15 "India RMS Baseline (Bihar)" 16 "India RMS Baseline (Odisha)" 17 "India RMS Baseline (Uttar Pradesh)" 18 "India RMS Baseline (West Bengal)" /*
-	*/ 19 "Nigeria NIBAS AgDev (Nassarawa)" 20 "Nigeria NIBAS AgDev (Benue)" 21 "Nigeria NIBAS AgDev (Kaduna)" /*
-	*/ 22 "Nigeria NIBAS AgDev (Niger)" 23 "Nigeria NIBAS AgDev (Kano)" 24 "Nigeria NIBAS AgDev (Katsina)" 25 "Nigeria GHS Wave 4" /*
-	*/ 26 "Tanzania NPS Wave 5"
-label values instrument instrument	
-
+gen hhid_panel = hhid 
+lab var hhid_panel "panel hh identifier" 
+gen geography = "Tanzania" 
+gen survey = "LSMS-ISA" 
+gen year = "2018-19" 
+gen instrument = 15 
+//Only runs if label isn't already defined.
+capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2" 13 "Tanzania NPS Wave 3" 14 "Tanzania NPS Wave 4" 15 "Tanzania NPS Wave 5" /*
+	*/ 21 "Ethiopia ESS Wave 1" 22 "Ethiopia ESS Wave 2" 23 "Ethiopia ESS Wave 3" 24 "Ethiopia ESS Wave 4" 25 "Ethiopia ESS Wave 5" /*
+	*/ 31 "Nigeria GHS Wave 1" 32 "Nigeria GHS Wave 2" 33 "Nigeria GHS Wave 3" 34 "Nigeria GHS Wave 4"/*
+	*/ 41 "Malawi IHS/IHPS Wave 1" 42 "Malawi IHS/IHPS Wave 2" 43 "Malawi IHS/IHPS Wave 3" 44 "Malawi IHS/IHPS Wave 4" /*
+    */ 51 "Uganda NPS Wave 1" 52 "Uganda NPS Wave 2" 53 "Uganda NPS Wave 3" 54 "Uganda NPS Wave 4" 55 "Uganda NPS Wave 5" /*W6 does not exist*/ 56 "Uganda NPS Wave 7" 57 "Uganda NPS Wave 8" /* 
+*/ 61 "Burkina Faso EMC Wave 1" /* 
+*/ 71 "Mali EACI Wave 1" 72 "Mali EACI Wave 2" /*
+*/ 81 "Niger ECVMA Wave 1" 82 "Niger ECVMA Wave 2"
 saveold "${Tanzania_NPS_W5_final_data}/Tanzania_NPS_W5_household_variables.dta", replace
 
 //stop
@@ -4956,30 +4957,24 @@ replace number_foodgroup=.
 *Add variables and ren household id so dta file can be appended with dta files from other instruments
 ren y5_hhid hhid
 ren indidy5 indid
-gen geography = "Tanzania"
-gen survey = "LSMS-ISA"
-gen year = "2018-19"
-gen instrument = 26
-label define instrument 1 "Tanzania NPS Wave 1" 2 "Tanzania NPS Wave 2" 3 "Tanzania NPS Wave 3" 4 "Tanzania NPS Wave 4" /*
-	*/ 5 "Ethiopia ESS Wave 1" 6 "Ethiopia ESS Wave 2" 7 "Ethiopia ESS Wave 3" /*
-	*/ 8 "Nigeria GHS Wave 1" 9 "Nigeria GHS Wave 2" 10 "Nigeria GHS Wave 3" /*
-	*/ 11 "Tanzania TBS AgDev (Lake Zone)" 12 "Tanzania TBS AgDev (Northern Zone)" 13 "Tanzania TBS AgDev (Southern Zone)" /*
-	*/ 14 "Ethiopia ACC Baseline" /*
-	*/ 15 "India RMS Baseline (Bihar)" 16 "India RMS Baseline (Odisha)" 17 "India RMS Baseline (Uttar Pradesh)" 18 "India RMS Baseline (West Bengal)" /*
-	*/ 19 "Nigeria NIBAS AgDev (Nassarawa)" 20 "Nigeria NIBAS AgDev (Benue)" 21 "Nigeria NIBAS AgDev (Kaduna)" /*
-	*/ 22 "Nigeria NIBAS AgDev (Niger)" 23 "Nigeria NIBAS AgDev (Kano)" 24 "Nigeria NIBAS AgDev (Katsina)"  25 "Nigeria GHS Wave 4" /*
-	*/ 26 "Tanzania NPS Wave 5"
+merge m:1 hhid using "${Tanzania_NPS_W5_final_data}/Tanzania_NPS_W5_household_variables.dta", nogen keep (1 3) keepusing(ag_hh)
+replace make_decision_ag =. if ag_hh==0
+gen hhid_panel = hhid 
+lab var hhid_panel "panel hh identifier" 
+gen geography = "Tanzania" 
+gen survey = "LSMS-ISA" 
+gen year = "2018-19" 
+gen instrument = 15 
+//Only runs if label isn't already defined.
+capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2" 13 "Tanzania NPS Wave 3" 14 "Tanzania NPS Wave 4" 15 "Tanzania NPS Wave 5" /*
+	*/ 21 "Ethiopia ESS Wave 1" 22 "Ethiopia ESS Wave 2" 23 "Ethiopia ESS Wave 3" 24 "Ethiopia ESS Wave 4" 25 "Ethiopia ESS Wave 5" /*
+	*/ 31 "Nigeria GHS Wave 1" 32 "Nigeria GHS Wave 2" 33 "Nigeria GHS Wave 3" 34 "Nigeria GHS Wave 4"/*
+	*/ 41 "Malawi IHS/IHPS Wave 1" 42 "Malawi IHS/IHPS Wave 2" 43 "Malawi IHS/IHPS Wave 3" 44 "Malawi IHS/IHPS Wave 4" /*
+    */ 51 "Uganda NPS Wave 1" 52 "Uganda NPS Wave 2" 53 "Uganda NPS Wave 3" 54 "Uganda NPS Wave 4" 55 "Uganda NPS Wave 5" /*W6 does not exist*/ 56 "Uganda NPS Wave 7" 57 "Uganda NPS Wave 8" /* 
+*/ 61 "Burkina Faso EMC Wave 1" /* 
+*/ 71 "Mali EACI Wave 1" 72 "Mali EACI Wave 2" /*
+*/ 81 "Niger ECVMA Wave 1" 82 "Niger ECVMA Wave 2"
 label values instrument instrument	
-
-*merge in hh variable to determine ag household
-preserve
-use "${Tanzania_NPS_W5_final_data}/Tanzania_NPS_W5_household_variables.dta", clear
-keep hhid ag_hh
-tempfile ag_hh
-save `ag_hh'
-restore
-merge m:1 hhid using `ag_hh', nogen keep (1 3)
-replace   make_decision_ag =. if ag_hh==0
 saveold "${Tanzania_NPS_W5_final_data}/Tanzania_NPS_W5_individual_variables.dta", replace
 
 
@@ -5192,21 +5187,22 @@ gen plot_labor_weight= w_labor_total*weight
 
 //////////Identifier Variables ////////
 *Add variables and ren household id so dta file can be appended with dta files from other instruments
-*ren y5_hhid hhid
-gen geography = "Tanzania"
-gen survey = "LSMS-ISA"
-gen year = "2018-19"
-gen instrument = 26
-capture label define instrument 1 "Tanzania NPS Wave 1" 2 "Tanzania NPS Wave 2" 3 "Tanzania NPS Wave 3" 4 "Tanzania NPS Wave 4" /* This is in here twice because sometimes we don't run the whole file - anyone trying to run the whole thing through, though, will get an error here because the label is already defined. Capture just eats the error and keeps moving.
-	*/ 5 "Ethiopia ESS Wave 1" 6 "Ethiopia ESS Wave 2" 7 "Ethiopia ESS Wave 3" /*
-	*/ 8 "Nigeria GHS Wave 1" 9 "Nigeria GHS Wave 2" 10 "Nigeria GHS Wave 3" /*
-	*/ 11 "Tanzania TBS AgDev (Lake Zone)" 12 "Tanzania TBS AgDev (Northern Zone)" 13 "Tanzania TBS AgDev (Southern Zone)" /*
-	*/ 14 "Ethiopia ACC Baseline" /*
-	*/ 15 "India RMS Baseline (Bihar)" 16 "India RMS Baseline (Odisha)" 17 "India RMS Baseline (Uttar Pradesh)" 18 "India RMS Baseline (West Bengal)" /*
-	*/ 19 "Nigeria NIBAS AgDev (Nassarawa)" 20 "Nigeria NIBAS AgDev (Benue)" 21 "Nigeria NIBAS AgDev (Kaduna)" /*
-	*/ 22 "Nigeria NIBAS AgDev (Niger)" 23 "Nigeria NIBAS AgDev (Kano)" 24 "Nigeria NIBAS AgDev (Katsina)"  25 "Nigeria GHS Wave 4" /*
-	*/ 26 "Tanzania NPS Wave 5"
-	
+ren y5_hhid hhid
+gen hhid_panel = hhid 
+lab var hhid_panel "panel hh identifier" 
+gen geography = "Tanzania" 
+gen survey = "LSMS-ISA" 
+gen year = "2018-19" 
+gen instrument = 15 
+//Only runs if label isn't already defined.
+capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2" 13 "Tanzania NPS Wave 3" 14 "Tanzania NPS Wave 4" 15 "Tanzania NPS Wave 5" /*
+	*/ 21 "Ethiopia ESS Wave 1" 22 "Ethiopia ESS Wave 2" 23 "Ethiopia ESS Wave 3" 24 "Ethiopia ESS Wave 4" 25 "Ethiopia ESS Wave 5" /*
+	*/ 31 "Nigeria GHS Wave 1" 32 "Nigeria GHS Wave 2" 33 "Nigeria GHS Wave 3" 34 "Nigeria GHS Wave 4"/*
+	*/ 41 "Malawi IHS/IHPS Wave 1" 42 "Malawi IHS/IHPS Wave 2" 43 "Malawi IHS/IHPS Wave 3" 44 "Malawi IHS/IHPS Wave 4" /*
+    */ 51 "Uganda NPS Wave 1" 52 "Uganda NPS Wave 2" 53 "Uganda NPS Wave 3" 54 "Uganda NPS Wave 4" 55 "Uganda NPS Wave 5" /*W6 does not exist*/ 56 "Uganda NPS Wave 7" 57 "Uganda NPS Wave 8" /* 
+*/ 61 "Burkina Faso EMC Wave 1" /* 
+*/ 71 "Mali EACI Wave 1" 72 "Mali EACI Wave 2" /*
+*/ 81 "Niger ECVMA Wave 1" 82 "Niger ECVMA Wave 2"
 label values instrument instrument	
 saveold "${Tanzania_NPS_W5_final_data}/Tanzania_NPS_W5_field_plot_variables.dta", replace
 
@@ -5220,7 +5216,7 @@ The summary statistics are outputted only for the sub_population of households, 
 The code for outputting the summary statistics is in a separare dofile that is called here
 */ 
 //Parameters
-//global list_instruments  "Tanzania_NPS_W5"
-//do "${directory}\_Summary_Statistics\EPAR_UW_335_SUMMARY_STATISTICS_01.17.2020.do" 
+global list_instruments  "Tanzania_NPS_W5"
+do "${directory}\_Summary_Statistics\EPAR_UW_335_SUMMARY_STATISTICS.do" 
 
 		
