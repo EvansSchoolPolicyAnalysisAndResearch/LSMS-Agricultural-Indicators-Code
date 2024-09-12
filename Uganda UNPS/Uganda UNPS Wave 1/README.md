@@ -122,6 +122,7 @@ global UGA_W1_poverty_215 2.15*($NPS_LSMS_ISA_W1_inflation)*$NPS_LSMS_ISA_W1_con
 ### NON-AG WAGE AND AG WAGE INCOME  
 * This section estimates "Annual earnings from non-agricultural and agricultural wage (both Main and Secondary Job)".
 * Notes: UGA Wave 1 did not capture number of weeks per month individual worked.  We impute these using median values by industry and type of residence using UGA W2 see imputation below. This follows RIGA methods.
+* Issues: The industry variable doesn't completely align with the categories, and this will be addressed in the next update. 
 
 ### OTHER INCOME
 * This section estimates Other income (rental, pension, other, and remittance) over the previous 12 months at the household level.

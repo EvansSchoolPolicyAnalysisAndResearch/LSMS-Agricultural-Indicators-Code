@@ -140,13 +140,21 @@ set maxvar 10000
 ssc install findname
 
 //set directories
-*These paths correspond to the folders where the raw data files are located and where the created data and final data will be stored.
+*These paths correspond to the folders where the raw data files are located and where the created data andNon Ag Waves Income Secondary Job final data will be stored.
+
 
 global directory "~/LSMS-Agricultural-Indicator-Code"
+global Uganda_NPS_W1_raw_data 	"$directory/Uganda NPS Wave 1/Raw DTA Files"
+global Uganda_NPS_W1_created_data "$directory/Uganda NPS Wave 1/Final DTA Files/created_data"
+global Uganda_NPS_W1_final_data  "$directory/Uganda NPS Wave 1/Final DTA Files/final_data"
 
-global UGA_W2_raw_data 	"$directory/Uganda NPS/Uganda NPS Wave 1/Raw DTA Files"
-global UGA_W2_created_data "$directory/Uganda NPS/Uganda NPS Wave 1/Final DTA Files/created_data"
-global UGA_W2_final_data  "$directory/Uganda NPS/Uganda NPS Wave 1/Final DTA Files/final_data"
+*Wave 1 does not ask the same questions about time worked as subsequent Uganda waves; thus, we use Wave 2 to estimate median weeks worked by occupation with the assumption that time in employment does not vary substantially. Skip lines 2299-2333, 2446-2462 if you do not need these variables or download the Uganda Wave 2 raw data (see Uganda Wave 2 readme)
+*Wave 1 also doesn't use secondary wage variables in the final analysis, due to which we have commented out the code. However, if you wish to use the code feel free to uncomment the required lines. 
+
+global Uganda_NPS_W2_raw_data 	"$directory/Uganda NPS Wave 2/Raw DTA Files"
+global Uganda_NPS_W2_created_data "$directory/Uganda NPS Wave 2/Final DTA Files/created_data"
+global Uganda_NPS_W2_final_data  "$directory/Uganda NPS Wave 2/Final DTA Files/final_data"
+
 ****************************
 *EXCHANGE RATE AND INFLATION
 ****************************
@@ -865,9 +873,10 @@ use "${Uganda_NPS_W1_created_data}/Uganda_NPS_W1_all_plots.dta", clear
 *ren crop_code_master crop_code
 collapse (sum) value_harvest quant_harv_kg , by (HHID crop_code) 
 merge 1:1 HHID crop_code using "${Uganda_NPS_W1_created_data}/Uganda_NPS_W1_cropsales_value.dta"
+recode value_harvest value_sold (.=0)
+
 replace value_harvest = value_sold if value_sold>value_harvest & value_sold!=. /* In a few cases, sales value reported exceeds the estimated value of crop harvest */
 ren value_sold value_crop_sales 
-recode  value_harvest value_crop_sales  (.=0)
 collapse (sum) value_harvest value_crop_sales kgs_sold quant_harv_kg, by (HHID crop_code)
 ren value_harvest value_crop_production
 lab var value_crop_production "Gross value of crop production, summed over main and short season"
@@ -2290,10 +2299,8 @@ save "${Uganda_NPS_W1_created_data}/Uganda_NPS_W1_off_farm_hours.dta", replace
 ********************************************************************************
 **                          NON-AG WAGE INCOME  	     	    	          **
 ********************************************************************************
-*impute these using median values by industry and type of residence using UGA W2
-use "${UGA_W2_raw_data}/GSEC8.dta", clear
-merge m:1 HHID using "${UGA_W2_raw_data}/GSEC1.dta"
-
+use "${Uganda_NPS_W2_raw_data}/GSEC8.dta", clear
+merge m:1 HHID using "${Uganda_NPS_W2_raw_data}/GSEC1.dta"
 g industry=1 if h8q20b<=2 //"agriculture, hunting and forestry" and "fishing"
 replace industry=2 if h8q20b==3 //"mining and quarrying"
 replace industry=3 if h8q20b==4 //"manufacturing"
@@ -2308,14 +2315,12 @@ replace industry=10 if h8q20b>=16 & h8q20b<=17 //"private households with employ
 label define industry 1 "Agriculture & fishing" 2 " Mining" 3 "Manufacturing" 4 "Electricity & utilities" 5 "Construction" 6 "Commerce" 7 "Transport, storage, communication"  8 "Finance, insurance, real estate" 9 "Services" 10 "Unknown" 
 label values industry industry
 
-
 //get median annual weeks worked for each industry
 recode h8q30 h8q30b (.=0)
 gen weeks = h8q30*h8q30b
 replace weeks = h8q30 if h8q30b==0
 replace weeks = 52 if weeks>=52 //2 obs where weeks==60
 ren wgt10 weight
-
 preserve
 sort urban industry
 collapse (median) weeks, by(urban industry)
@@ -2323,24 +2328,24 @@ sort urban industry
 save "${Uganda_NPS_W1_created_data}/Uganda_NPS_W1_wage_hours_imputation_urban.dta", replace
 restore
 sort industry
-collapse(median) weeks, by(industry)
+collapse(median) weeks (max) h8q44_1, by(industry) 
 sort industry
 save "${Uganda_NPS_W1_created_data}/Uganda_NPS_W1_wage_hours_imputation.dta", replace
 
-//use wave 2 income
-use "${UGA_W2_raw_data}/GSEC8.dta", clear
-merge m:1 HHID using "${UGA_W2_raw_data}/GSEC1.dta"
+use "${Uganda_NPS_W1_raw_data}/2009_GSEC8.dta", clear
+ren Hhid HHID
+merge m:1 HHID using "${Uganda_NPS_W1_raw_data}/2009_GSEC1.dta"
 //Classification of Industry to get median wage for imputation, taken from r coding
-g industry=1 if h8q20b<=2 //"agriculture, hunting and forestry" and "fishing"
-replace industry=2 if h8q20b==3 //"mining and quarrying"
-replace industry=3 if h8q20b==4 //"manufacturing"
-replace industry=4 if h8q20b==5 //"electricity, gas, and water supply
-replace industry=5 if h8q20b==6 //"construction"
-replace industry=6 if h8q20b==7 //"sale, maintenance, and repair of motor vehicles, motorcycles and personal household goods"
-replace industry=7 if h8q20b>=8 & h8q20b<=9 //"hotels and restaurants", "transport, storage and communications"
-replace industry=8 if h8q20b>=10 & h8q20b<=11 //"financial intermediation", "real estate, renting and business activities"
-replace industry=9 if h8q20b>=12 & h8q20b<=15 //"public administration and defence; compulsory social security", "education", "health and social work", "other community, social and personal service activities"
-replace industry=10 if h8q20b>=16 & h8q20b<=17 //"private households with employed persons", "extra-territorial organizations and bodies"
+g industry=1 if H8q20b<=2 //"agriculture, hunting and forestry" and "fishing"
+replace industry=2 if H8q20b==3 //"mining and quarrying"
+replace industry=3 if H8q20b==4 //"manufacturing"
+replace industry=4 if H8q20b==5 //"electricity, gas, and water supply
+replace industry=5 if H8q20b==6 //"construction"
+replace industry=6 if H8q20b==7 //"sale, maintenance, and repair of motor vehicles, motorcycles and personal household goods"
+replace industry=7 if H8q20b>=8 & H8q20b<=9 //"hotels and restaurants", "transport, storage and communications"
+replace industry=8 if H8q20b>=10 & H8q20b<=11 //"financial intermediation", "real estate, renting and business activities"
+replace industry=9 if H8q20b>=12 & H8q20b<=15 //"public administration and defence; compulsory social security", "education", "health and social work", "other community, social and personal service activities"
+replace industry=10 if H8q20b>=16 & H8q20b<=17 //"private households with employed persons", "extra-territorial organizations and bodies"
 
 label define industry 1 "Agriculture & fishing" 2 " Mining" 3 "Manufacturing" 4 "Electricity & utilities" 5 "Construction" 6 "Commerce" 7 "Transport, storage, communication"  8 "Finance, insurance, real estate" 9 "Services" 10 "Unknown" 
 label values industry industry
@@ -2356,29 +2361,31 @@ ren weeks weeks_industry
 gen weeks = weeks_urban
 replace weeks = weeks_industry if weeks == .
 
+
 //Wage Income
-rename h8q30 number_months
-egen number_hours = rowtotal(h8q36a h8q36b h8q36c h8q36d h8q36e h8q36f h8q36g) //EFW 7.10.19 //Total number of hours worked in the last 7 days
-rename h8q31a most_recent_payment
-replace most_recent_payment = . if (h8q19a > 610 & h8q19a < 623) | h8q19a == 921 //EFW 7.17.19 TZA W1 doesn't do this, which is correct? SAW We are getting rid of subsistance ag workers income 68% of all observations why?? Double check is it because we are only includin non-ag income here?
-rename h8q31c payment_period
-rename h8q31b most_recent_payment_other
-replace most_recent_payment_other = . if (h8q19a > 610 & h8q19a < 623) | h8q19a == 921
-rename h8q44 secwage_number_months
+rename H8q30 number_months
+egen number_hours = rowtotal(H8q36a H8q36b H8q36c H8q36d H8q36e H8q36f H8q36g) 
+rename H8q31a most_recent_payment
+replace most_recent_payment = . if (industry > 1)
+rename H8q31c payment_period
+rename H8q31b most_recent_payment_other
+replace most_recent_payment_other = . if (industry > 1)
+
+
+rename H8q44 secwage_number_months
 rename h8q44_1 secwage_number_weeks
 replace secwage_number_weeks=. if secwage_number_weeks>4 
-gen secwage_hours_pastweek = h8q43  // Total hours worked in 2ndary job for the past week. 
-rename h8q45a secwage_most_recent_payment
-replace secwage_most_recent_payment = . if (h8q38a > 610 & h8q38a < 623) | h8q19a == 921 
-rename h8q45c secwage_payment_period
-rename h8q45b secwage_recent_payment_other
-replace secwage_recent_payment_other = . if (h8q19a > 610 & h8q19a < 623) | h8q19a == 921
-
+gen secwage_hours_pastweek = H8q43  // Total hours worked in 2ndary job for the past week. 
+rename H8q45a secwage_most_recent_payment
+replace secwage_most_recent_payment = . if (industry > 1)
+rename H8q45c secwage_payment_period
+rename H8q45b secwage_recent_payment_other
+replace secwage_recent_payment_other = . if (industry > 1)
 
 *Non Ag Wages Income Main Job
 gen annual_salary_cash = most_recent_payment*number_months if payment_period==4
 replace annual_salary_cash = most_recent_payment*weeks if payment_period==3
-replace annual_salary_cash = most_recent_payment*weeks*(number_hours/8) if payment_period==2 // SAW Why is it divided by 8? Is 8 the average numbers of hours worked per day?
+replace annual_salary_cash = most_recent_payment*weeks*(number_hours/8) if payment_period==2 
 replace annual_salary_cash = most_recent_payment*weeks*number_hours if payment_period==1
 
 gen wage_salary_other = most_recent_payment_other*number_months if payment_period==4
@@ -2398,32 +2405,32 @@ replace wage_salary_other_sec = secwage_recent_payment_other*secwage_number_week
 replace wage_salary_other_sec = secwage_recent_payment_other*secwage_number_weeks*secwage_hours_pastweek if secwage_payment_period==1
 
 recode annual_salary_cash wage_salary_other annual_salary_cash_sec wage_salary_other_sec (.=0)
-gen annual_salary = annual_salary_cash + wage_salary_other + annual_salary_cash_sec + wage_salary_other_sec
-drop if (h8q19a > 610 & h8q19a < 623) | h8q19a == 921
+
+gen annual_salary = annual_salary_cash //+ wage_salary_other + annual_salary_cash_sec + wage_salary_other_sec
+*drop if (h8q19a > 610 & h8q19a < 623) | h8q19a == 921
 collapse(sum) annual_salary, by (HHID)
 lab var annual_salary "Annual earnings from non-agricultural wage (both Main and Secondary Job)"
 save "${Uganda_NPS_W1_created_data}/Uganda_NPS_W1_wage_income.dta", replace
-
-
 
 ********************************************************************************
 **                          AG WAGE INCOME  	     	        	          **
 ********************************************************************************
 *impute these using median values by industry and type of residence using UGA W2
 
-use "${UGA_W2_raw_data}/GSEC8.dta", clear
-merge m:1 HHID using "${UGA_W2_raw_data}/GSEC1.dta", nogen
+use "${Uganda_NPS_W1_raw_data}/2009_GSEC8.dta", clear
+ren Hhid HHID
+merge m:1 HHID using "${Uganda_NPS_W1_raw_data}/2009_GSEC1.dta", keep (1 3)
 //Classification of Industry to get median wage for imputation, taken from r coding
-g industry=1 if h8q20b<=2 //"agriculture, hunting and forestry" and "fishing"
-replace industry=2 if h8q20b==3 //"mining and quarrying"
-replace industry=3 if h8q20b==4 //"manufacturing"
-replace industry=4 if h8q20b==5 //"electricity, gas, and water supply
-replace industry=5 if h8q20b==6 //"construction"
-replace industry=6 if h8q20b==7 //"sale, maintenance, and repair of motor vehicles, motorcycles and personal household goods"
-replace industry=7 if h8q20b>=8 & h8q20b<=9 //"hotels and restaurants", "transport, storage and communications"
-replace industry=8 if h8q20b>=10 & h8q20b<=11 //"financial intermediation", "real estate, renting and business activities"
-replace industry=9 if h8q20b>=12 & h8q20b<=15 //"public administration and defence; compulsory social security", "education", "health and social work", "other community, social and personal service activities"
-replace industry=10 if h8q20b>=16 & h8q20b<=17 //"private households with employed persons", "extra-territorial organizations and bodies"
+g industry=1 if H8q20b<=2 //"agriculture, hunting and forestry" and "fishing"
+replace industry=2 if H8q20b==3 //"mining and quarrying"
+replace industry=3 if H8q20b==4 //"manufacturing"
+replace industry=4 if H8q20b==5 //"electricity, gas, and water supply
+replace industry=5 if H8q20b==6 //"construction"
+replace industry=6 if H8q20b==7 //"sale, maintenance, and repair of motor vehicles, motorcycles and personal household goods"
+replace industry=7 if H8q20b>=8 & H8q20b<=9 //"hotels and restaurants", "transport, storage and communications"
+replace industry=8 if H8q20b>=10 & H8q20b<=11 //"financial intermediation", "real estate, renting and business activities"
+replace industry=9 if H8q20b>=12 & H8q20b<=15 //"public administration and defence; compulsory social security", "education", "health and social work", "other community, social and personal service activities"
+replace industry=10 if H8q20b>=16 & H8q20b<=17 //"private households with employed persons", "extra-territorial organizations and bodies"
 label define industry 1 "Agriculture & fishing" 2 " Mining" 3 "Manufacturing" 4 "Electricity & utilities" 5 "Construction" 6 "Commerce" 7 "Transport, storage, communication"  8 "Finance, insurance, real estate" 9 "Services" 10 "Unknown" 
 label values industry industry
 *merge in median weeks worked
@@ -2437,21 +2444,23 @@ gen weeks = weeks_urban
 replace weeks = weeks_industry if weeks == .
 
 // AG Wage Income
-rename h8q30 number_months
-egen number_hours = rowtotal(h8q36a h8q36b h8q36c h8q36d h8q36e h8q36f h8q36g) 
-rename h8q31a most_recent_payment
+ren Pid PID 
+merge 1:1 HHID PID using "${Uganda_NPS_W2_raw_data}/GSEC8", nogen 
+rename H8q30 number_months
+egen number_hours = rowtotal(H8q36a H8q36b H8q36c H8q36d H8q36e H8q36f H8q36g) 
+rename H8q31a most_recent_payment
 replace most_recent_payment = . if industry!=1 // SAW We get rid of all non agricultural related wages 
-rename h8q31c payment_period
-rename h8q31b most_recent_payment_other
+rename H8q31c payment_period
+rename H8q31b most_recent_payment_other
 *SAW We do the same for Secondary Jobs
 rename h8q44 secwage_number_months
 rename h8q44_1 secwage_number_weeks
 replace secwage_number_weeks=. if secwage_number_weeks>4 // number of weeks worked per month cant be higher than 4 (10 obs)
 gen secwage_hours_pastweek = h8q43  // Total hours worked in 2ndary job for the past week. 
-rename h8q45a secwage_most_recent_payment
+rename H8q45a secwage_most_recent_payment
 replace secwage_most_recent_payment = . if industry!=1 // SAW We get rid of all non agricultural related wages 
-rename h8q45c secwage_payment_period
-rename h8q45b secwage_recent_payment_other
+rename H8q45c secwage_payment_period
+rename H8q45b secwage_recent_payment_other
 
 *Non Ag Wages Income Main Job
 gen annual_salary_cash = most_recent_payment*number_months if payment_period==4
@@ -2464,7 +2473,8 @@ replace wage_salary_other = most_recent_payment_other*weeks if payment_period==3
 replace wage_salary_other = most_recent_payment_other*weeks*(number_hours/8) if payment_period==2
 replace wage_salary_other = most_recent_payment_other*weeks*number_hours if payment_period==1
 
-*Non Ag Waves Income Secondary Job
+
+/*Non Ag Waves Income Secondary Job
 gen annual_salary_cash_sec = secwage_most_recent_payment*secwage_number_months if secwage_payment_period==4
 replace annual_salary_cash_sec = secwage_most_recent_payment*secwage_number_weeks if secwage_payment_period==3
 replace annual_salary_cash_sec = secwage_most_recent_payment*secwage_number_weeks*(secwage_hours_pastweek/8) if secwage_payment_period==2 // SAW Why is it divided by 8? Is 8 the average numbers of hours worked per day?
@@ -2476,13 +2486,12 @@ replace wage_salary_other_sec = secwage_recent_payment_other*secwage_number_week
 replace wage_salary_other_sec = secwage_recent_payment_other*secwage_number_weeks*secwage_hours_pastweek if secwage_payment_period==1
 
 recode annual_salary_cash wage_salary_other annual_salary_cash_sec wage_salary_other_sec (.=0)
-gen annual_salary = annual_salary_cash + wage_salary_other + annual_salary_cash_sec + wage_salary_other_sec
+*/
+gen annual_salary = annual_salary_cash //+ wage_salary_other + annual_salary_cash_sec + wage_salary_other_sec
 collapse(sum) annual_salary, by (HHID)
 rename annual_salary annual_salary_agwage
 lab var annual_salary_agwage "Annual earnings from agricultural wage"
 save "${Uganda_NPS_W1_created_data}/Uganda_NPS_W1_agwage_income.dta", replace
-
-
 ********************************************************************************
 **                               OTHER INCOME 	        	    	          **
 ********************************************************************************
@@ -4084,10 +4093,11 @@ save "${Uganda_NPS_W1_created_data}/Uganda_NPS_W1_shannon_diversity_index.dta", 
 ********************************************************************************
                           * CONSUMPTION *
 ********************************************************************************
-use "${Uganda_NPS_W1_raw_data}/Archive/UNPS 2009-10 Consumption Aggregate.dta", clear
+use "${Uganda_NPS_W1_raw_data}/pov2009_10", clear
 ren cpexp30 total_cons
-ren equiv adulteq
+ren equiv_m adulteq
 ren welfare peraeq_cons
+ren hhid HHID
 tostring HHID, format(%18.0f) replace
 merge 1:1 HHID using "${Uganda_NPS_W1_created_data}/Uganda_NPS_W1_hhsize.dta", nogen keep(1 3) // all merges 
 
@@ -4103,7 +4113,7 @@ keep HHID total_cons peraeq_cons percapita_cons daily_peraeq_cons daily_percap_c
 save "${Uganda_NPS_W1_created_data}/Uganda_NPS_W1_consumption.dta", replace
 
 **We create an adulteq dataset for summary statistics sections
-use "${Uganda_NPS_W1_raw_data}/Archive/UNPS 2009-10 Consumption Aggregate.dta", clear
+use "${Uganda_NPS_W1_raw_data}/UNPS 2009-10 Consumption Aggregate.dta", clear
 rename equiv adulteq
 keep HHID adulteq
 tostring HHID, format(%18.0f) replace
@@ -4122,7 +4132,7 @@ rename h15bq11 fd_gift
 egen food_total = rowtotal(fd*) 
 collapse (sum) fd* food_total, by(HHID)
 duplicates report HHID
-merge 1:1 HHID using "${Uganda_NPS_W1_raw_data}/Archive/UNPS 2009-10 Consumption Aggregate.dta", nogen keep(1 3)
+merge 1:1 HHID using "${Uganda_NPS_W1_raw_data}/UNPS 2009-10 Consumption Aggregate.dta", nogen keep(1 3)
 tostring HHID, format(%18.0f) replace
 merge 1:1 HHID using "${Uganda_NPS_W1_created_data}/Uganda_NPS_W1_hhsize.dta", nogen keep(1 3)
 drop if equiv ==.
@@ -4166,6 +4176,8 @@ save "${Uganda_NPS_W1_created_data}/Uganda_NPS_W1_hh_assets.dta", replace
 ********************************************************************************
                           *HOUSEHOLD VARIABLES*
 ********************************************************************************
+**# Bookmark #2
+
 global empty_vars ""
 use "${Uganda_NPS_W1_created_data}/Uganda_NPS_W1_hhids.dta", clear
 merge 1:1 HHID using "${Uganda_NPS_W1_created_data}/Uganda_NPS_W1_hh_adulteq.dta", nogen keep(1 3)
@@ -5067,10 +5079,18 @@ la var poverty_under_1_9 "Household per-capita conumption is below $1.90 in 2011
 gen poverty_under_2_15 = (daily_percap_cons < $Uganda_NPS_W1_poverty_215)
 la var poverty_under_2_15 "Household per-capita consumption is below $2.15 in 2017 $ PPP"
 
+**# Bookmark #4
 *We merge the national poverty line provided by the World bank 
-destring HHID, replace 
-merge 1:1 HHID using "${Uganda_NPS_W1_raw_data}/Archive/UNPS 2009-10 Consumption Aggregate.dta", nogen keep(1 3)
-
+preserve
+use "${Uganda_NPS_W1_raw_data}/pov2009_10.dta", clear
+tostring hhid, g(hhid2) format(%18.0g)
+*destring hhid2, g(hhid3)
+*assert hhid == hhid2
+ren hhid2 HHID
+tempfile pov2009
+save `pov2009'
+restore
+merge 1:1 HHID using `pov2009', nogen keep(1 3) 
 rename poor poverty_under_npl
 la var poverty_under_npl "Household per-capita consumption is below national poverty line in 05/06 PPP prices"
 
@@ -5088,7 +5108,6 @@ global empty_vars $empty_vars feed* lvstck_housed*
 foreach v of varlist $empty_vars { 
 	replace `v' = .
 }
-
 *CPK: where did total income go?? percapita_income? water* lvstck_housed*
 // Removing intermediate variables to get below 5,000 vars
 keep HHID fhh poverty* clusterid strataid *weight* /*wgt*/ region /*regurb*/ district county subcounty parish ea rural farm_size* *total_income* /*
@@ -5112,7 +5131,7 @@ ren weight weight_orig
 ren weight_pop_rururb weight
 la var weight_orig "Original survey weight"
 la var weight "Weight adjusted to match rural/urban populations"
-
+tostring HHID, replace 
 
 //////////Identifier Variables ////////
 *Add variables and ren household id so dta file can be appended with dta files from other instruments
@@ -5166,7 +5185,7 @@ la var formal_land_rights_f "Individual has documentation of land rights (at lea
 *getting correct subpopulations (women aged 18 or above in rural households)
 recode control_all_income /*make_decision_ag*/ own_asset formal_land_rights_f (.=0) if female==1 
 recode control_all_income /*make_decision_ag*/ own_asset formal_land_rights_f (nonmissing=.) if female==0
-destring HHID, replace 
+*destring HHID, replace 
 *merge in hh variable to determine ag household
 preserve
 use "${Uganda_NPS_W1_final_data}/Uganda_NPS_W1_household_variables.dta", clear
@@ -5276,10 +5295,10 @@ merge m:1 HHID using "${Uganda_NPS_W1_created_data}/Uganda_NPS_W1_weights.dta", 
 merge 1:1 HHID parcel_id plot_id season using `crop_values', keep (1 3) nogen //  plot-season level
 merge 1:1 HHID parcel_id plot_id season using "${Uganda_NPS_W1_created_data}/Uganda_NPS_W1_plot_decision_makers.dta", keep (1 3) nogen //  plot-season level
 merge m:1 HHID parcel_id plot_id using "${Uganda_NPS_W1_created_data}/Uganda_NPS_W1_plot_labor_days.dta", keep (1 3) nogen // plot level
-destring HHID, replace 
-/*DYA.12.2.2020*/ merge m:1 HHID using "${Uganda_NPS_W1_final_data}/Uganda_NPS_W1_household_variables.dta", nogen keep (1 3) keepusing(ag_hh fhh farm_size_agland region ea)
-/*DYA.12.2.2020*/ recode farm_size_agland (.=0) 
-/*DYA.12.2.2020*/ gen rural_ssp=(farm_size_agland<=4 & farm_size_agland!=0) & rural==1 
+*destring HHID, replace 
+merge m:1 HHID using "${Uganda_NPS_W1_final_data}/Uganda_NPS_W1_household_variables.dta", nogen keep (1 3) keepusing(ag_hh fhh farm_size_agland region ea)
+recode farm_size_agland (.=0) 
+gen rural_ssp=(farm_size_agland<=4 & farm_size_agland!=0) & rural==1 
 
 *keep if cultivate==1 // 3/15/23 We need to generate this indicator
 ren field_size  area_meas_hectares
@@ -5531,6 +5550,7 @@ label values instrument instrument
 saveold "${Uganda_NPS_W1_final_data}/Uganda_NPS_W1_field_plot_variables.dta", replace 
 
 
+
 ********************************************************************************
 *SUMMARY STATISTICS
 ******************************************************************************** 
@@ -5539,8 +5559,7 @@ All the pre-processed files include all households, individuals, and plots in th
 The summary statistics are outputted only for the sub_population of households, individuals, and plots in rural areas. 
 The code for outputting the summary statistics is in a separare dofile that is called here
 */ 
-*Parameters
+global list_instruments  "Uganda_NPS_W1"
+do "$directory/_Summary_statistics/EPAR_UW_335_SUMMARY_STATISTICS.do"
 
-global list_instruments "Uganda_NPS_W1"
-do "\\netid.washington.edu\wfs\EvansEPAR\Project\EPAR\Working Files\RA Working Folders\Ahana\335_LSMS_Dev\_Summary_statistics\EPAR_UW_335_SUMMARY_STATISTICS.do"
-
+************************************ STOP ************************************

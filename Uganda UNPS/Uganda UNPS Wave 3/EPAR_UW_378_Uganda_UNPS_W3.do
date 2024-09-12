@@ -161,6 +161,7 @@ global Uganda_NPS_W3_raw_data "$directory/Uganda NPS/Uganda NPS Wave 3/Raw DTA F
 global Uganda_NPS_W3_final_data "$directory/Uganda NPS/Uganda NPS Wave 3/Final DTA Files/final_data"
 global Uganda_NPS_W3_created_data "$directory/Uganda NPS/Uganda NPS Wave 3/Final DTA Files/created_data"
 
+
 ****************************
 *EXCHANGE RATE AND INFLATION
 **************************** 
@@ -759,12 +760,13 @@ collapse (sum) value_sold kgs_sold, by (HHID crop_code)
 lab var value_sold "Value of sales of this crop"
 save "${Uganda_NPS_W3_created_data}/Uganda_NPS_W3_cropsales_value.dta", replace
 
+
 use "${Uganda_NPS_W3_created_data}/Uganda_NPS_W3_all_plots.dta", clear
 collapse (sum) value_harvest quant_harv_kg  , by (HHID crop_code) // Update: SW We start using the standarized version of value harvested and kg harvested
 merge 1:1 HHID crop_code using "${Uganda_NPS_W3_created_data}/Uganda_NPS_W3_cropsales_value.dta"
+recode value_harvest value_sold (.=0)
 replace value_harvest = value_sold if value_sold>value_harvest & value_sold!=. /* In a few cases, sales value reported exceeds the estimated value of crop harvest */
 ren value_sold value_crop_sales 
-recode  value_harvest value_crop_sales  (.=0)
 collapse (sum) value_harvest value_crop_sales kgs_sold quant_harv_kg, by (HHID crop_code)
 ren value_harvest value_crop_production
 lab var value_crop_production "Gross value of crop production, summed over main and short season"
@@ -4774,7 +4776,7 @@ merge 1:1 HHID parcel_id plot_id season using "${Uganda_NPS_W3_created_data}/Uga
 merge m:1 HHID parcel_id plot_id using "${Uganda_NPS_W3_created_data}/Uganda_NPS_W3_plot_labor_days.dta", keep (1 3) nogen // plot level
 ren HHID hhid
 
-/*DYA.12.2.2020*/ merge m:1 hhid using "${UGS_W3_final_data}/UGS_W3_household_variables.dta", nogen keep (1 3) keepusing(ag_hh fhh farm_size_agland region ea)
+merge m:1 hhid using "${Uganda_NPS_W3_final_data}/Uganda_NPS_W3_household_variables.dta", nogen keep (1 3) keepusing(ag_hh fhh farm_size_agland region ea)
 recode farm_size_agland (.=0) 
 gen rural_ssp=(farm_size_agland<=4 & farm_size_agland!=0) & rural==1 
 

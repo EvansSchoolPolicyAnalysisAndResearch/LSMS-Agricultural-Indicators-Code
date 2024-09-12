@@ -167,6 +167,7 @@ clear mata
 set maxvar 10000	
 ssc install findname  // need this user-written ado file for some commands to work
 
+**Set directories 
 global directory "~/LSMS-Agricultural-Indicator-Code"
 global UGA_W7_raw_data 	"$directory /Uganda UNPS_/Uganda UNPS_ Wave 7/Raw DTA Files"
 global UGA_W7_created_data "$directory /Uganda UNPS_/Uganda UNPS_ Wave 7/Final DTA Files/created_data"
@@ -879,9 +880,9 @@ save "${Uganda_NPS_W7_created_data}/Uganda_NPS_W7_cropsales_value.dta", replace
 use "${Uganda_NPS_W7_created_data}/Uganda_NPS_W7_all_plots.dta", replace
 collapse (sum) value_harvest quant_harv_kg , by (hhid crop_code season) 
 merge 1:1 hhid crop_code season using "${Uganda_NPS_W7_created_data}/Uganda_NPS_W7_cropsales_value.dta"
+recode value_harvest value_sold (.=0)
 replace value_harvest = value_sold if value_sold>value_harvest & value_sold!=. /* In a few cases, sales value reported exceeds the estimated value of crop harvest */
 ren value_sold value_crop_sales 
-recode  value_harvest value_crop_sales  (.=0)
 collapse (sum) value_harvest value_crop_sales kgs_sold quant_harv_kg, by (hhid crop_code)
 ren value_harvest value_crop_production
 lab var value_crop_production "Gross value of crop production, summed over main and short season"
