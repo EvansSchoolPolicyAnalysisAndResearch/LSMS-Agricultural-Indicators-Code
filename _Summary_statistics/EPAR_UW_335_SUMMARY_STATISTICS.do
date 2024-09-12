@@ -1875,7 +1875,7 @@ foreach instrument of global list_instruments {
 		gen Instrument="Uganda UNPS Wave 5"
 		gen Year = "2015-16"
 	}
-  
+
   if "`instrument'"=="Uganda_NPS_W4" {
 		gen Geography="Uganda"
 		gen Survey="LSMS-ISA"
@@ -1896,6 +1896,7 @@ foreach instrument of global list_instruments {
 		gen Instrument="Uganda UNPS Wave 2"
 		gen Year="2010-11"
 	}
+
   
   if "`instrument'"=="Uganda_NPS_W1" {
 		gen Geography="Uganda"
