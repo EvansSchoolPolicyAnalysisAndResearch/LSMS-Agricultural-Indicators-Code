@@ -72,10 +72,12 @@ global Tanzania_NPS_W3_final_data  		"$directory/Tanzania NPS/Tanzania NPS Wave 
 *EXCHANGE RATE AND INFLATION FOR CONVERSION IN SUD IDS
 ********************************************************************************
 global Tanzania_NPS_W3_exchange_rate 2158			// https://www.bloomberg.com/quote/USDETB:CUR
-global Tanzania_NPS_W3_gdp_ppp_dollar 719.02  		// https://data.worldbank.org/indicator/PA.NUS.PPP
-global Tanzania_NPS_W3_cons_ppp_dollar 809.32 		// https://data.worldbank.org/indicator/PA.NUS.PRVT.PP
-global Tanzania_NPS_W3_inflation 0.178559272   		// inflation rate 2013-2016. Data was collected during October 2012-2013. We have adjusted values to 2016. https://data.worldbank.org/indicator/FP.CPI.TOTL?locations=TZ
-
+global Tanzania_NPS_W3_gdp_ppp_dollar 888.44      // https://data.worldbank.org/indicator/PA.NUS.PPP		// UPDATED 9/18/24: GDP_PPP_DOLLAR for 2021
+global Tanzania_NPS_W3_cons_ppp_dollar 790.48	  // https://data.worldbank.org/indicator/PA.NUS.PRVT.PP	// UPDATED 9/18/24: GDP_PPP_DOLLAR for 2021
+global Tanzania_NPS_W3_infl_adj  (141/175)		// inflation rate: CPI_2013/CPI_2017. 2017 is base year.
+global Tanzania_NPS_W3_poverty_190 (1.9 * 588.8 * 141/112.7) //Previous international extreme poverty line. 2011 is base year.
+global Tanzania_NPS_W3_poverty_npl 1199 //National poverty line from https://onlinelibrary.wiley.com/doi/full/10.1111/rode.12829 stating a monthly line of 36,482 in 2011/12 
+global Tanzania_NPS_W3_poverty_215 (2.15*$Tanzania_NPS_W3_infl_adj * $Tanzania_NPS_W3_cons_ppp_dollar)
 
 ********************************************************************************
 *THRESHOLDS FOR WINSORIZATION
@@ -6335,21 +6337,7 @@ gen individual_weight=hh_members*weight
 gen adulteq_weight=adulteq*weight
 
 
-*Rural poverty headcount ratio
-*First, we convert $1.90/day to local currency in 2011 using https://data.worldbank.org/indicator/PA.NUS.PRVT.PP?end=2011&locations=TZ&start=1990
-	// 1.90 * 585.52 = 1112.488  
-*NOTE: this is using the "Private Consumption, PPP" conversion factor because that's what we have been using. 
-* This can be changed this to the "GDP, PPP" if we change the rest of the conversion factors.
-*The global poverty line of $1.90/day is set by the World Bank
-*http://www.worldbank.org/en/topic/poverty/brief/global-poverty-line-faq
-*Second, we inflate the local currency to the year that this survey was carried out using the CPI inflation rate using https://data.worldbank.org/indicator/FP.CPI.TOTL?end=2017&locations=TZ&start=2003
-	// 1+(141.012 - 112.691)/ 112.691 = 1.2513155	
-	// 1112.488* 1.2513155 = 1392.0735 TSH
-*NOTE: if the survey was carried out over multiple years we use the last year
-*This is the poverty line at the local currency in the year the survey was carried out
 
-gen poverty_under_1_9 = (daily_percap_cons<1392.0735)
-la var poverty_under_1_9 "Household has a percapita conumption of under $1.90 in 2011 $ PPP)"
 
 *average consumption expenditure of the bottom 40% of the rural consumption expenditure distribution
 *By per capita consumption
@@ -6363,18 +6351,24 @@ gen bottom_40_peraeq = 0
 replace bottom_40_peraeq = 1 if r(r1) > w_daily_peraeq_cons & rural==1
 
 ****Currency Conversion Factors*** 
-gen ccf_loc = (1+$Tanzania_NPS_W3_inflation) 
-lab var ccf_loc "currency conversion factor - 2016 $TSH"
-gen ccf_usd = (1+$Tanzania_NPS_W3_inflation) / $Tanzania_NPS_W3_exchange_rate 
-lab var ccf_usd "currency conversion factor - 2016 $USD"
-gen ccf_1ppp = (1+$Tanzania_NPS_W3_inflation) / $Tanzania_NPS_W3_cons_ppp_dollar 
-lab var ccf_1ppp "currency conversion factor - 2016 $Private Consumption PPP"
-gen ccf_2ppp = (1+$Tanzania_NPS_W3_inflation) / $Tanzania_NPS_W3_gdp_ppp_dollar
-lab var ccf_2ppp "currency conversion factor - 2016 $GDP PPP"
+gen ccf_loc = 1/$Tanzania_NPS_W3_infl_adj
+lab var ccf_loc "currency conversion factor - 2017 $TSH"
+gen ccf_usd = ccf_loc / $Tanzania_NPS_W3_exchange_rate 
+lab var ccf_usd "currency conversion factor - 2017 $USD"
+gen ccf_1ppp = ccf_loc / $Tanzania_NPS_W3_cons_ppp_dollar 
+lab var ccf_1ppp "currency conversion factor - 2017 $Private Consumption PPP"
+gen ccf_2ppp = ccf_loc / $Tanzania_NPS_W3_gdp_ppp_dollar
+lab var ccf_2ppp "currency conversion factor - 2017 $GDP PPP"
 
-*Cleaning up output to get below 5,000 variables
-*dropping unnecessary variables and recoding to missing any variables that cannot be created in this instrument
-drop *_inter_* harvest_* w_harvest_*
+*Rural poverty headcount ratio
+* See the globals set in the file header
+
+gen poverty_under_1_9 = daily_percap_cons < $Tanzania_NPS_W3_poverty_190
+la var poverty_under_1_9 "Household per-capita conumption is below $1.90 in 2011 $ PPP"
+gen poverty_under_2_15 = daily_percap_cons < $Tanzania_NPS_W3_poverty_215
+la var poverty_under_2_15 "Household per-capita consumption is below $2.15 in 2017 $ PPP"
+gen poverty_under_npl = daily_percap_cons < $Tanzania_NPS_W3_poverty_npl
+
 
 *Removing intermediate variables to get below 5,000 vars
 keep y3_hhid y2_hhid hh_split fhh clusterid strataid *weight* *wgt* region district ward ea rural farm_size* *total_income* /*
@@ -6419,15 +6413,16 @@ lab var hhid_panel "Panel HH identifier"
 gen geography = "Tanzania"
 gen survey = "LSMS-ISA"
 gen year = "2012-13"
-gen instrument = 3
-label define instrument 1 "Tanzania NPS Wave 1" 2 "Tanzania NPS Wave 2" 3 "Tanzania NPS Wave 3" 4 "Tanzania NPS Wave 4" /*
-	*/ 5 "Ethiopia ESS Wave 1" 6 "Ethiopia ESS Wave 2" 7 "Ethiopia ESS Wave 3" /*
-	*/ 8 "Nigeria GHS Wave 1" 9 "Nigeria GHS Wave 2" 10 "Nigeria GHS Wave 3" /*
-	*/ 11 "Tanzania TBS AgDev (Lake Zone)" 12 "Tanzania TBS AgDev (Northern Zone)" 13 "Tanzania TBS AgDev (Southern Zone)" /*
-	*/ 14 "Ethiopia ACC Baseline" /*
-	*/ 15 "India RMS Baseline (Bihar)" 16 "India RMS Baseline (Odisha)" 17 "India RMS Baseline (Uttar Pradesh)" 18 "India RMS Baseline (West Bengal)" /*
-	*/ 19 "Nigeria NIBAS AgDev (Nassarawa)" 20 "Nigeria NIBAS AgDev (Benue)" 21 "Nigeria NIBAS AgDev (Kaduna)" /*
-	*/ 22 "Nigeria NIBAS AgDev (Niger)" 23 "Nigeria NIBAS AgDev (Kano)" 24 "Nigeria NIBAS AgDev (Katsina)" 
+gen instrument = 13
+//Only runs if label isn't already defined.
+capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2" 13 "Tanzania NPS Wave 3" 14 "Tanzania NPS Wave 4" 15 "Tanzania NPS SDD" 16 "Tanzania NPS Wave 5" /*
+	*/ 21 "Ethiopia ESS Wave 1" 22 "Ethiopia ESS Wave 2" 23 "Ethiopia ESS Wave 3" 24 "Ethiopia ESS Wave 4" 25 "Ethiopia ESS Wave 5" /*
+	*/ 31 "Nigeria GHS Wave 1" 32 "Nigeria GHS Wave 2" 33 "Nigeria GHS Wave 3" 34 "Nigeria GHS Wave 4"/*
+	*/ 41 "Malawi IHS/IHPS Wave 1" 42 "Malawi IHS/IHPS Wave 2" 43 "Malawi IHS/IHPS Wave 3" 44 "Malawi IHS/IHPS Wave 4" /*
+    */ 51 "Uganda NPS Wave 1" 52 "Uganda NPS Wave 2" 53 "Uganda NPS Wave 3" 54 "Uganda NPS Wave 4" 55 "Uganda NPS Wave 5" /*W6 does not exist*/ 56 "Uganda NPS Wave 7" 57 "Uganda NPS Wave 8" /* 
+*/ 61 "Burkina Faso EMC Wave 1" /* 
+*/ 71 "Mali EACI Wave 1" 72 "Mali EACI Wave 2" /*
+*/ 81 "Niger ECVMA Wave 1" 82 "Niger ECVMA Wave 2"
 label values instrument instrument	
 saveold "${Tanzania_NPS_W3_final_data}/Tanzania_NPS_W3_household_variables.dta", replace
 
@@ -6502,15 +6497,15 @@ ren indidy3 indid
 gen geography = "Tanzania"
 gen survey = "LSMS-ISA"
 gen year = "2012-13"
-gen instrument = 3
-capture label define instrument 1 "Tanzania NPS Wave 1" 2 "Tanzania NPS Wave 2" 3 "Tanzania NPS Wave 3" 4 "Tanzania NPS Wave 4" /*
-	*/ 5 "Ethiopia ESS Wave 1" 6 "Ethiopia ESS Wave 2" 7 "Ethiopia ESS Wave 3" /*
-	*/ 8 "Nigeria GHS Wave 1" 9 "Nigeria GHS Wave 2" 10 "Nigeria GHS Wave 3" /*
-	*/ 11 "Tanzania TBS AgDev (Lake Zone)" 12 "Tanzania TBS AgDev (Northern Zone)" 13 "Tanzania TBS AgDev (Southern Zone)" /*
-	*/ 14 "Ethiopia ACC Baseline" /*
-	*/ 15 "India RMS Baseline (Bihar)" 16 "India RMS Baseline (Odisha)" 17 "India RMS Baseline (Uttar Pradesh)" 18 "India RMS Baseline (West Bengal)" /*
-	*/ 19 "Nigeria NIBAS AgDev (Nassarawa)" 20 "Nigeria NIBAS AgDev (Benue)" 21 "Nigeria NIBAS AgDev (Kaduna)" /*
-	*/ 22 "Nigeria NIBAS AgDev (Niger)" 23 "Nigeria NIBAS AgDev (Kano)" 24 "Nigeria NIBAS AgDev (Katsina)" 
+gen instrument = 13
+capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2" 13 "Tanzania NPS Wave 3" 14 "Tanzania NPS Wave 4" 15 "Tanzania NPS SDD" 16 "Tanzania NPS Wave 5" /*
+	*/ 21 "Ethiopia ESS Wave 1" 22 "Ethiopia ESS Wave 2" 23 "Ethiopia ESS Wave 3" 24 "Ethiopia ESS Wave 4" 25 "Ethiopia ESS Wave 5" /*
+	*/ 31 "Nigeria GHS Wave 1" 32 "Nigeria GHS Wave 2" 33 "Nigeria GHS Wave 3" 34 "Nigeria GHS Wave 4"/*
+	*/ 41 "Malawi IHS/IHPS Wave 1" 42 "Malawi IHS/IHPS Wave 2" 43 "Malawi IHS/IHPS Wave 3" 44 "Malawi IHS/IHPS Wave 4" /*
+    */ 51 "Uganda NPS Wave 1" 52 "Uganda NPS Wave 2" 53 "Uganda NPS Wave 3" 54 "Uganda NPS Wave 4" 55 "Uganda NPS Wave 5" /*W6 does not exist*/ 56 "Uganda NPS Wave 7" 57 "Uganda NPS Wave 8" /* 
+*/ 61 "Burkina Faso EMC Wave 1" /* 
+*/ 71 "Mali EACI Wave 1" 72 "Mali EACI Wave 2" /*
+*/ 81 "Niger ECVMA Wave 1" 82 "Niger ECVMA Wave 2"
 label values instrument instrument	
 
 preserve
@@ -6576,28 +6571,38 @@ foreach v of varlist  plot_productivity  plot_labor_prod {
 	lab var  w_`v'  "`l`v'' - Winzorized top 1%"
 }	
 	
+****Currency Conversion Factors*** 
+gen ccf_loc = 1/$Tanzania_NPS_W3_infl_adj
+lab var ccf_loc "currency conversion factor - 2017 $TSH"
+gen ccf_usd = ccf_loc / $Tanzania_NPS_W3_exchange_rate 
+lab var ccf_usd "currency conversion factor - 2017 $USD"
+gen ccf_1ppp = ccf_loc / $Tanzania_NPS_W3_cons_ppp_dollar 
+lab var ccf_1ppp "currency conversion factor - 2017 $Private Consumption PPP"
+gen ccf_2ppp = ccf_loc / $Tanzania_NPS_W3_gdp_ppp_dollar
+lab var ccf_2ppp "currency conversion factor - 2017 $GDP PPP"
+	
 *Convert monetary values to USD and PPP
 global monetary_val plot_value_harvest plot_productivity  plot_labor_prod
 foreach p of global monetary_val {
-	gen `p'_usd=(1+$Tanzania_NPS_W3_inflation) * `p' / $Tanzania_NPS_W3_exchange_rate
-	gen `p'_1ppp=(1+$Tanzania_NPS_W3_inflation) * `p' / $Tanzania_NPS_W3_cons_ppp_dollar
-	gen `p'_2ppp=(1+$Tanzania_NPS_W3_inflation) * `p' / $Tanzania_NPS_W3_gdp_ppp_dollar
-	gen `p'_loc=(1+$Tanzania_NPS_W3_inflation) * `p'  
+	gen `p'_usd= `p' * ccf_usd 
+	gen `p'_1ppp= `p' * ccf_1ppp
+	gen `p'_2ppp= `p' * ccf_2ppp
+	gen `p'_loc= `p' * ccf_loc  
 	local l`p' : var lab `p' 
-	lab var `p'_1ppp "`l`p'' (2016 $ Private Consumption PPP)"
-	lab var `p'_2ppp "`l`p'' (2016 $ GDP PPP)"
-	lab var `p'_usd "`l`p'' (2016 $ USD)"
-	lab var `p'_loc "`l`p'' (2016 TSH)"  
+	lab var `p'_1ppp "`l`p'' (2017 $ Private Consumption PPP)"
+	lab var `p'_2ppp "`l`p'' (2017 $ GDP PPP)"
+	lab var `p'_usd "`l`p'' (2017 $ USD)"
+	lab var `p'_loc "`l`p'' (2017 TSH)"  
 	lab var `p' "`l`p'' (TSH)" 
-	gen w_`p'_usd=(1+$Tanzania_NPS_W3_inflation) * w_`p' / $Tanzania_NPS_W3_exchange_rate
-	gen w_`p'_1ppp=(1+$Tanzania_NPS_W3_inflation) * w_`p' / $Tanzania_NPS_W3_cons_ppp_dollar
-	gen w_`p'_2ppp=(1+$Tanzania_NPS_W3_inflation) * w_`p' / $Tanzania_NPS_W3_gdp_ppp_dollar 
-	gen w_`p'_loc=(1+$Tanzania_NPS_W3_inflation) * w_`p' 
+	gen w_`p'_usd= w_`p' * ccf_usd
+	gen w_`p'_1ppp= w_`p' * cons_1ppp
+	gen w_`p'_2ppp= w_`p' * cons_2ppp 
+	gen w_`p'_loc=w_`p'  * ccf_loc
 	local lw_`p' : var lab w_`p' 
-	lab var w_`p'_1ppp "`lw_`p'' (2016 $ Private Consumption  PPP)"
-	lab var w_`p'_2ppp "`l`p'' (2016 $ GDP PPP)"
-	lab var w_`p'_usd "`lw_`p'' (2016 $ USD)"
-	lab var w_`p'_loc "`lw_`p'' (2016 TSH)" 
+	lab var w_`p'_1ppp "`lw_`p'' (2017 $ Private Consumption  PPP)"
+	lab var w_`p'_2ppp "`l`p'' (2017 $ GDP PPP)"
+	lab var w_`p'_usd "`lw_`p'' (2017 $ USD)"
+	lab var w_`p'_loc "`lw_`p'' (2017 TSH)" 
 	lab var w_`p' "`lw_`p'' (TSH)" 
 }
 
@@ -6750,7 +6755,7 @@ gen survey = "LSMS-ISA"
 gen year = "2012-13" 
 gen instrument = 13
 //Only runs if label isn't already defined.
-capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2" 13 "Tanzania NPS Wave 3" 14 "Tanzania NPS Wave 4" 15 "Tanzania NPS Wave 5" /*
+capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2" 13 "Tanzania NPS Wave 3" 14 "Tanzania NPS Wave 4" 15 "Tanzania NPS SDD" 16 "Tanzania NPS Wave 5" /*
 	*/ 21 "Ethiopia ESS Wave 1" 22 "Ethiopia ESS Wave 2" 23 "Ethiopia ESS Wave 3" 24 "Ethiopia ESS Wave 4" 25 "Ethiopia ESS Wave 5" /*
 	*/ 31 "Nigeria GHS Wave 1" 32 "Nigeria GHS Wave 2" 33 "Nigeria GHS Wave 3" 34 "Nigeria GHS Wave 4"/*
 	*/ 41 "Malawi IHS/IHPS Wave 1" 42 "Malawi IHS/IHPS Wave 2" 43 "Malawi IHS/IHPS Wave 3" 44 "Malawi IHS/IHPS Wave 4" /*

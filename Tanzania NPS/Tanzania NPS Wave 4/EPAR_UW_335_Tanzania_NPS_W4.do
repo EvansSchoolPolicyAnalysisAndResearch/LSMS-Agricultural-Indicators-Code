@@ -9,7 +9,7 @@
 *Acknowledgments: We acknowledge the helpful contributions of Pierre Biscaye, David Coomes, Ushanjani Gollapudi, Jack Knauer, Lucero Marquez Josh Merfeld, Isabella Sun, Chelsea Sweeney, Emma Weaver, Ayala Wineman, 
 				  Travis Reynolds, the World Bank's LSMS-ISA team, the FAO's RuLIS team, IFPRI, IRRI, and the Bill & Melinda Gates Foundation Agricultural Development Data and Policy team in discussing indicator construction decisions. 
 				  
-*Date			: This  Version 06 August 2024
+*Date			: This  Version 25th September 2024
 *Dataset Version: TZA_2014_NPS-R4_v03_M_STATA11
 ----------------------------------------------------------------------------------------------------------------------------------------------------*/
 
@@ -72,9 +72,12 @@ global Tanzania_NPS_W4_final_data  			"$directory/Tanzania NPS/Tanzania NPS Wave
 *EXCHANGE RATE AND INFLATION FOR CONVERSION IN SUD IDS
 ********************************************************************************
 global Tanzania_NPS_W4_exchange_rate 2158			// https://www.bloomberg.com/quote/USDETB:CUR
-global Tanzania_NPS_W4_gdp_ppp_dollar 719.023   	// https://data.worldbank.org/indicator/PA.NUS.PPP
-global Tanzania_NPS_W4_cons_ppp_dollar 809.32		// https://data.worldbank.org/indicator/PA.NUS.PRVT.PP
-global Tanzania_NPS_W4_inflation 0.051701989  		// inflation rate 2015-2016. Data was collected during oct2014-2015. We want to adjust the monetary values to 2016
+global Tanzania_NPS_W4_gdp_ppp_dollar 889.45      // https://data.worldbank.org/indicator/PA.NUS.PPP		// UPDATED 9/18/24: GDP_PPP_DOLLAR for 2017
+global Tanzania_NPS_W4_cons_ppp_dollar 790.48	  // https://data.worldbank.org/indicator/PA.NUS.PRVT.PP	// UPDATED 9/18/24: GDP_PPP_DOLLAR for 2017
+global Tanzania_NPS_W4_infl_adj  (158/175)		// inflation rate. Data was collected during 2020-2021.	As of 2023, we want to adjust value to 2017 // I = CPI 2020/CPI 2017 = 193.6/175
+global Tanzania_NPS_W4_poverty_190 (1.9 * 588.8 * 158/112.7) //Previous international extreme poverty line
+global Tanzania_NPS_W4_poverty_npl 1410  //National poverty line in 2015 estimated from https://onlinelibrary.wiley.com/doi/full/10.1111/rode.12829 stating a monthly line of 36,482 in 2011/12 and 49,320 in 2017-18 
+global Tanzania_NPS_W4_poverty_215 (2.15*$Tanzania_NPS_W4_infl_adj * $Tanzania_NPS_W4_cons_ppp_dollar)
 
 
 ********************************************************************************
@@ -92,6 +95,7 @@ global wins_upper_thres 99							//  Threshold for winzorization at the top of t
 global topcropname_area "maize rice wheat sorgum pmill cowpea grdnt beans yam swtptt cassav banana cotton sunflr pigpea"
 global topcrop_area "11 12 16 13 14 32 43 31 24 22 21 71 50 41 34"
 global comma_topcrop_area "11, 12, 16, 13, 14, 32, 43, 31, 24, 22, 21, 71, 50, 41, 34"
+global topcropname_area_full "maize rice wheat sorghum pearl-millet cowpeas groundnuts beans yam sweet-potato cassava banana cotton sunflower pigeon-peas"
 global nb_topcrops : list sizeof global(topcropname_area) // Gets the current length of the global macro list "topcropname_area" 
 display "$nb_topcrops"
 
@@ -4122,454 +4126,6 @@ foreach p of global topcropname_area {
 drop *_inter *_male *_female *mixed *_pure area_harv area_plan harvest kgs_harvest total_harv_area total_planted_area 
 save "${Tanzania_NPS_W4_created_data}/Tanzania_NPS_W4_yield_hh_crop_level.dta", replace
 
-/*
-********************************************************************************
-*CROP YIELDS
-********************************************************************************
-* crops
-use "${Tanzania_NPS_W4_raw_data}/ag_sec_4a.dta", clear
-* Percent of area
-gen pure_stand = ag4a_04==2 
-gen any_pure = pure_stand==1
-gen any_mixed = pure_stand==0
-gen percent_field = 0.25 if ag4a_02==1
-replace percent_field = 0.50 if ag4a_02==2
-replace percent_field = 0.75 if ag4a_02==3
-replace percent_field = 1 if ag4a_01==1
-duplicates report y4_hhid plotnum zaocode 	
-duplicates drop y4_hhid plotnum zaocode, force		
-drop if plotnum==""
-ren plotnum plot_id 
-*Merging in variables from tzn4_field
-merge m:1 y4_hhid plot_id using "${Tanzania_NPS_W4_created_data}/Tanzania_NPS_W4_plot_areas.dta" , nogen keep(1 3)  
-merge m:1 y4_hhid plot_id using "${Tanzania_NPS_W4_created_data}/Tanzania_NPS_W4_plot_decision_makers" , nogen keep(1 3)
-gen field_area =  area_meas_hectares
-replace field_area= area_est_hectares if field_area==.
-gen intercropped_yn = (ag4a_04==1) //See EPAR Technical Report #354 "Crop Yield Measurement on Multi-Cropped Plots" 
-replace intercropped_yn = . if ag4a_04==. //replace intercropped variable with missing if we do not know that it was or was not intercropped 
-gen mono_field = percent_field if intercropped_yn==0 //not intercropped 
-gen int_field = percent_field if intercropped_yn==1 
-*Generating total percent of purestand and monocropped on a field
-bys y4_hhid plot_id: egen total_percent_int_sum = total(int_field) 
-bys y4_hhid plot_id: egen total_percent_mono = total(mono_field) 
-//Dealing with crops which have monocropping larger than plot size or monocropping that fills plot size and still has intercropping to add
-gen oversize_plot = (total_percent_mono >1)
-replace oversize_plot = 1 if total_percent_mono >=1 & total_percent_int_sum >0 
-bys y4_hhid plot_id: egen total_percent_field = total(percent_field)			            
-replace percent_field = percent_field/total_percent_field if total_percent_field>1 & oversize_plot ==1
-replace total_percent_mono = 1 if total_percent_mono>1 
-gen total_percent_inter = 1-total_percent_mono 
-bys y4_hhid plot_id: egen inter_crop_number = total(intercropped_yn) 
-gen percent_inter = (int_field/total_percent_int_sum)*total_percent_inter if total_percent_field >1 
-replace percent_inter = int_field if total_percent_field<=1		
-replace percent_inter = percent_field if oversize_plot ==1 & intercropped_yn==1
-ren cultivated field_cultivated  
-gen field_area_cultivated = field_area if field_cultivated==1
-gen crop_area_planted = percent_field*field_area_cultivated  if intercropped_yn == 0 
-replace crop_area_planted = percent_inter*field_area_cultivated  if intercropped_yn == 1 
-gen us_total_area_planted = total_percent_field*field_area_cultivated 
-gen us_inter_area_planted = total_percent_int_sum*field_area_cultivated 
-keep crop_area_planted* y4_hhid plot_id zaocode dm_* any_* pure_stand dm_gender  field_area us* area_est_hectares area_meas_hectares 
-save "${Tanzania_NPS_W4_created_data}/Tanzania_NPS_W4_plot_crop_area.dta", replace
-
-
-*Now to harvest
-use "${Tanzania_NPS_W4_raw_data}/ag_sec_4a.dta", clear
-gen kg_harvest = ag4a_28
-ren ag4a_22 harv_less_plant			//yes if they harvested less than they planted
-ren ag4a_19 no_harv
-replace kg_harvest = 0 if ag4a_20==3
-replace kg_harvest =. if ag4a_20==1 | ag4a_20==2 | ag4a_20==4		
-drop if kg_harvest==.							
-gen area_harv_ha= ag4a_21*0.404686						
-keep y4_hhid plotnum zaocode kg_harvest area_harv_ha harv_less_plant no_harv
-ren plotnum plot_id 
-*Merging decision maker and intercropping variables
-merge m:1 y4_hhid plot_id zaocode using "${Tanzania_NPS_W4_created_data}/Tanzania_NPS_W4_plot_crop_area.dta", nogen /*keep(1 3)*/ // we still want to keep those that report an area planted but no harvest		
-//Add production of permanent crops (cassava and banana)
-preserve
-use "${Tanzania_NPS_W4_raw_data}/ag_sec_6b.dta", clear
-append using "${Tanzania_NPS_W4_raw_data}/ag_sec_6a.dta"		// include fruit crops 
-gen kg_harvest = ag6b_09
-replace kg_harvest = ag6a_09 if kg_harvest==.				
-gen pure_stand = ag6b_05==2
-replace pure_stand = ag6a_05==2 if pure_stand==. 				
-gen any_pure = pure_stand==1
-gen any_mixed = pure_stand==0
-ren plotnum plot_id
-merge m:1 y4_hhid plot_id using "${Tanzania_NPS_W4_created_data}/Tanzania_NPS_W4_plot_areas.dta", nogen keep(1 3)	              
-merge m:1 y4_hhid plot_id using "${Tanzania_NPS_W4_created_data}/Tanzania_NPS_W4_plot_decision_makers" , nogen keep(1 3) 
-gen field_area =  area_meas_hectares
-replace field_area= area_est_hectares if field_area==.
-ren ag6b_02 number_trees_planted
-keep y4_hhid plot_id zaocode kg_harvest number_trees_planted pure_stand any_pure any_mixed field_area dm_gender 
-tempfile  cassava
-save `cassava', replace
-restore 
-append using `cassava'
-ren crop_area_planted area_plan
-//Capping Code:
-gen over_harvest = area_harv_ha>field_area & area_harv_ha!=. & area_meas_hectares!=.	
-gen over_harvest_scaling = field_area/area_harv_ha if over_harvest == 1
-bys y4_hhid plot_id: egen mean_harvest_scaling = mean(over_harvest_scaling)
-replace mean_harvest_scaling =1 if missing(mean_harvest_scaling)
-replace area_harv_ha = field_area if over_harvest == 1
-replace area_harv_ha = area_harv_ha*mean_harvest_scaling if over_harvest == 0
-//Intercropping Scaling Code:
-bys y4_hhid plot_id: egen over_harv_plot = max(over_harvest)
-gen intercropped_yn = pure_stand !=1 
-gen int_f_harv = area_harv_ha if intercropped_yn==1
-bys y4_hhid plot_id: egen total_area_int_sum_hv = total(int_f_harv)
-bys y4_hhid plot_id: egen total_area_hv = total(area_harv_ha)
-replace us_total_area_planted = total_area_hv if over_harv_plot ==1
-replace us_inter_area_planted = total_area_int_sum_hv if over_harv_plot ==1
-drop intercropped_yn int_f_harv total_area_int_sum_hv total_area_hv
-gen intercropped_yn = pure_stand !=1 
-gen mono_f_harv = area_harv_ha if intercropped_yn==0
-gen int_f_harv = area_harv_ha if intercropped_yn==1
-bys y4_hhid plot_id: egen total_area_int_sum_hv = total(int_f_harv)
-bys y4_hhid plot_id: egen total_area_mono_hv = total(mono_f_harv)
-//Oversize Plots
-gen oversize_plot = total_area_mono_hv > field_area & total_area_mono_hv!=. 	
-replace oversize_plot = 1 if total_area_mono_hv >= field_area & total_area_int_sum_hv>0 & total_area_mono_hv!=.
-gen percent_harvest = area_harv_ha/field_area
-bys y4_hhid plot_id: egen total_percent_harvest = total(percent_harvest)
-//using this in the construction of area_harv_ha below
-bys y4_hhid plot_id: egen total_area_harv = total(area_harv_ha)	
-replace area_harv_ha = (area_harv_ha/us_total_area_planted)*field_area if oversize_plot ==1 
-gen total_area_int_hv = field_area - total_area_mono_hv
-replace area_harv_ha = (int_f_harv/us_inter_area_planted)*total_area_int_hv if intercropped_yn==1 & oversize_plot !=1 & total_percent_harv>1 
-//3,060 changes with rescaling up
-//2,138 changes without rescaling up
-replace area_harv_ha=. if area_harv_ha==0 //11 to missing
-replace area_plan=area_harv_ha if area_plan==. & area_harv_ha!=.
-*Cap area harvested at area planted (area harvested should not be greater than the area planted)
-count if area_harv_ha>area_plan & area_harv_ha!=. //832 observations where area harvested is greater than area planted 
-replace area_harv_ha = area_plan if area_harv_ha>area_plan & area_harv_ha!=.
-
-*Creating area and quantity variables by decision-maker and type of planting
-ren kg_harvest harvest 
-ren area_harv_ha area_harv 
-ren any_mixed inter
-gen harvest_male = harvest if dm_gender==1
-gen area_harv_male = area_harv if dm_gender==1
-gen harvest_female = harvest if dm_gender==2
-gen area_harv_female = area_harv if dm_gender==2
-gen harvest_mixed = harvest if dm_gender==3
-gen area_harv_mixed = area_harv if dm_gender==3
-gen area_harv_inter= area_harv if inter==1
-gen area_harv_pure= area_harv if inter==0
-gen harvest_inter= harvest if inter==1
-gen harvest_pure= harvest if inter==0
-gen harvest_inter_male= harvest if dm_gender==1 & inter==1
-gen harvest_pure_male= harvest if dm_gender==1 & inter==0
-gen harvest_inter_female= harvest if dm_gender==2 & inter==1
-gen harvest_pure_female= harvest if dm_gender==2 & inter==0
-gen harvest_inter_mixed= harvest if dm_gender==3 & inter==1
-gen harvest_pure_mixed= harvest if dm_gender==3 & inter==0
-gen area_harv_inter_male= area_harv if dm_gender==1 & inter==1
-gen area_harv_pure_male= area_harv if dm_gender==1 & inter==0
-gen area_harv_inter_female= area_harv if dm_gender==2 & inter==1
-gen area_harv_pure_female= area_harv if dm_gender==2 & inter==0
-gen area_harv_inter_mixed= area_harv if dm_gender==3 & inter==1
-gen area_harv_pure_mixed= area_harv if dm_gender==3 & inter==0
-gen area_plan_male = area_plan if dm_gender==1
-gen area_plan_female = area_plan if dm_gender==2
-gen area_plan_mixed = area_plan if dm_gender==3
-gen area_plan_inter= area_plan if inter==1
-gen area_plan_pure= area_plan if inter==0
-gen area_plan_inter_male= area_plan if dm_gender==1 & inter==1
-gen area_plan_pure_male= area_plan if dm_gender==1 & inter==0
-gen area_plan_inter_female= area_plan if dm_gender==2 & inter==1
-gen area_plan_pure_female= area_plan if dm_gender==2 & inter==0
-gen area_plan_inter_mixed= area_plan if dm_gender==3 & inter==1
-gen area_plan_pure_mixed= area_plan if dm_gender==3 & inter==0
-recode number_trees_planted (.=0)
-collapse (sum) area_harv* harvest* area_plan* number_trees_planted , by (y4_hhid zaocode)
-*merging survey weights
-merge m:1 y4_hhid using  "${Tanzania_NPS_W4_created_data}/Tanzania_NPS_W4_hhids.dta", nogen keep(1 3)
-*Saving area planted for Shannon diversity index
-save "${Tanzania_NPS_W4_created_data}/Tanzania_NPS_W4_hh_crop_area_plan_LRS.dta", replace
-
-*Adding here total planted and harvested area all plots, crops, and seasons.
-preserve
-collapse (sum) all_area_harvested=area_harv all_area_planted=area_plan, by(y4_hhid)
-replace all_area_harvested=all_area_planted if all_area_harvested>all_area_planted & all_area_harvested!=.
-save "${Tanzania_NPS_W4_created_data}/Tanzania_NPS_W4_hh_area_planted_harvested_allcrops_LRS.dta", replace
-restore
-keep if inlist(zaocode, $comma_topcrop_area)
-save "${Tanzania_NPS_W4_created_data}/Tanzania_NPS_W4_crop_harvest_area_yield_LRS.dta", replace
-
-/////Generating yield variables for short rainy season////
-* crops
-use "${Tanzania_NPS_W4_raw_data}/ag_sec_4b.dta", clear
-* Percent of area
-gen pure_stand = ag4b_04==2
-gen any_pure = pure_stand==1
-gen any_mixed = pure_stand==0
-gen percent_field = 0.25 if ag4b_02==1
-replace percent_field = 0.50 if ag4b_02==2
-replace percent_field = 0.75 if ag4b_02==3
-replace percent_field = 1 if ag4b_01==1
-duplicates report y4_hhid plotnum zaocode		
-duplicates drop y4_hhid plotnum zaocode, force	
-drop if plotnum==""
-ren plotnum plot_id 
-*Merging in variables from tzn4_field
-merge m:1 y4_hhid plot_id using "${Tanzania_NPS_W4_created_data}/Tanzania_NPS_W4_plot_areas.dta" , nogen keep(1 3)    
-merge m:1 y4_hhid plot_id using "${Tanzania_NPS_W4_created_data}/Tanzania_NPS_W4_plot_decision_makers" , nogen keep(1 3)
-gen field_area =  area_meas_hectares
-replace field_area= area_est_hectares if field_area==.
-//See EPAR Technical Report #354 "Crop Yield Measurement on Multi-Cropped Plots" 
-gen intercropped_yn = (ag4b_04==1) 
-replace intercropped_yn = . if ag4b_04==. 
-gen mono_field = percent_field if intercropped_yn==0 //not intercropped 
-gen int_field = percent_field if intercropped_yn==1 
-bys y4_hhid plot_id: egen total_percent_mono = total(mono_field)
-bys y4_hhid plot_id: egen total_percent_int_sum = total(int_field) 
-//Dealing with crops which have monocropping larger than plot size or monocropping that fills plot size and till has intercropping to add
-gen oversize_plot = (total_percent_mono >1)
-replace oversize_plot = 1 if total_percent_mono >=1 & total_percent_int_sum >0 
-bys y4_hhid plot_id: egen total_percent_field = total(percent_field)			            
-replace percent_field = percent_field/total_percent_field if total_percent_field>1 & oversize_plot ==1		//17 changes made
-replace total_percent_mono = 1 if total_percent_mono>1 
-gen total_percent_inter = 1-total_percent_mono
-bys y4_hhid plot_id: egen inter_crop_number = total(intercropped_yn) 
-gen percent_inter = (int_field/total_percent_int_sum)*total_percent_inter if total_percent_field >1 
-replace percent_inter=int_field if total_percent_field<=1
-replace percent_inter = percent_field if oversize_plot ==1 & intercropped_yn==1 
-ren cultivated field_cultivated  
-gen field_area_cultivated = field_area if field_cultivated==1
-gen crop_area_planted = percent_field*field_area_cultivated  if intercropped_yn == 0
-replace crop_area_planted = percent_inter*field_area_cultivated  if intercropped_yn == 1
-gen us_total_area_planted = total_percent_field*field_area_cultivated 
-gen us_inter_area_planted = total_percent_int_sum*field_area_cultivated 
-keep crop_area_planted* y4_hhid plot_id zaocode dm_* any_* pure_stand dm_gender  field_area us* area_meas_hectares area_est_hectares 
-save "${Tanzania_NPS_W4_created_data}/Tanzania_NPS_W4_plot_crop_area_SRS.dta", replace
-
-*Now to harvest
-use "${Tanzania_NPS_W4_raw_data}/ag_sec_4b.dta", clear
-gen kg_harvest = ag4b_28
-ren ag4b_22 harv_less_plant			//yes if they harvested less than they planted
-ren ag4b_19 no_harv
-replace kg_harvest = 0 if ag4b_20==3
-replace kg_harvest =. if ag4b_20==1 | ag4b_20==2 | ag4b_20==4	
-drop if kg_harvest==.							
-gen area_harv_ha= ag4b_21*0.404686						
-keep y4_hhid plotnum zaocode kg_harvest area_harv_ha harv_less_plant no_harv
-ren plotnum plot_id 
-*Merging decision maker and intercropping variables
-merge m:1 y4_hhid plot_id zaocode using "${Tanzania_NPS_W4_created_data}/Tanzania_NPS_W4_plot_crop_area_SRS.dta", nogen /*keep(1 3)*/ //we still want to keep those that report an area planted but no harvest			
-//Capping Code:
-gen over_harvest = area_harv_ha>field_area & area_harv_ha!=. & area_meas_hectares!=.	
-gen over_harvest_scaling = field_area/area_harv_ha if over_harvest == 1
-bys y4_hhid plot_id: egen mean_harvest_scaling = mean(over_harvest_scaling)
-replace mean_harvest_scaling =1 if missing(mean_harvest_scaling)
-replace area_harv_ha = field_area if over_harvest == 1
-replace area_harv_ha = area_harv_ha*mean_harvest_scaling if over_harvest == 0 
-
-//Intercropping Scaling Code (Method 4):
-bys y4_hhid plot_id: egen over_harv_plot = max(over_harvest)
-gen intercropped_yn = pure_stand !=1 
-gen int_f_harv = area_harv_ha if intercropped_yn==1
-bys y4_hhid plot_id: egen total_area_int_sum_hv = total(int_f_harv)
-bys y4_hhid plot_id: egen total_area_hv = total(area_harv_ha)
-replace us_total_area_planted = total_area_hv if over_harv_plot ==1
-replace us_inter_area_planted = total_area_int_sum_hv if over_harv_plot ==1
-drop intercropped_yn int_f_harv total_area_int_sum_hv total_area_hv
-
-// Adding Method 4 to Area Harvested
-gen intercropped_yn = pure_stand !=1 
-gen mono_f_harv = area_harv_ha if intercropped_yn==0
-gen int_f_harv = area_harv_ha if intercropped_yn==1
-bys y4_hhid plot_id: egen total_area_int_sum_hv = total(int_f_harv)
-bys y4_hhid plot_id: egen total_area_mono_hv = total(mono_f_harv)
-//Oversize Plots
-gen oversize_plot = total_area_mono_hv > field_area
-replace oversize_plot = 1 if total_area_mono_hv >=1 & total_area_int_sum_hv >0 
-bys y4_hhid plot_id: egen total_area_harv = total(area_harv_ha)	
-replace area_harv_ha = (area_harv_ha/us_total_area_planted)*field_area if oversize_plot ==1 
-gen total_area_int_hv = field_area - total_area_mono_hv
-replace area_harv_ha = (int_f_harv/us_inter_area_planted)*total_area_int_hv if intercropped_yn==1 & oversize_plot !=1 
-*rescaling area harvested to area planted if area harvested > area planted
-ren crop_area_planted area_plan
-replace area_harv_ha=. if area_harv_ha==0 //11 to missing
-replace area_plan=area_harv_ha if area_plan==. & area_harv_ha!=.
-*Capping area harvested at area planted
-count if area_harv_ha>area_plan & area_harv_ha!=. //228 observations where area harvested is greater than area planted 
-replace area_harv_ha = area_plan if area_harv_ha>area_plan & area_harv_ha!=.
-
-*Creating area and quantity variables by decision-maker and type of planting
-ren kg_harvest harvest 
-ren area_harv_ha area_harv 
-ren any_mixed inter
-gen harvest_male = harvest if dm_gender==1
-gen area_harv_male = area_harv if dm_gender==1
-gen harvest_female = harvest if dm_gender==2
-gen area_harv_female = area_harv if dm_gender==2
-gen harvest_mixed = harvest if dm_gender==3
-gen area_harv_mixed = area_harv if dm_gender==3
-gen area_harv_inter= area_harv if inter==1
-gen area_harv_pure= area_harv if inter==0
-gen harvest_inter= harvest if inter==1
-gen harvest_pure= harvest if inter==0
-gen harvest_inter_male= harvest if dm_gender==1 & inter==1
-gen harvest_pure_male= harvest if dm_gender==1 & inter==0
-gen harvest_inter_female= harvest if dm_gender==2 & inter==1
-gen harvest_pure_female= harvest if dm_gender==2 & inter==0
-gen harvest_inter_mixed= harvest if dm_gender==3 & inter==1
-gen harvest_pure_mixed= harvest if dm_gender==3 & inter==0
-gen area_harv_inter_male= area_harv if dm_gender==1 & inter==1
-gen area_harv_pure_male= area_harv if dm_gender==1 & inter==0
-gen area_harv_inter_female= area_harv if dm_gender==2 & inter==1
-gen area_harv_pure_female= area_harv if dm_gender==2 & inter==0
-gen area_harv_inter_mixed= area_harv if dm_gender==3 & inter==1
-gen area_harv_pure_mixed= area_harv if dm_gender==3 & inter==0
-gen area_plan_male = area_plan if dm_gender==1
-gen area_plan_female = area_plan if dm_gender==2
-gen area_plan_mixed = area_plan if dm_gender==3
-gen area_plan_inter= area_plan if inter==1
-gen area_plan_pure= area_plan if inter==0
-gen area_plan_inter_male= area_plan if dm_gender==1 & inter==1
-gen area_plan_pure_male= area_plan if dm_gender==1 & inter==0
-gen area_plan_inter_female= area_plan if dm_gender==2 & inter==1
-gen area_plan_pure_female= area_plan if dm_gender==2 & inter==0
-gen area_plan_inter_mixed= area_plan if dm_gender==3 & inter==1
-gen area_plan_pure_mixed= area_plan if dm_gender==3 & inter==0
-collapse (sum) area_harv* harvest* area_plan*, by (y4_hhid zaocode)
-*Adding here total planted and harvested area summed accross all plots, crops, and seasons.
-*Saving area planted for Shannon diversity index
-save "${Tanzania_NPS_W4_created_data}/Tanzania_NPS_W4_hh_crop_area_plan_SRS.dta", replace
-
-
-preserve
-collapse (sum) all_area_harvested=area_harv all_area_planted=area_plan, by(y4_hhid)
-replace all_area_harvested=all_area_planted if all_area_harvested>all_area_planted & all_area_harvested!=.
-save "${Tanzania_NPS_W4_created_data}/Tanzania_NPS_W4_hh_area_planted_harvested_allcrops_SRS.dta", replace
-*Append LRS
-append using "${Tanzania_NPS_W4_created_data}/Tanzania_NPS_W4_hh_area_planted_harvested_allcrops_LRS.dta"
-recode all_area_harvested all_area_planted (.=0)
-collapse (sum) all_area_harvested all_area_planted, by(y4_hhid)
-lab var all_area_planted "Total area planted, all plots, crops, and seasons"
-lab var all_area_harvested "Total area harvested, all plots, crops, and seasons"
-save "${Tanzania_NPS_W4_created_data}/Tanzania_NPS_W4_hh_area_planted_harvested_allcrops.dta", replace
-restore
-
-*merging survey weights
-merge m:1 y4_hhid using  "${Tanzania_NPS_W4_created_data}/Tanzania_NPS_W4_hhids.dta", nogen keep(1 3)
-keep if inlist(zaocode, $comma_topcrop_area)
-gen season="SRS"
-save "${Tanzania_NPS_W4_created_data}/Tanzania_NPS_W4_crop_harvest_area_yield_SRS.dta", replace
-
-*Yield at the household level
-use "${Tanzania_NPS_W4_created_data}/Tanzania_NPS_W4_crop_harvest_area_yield_LRS.dta", clear
-preserve
-gen season="LRS"
-append using "${Tanzania_NPS_W4_created_data}/Tanzania_NPS_W4_crop_harvest_area_yield_SRS.dta"
-recode area_plan area_harv (.=0)
-collapse (sum)area_plan area_harv, by(y4_hhid zaocode)
-ren area_plan total_planted_area
-ren area_harv total_harv_area 
-tempfile area_allseasons
-save `area_allseasons'
-restore
-merge 1:1 y4_hhid zaocode using `area_allseasons', nogen
-ren  zaocode crop_code
-*Adding value of crop production
-merge 1:1 y4_hhid crop_code using "${Tanzania_NPS_W4_created_data}/Tanzania_NPS_W4_hh_crop_values_production.dta", nogen keep(1 3)
-ren value_crop_production value_harv
-ren value_crop_sales value_sold
-local ncrop : word count $topcropname_area
-foreach v of varlist  harvest*  area_harv* area_plan* total_planted_area total_harv_area kgs_harvest* kgs_sold* value_harv value_sold {
-	separate `v', by(crop_code)
-	forvalues i=1(1)`ncrop' {
-		local p : word `i' of  $topcrop_area
-		local np : word `i' of  $topcropname_area
-		local `v'`p' = subinstr("`v'`p'","`p'","_`np'",1)	
-		ren `v'`p'  ``v'`p''
-	}	
-}
-gen number_trees_planted_cassava=number_trees_planted if crop_code==21
-gen number_trees_planted_banana=number_trees_planted if crop_code==71
-recode number_trees_planted_cassava number_trees_planted_banana (.=0) 	
-collapse (firstnm) harvest* area_harv*  area_plan* total_planted_area* total_harv_area* kgs_harvest*  kgs_sold*  value_harv* value_sold* (sum) number_trees_planted_*, by(y4_hhid)
-recode harvest*   area_harv* area_plan* kgs_harvest* total_planted_area* total_harv_area* kgs_sold*  value_harv* value_sold* (0=.)
-lab var kgs_harvest "Kgs harvested (household) (all seasons)"
-lab var kgs_sold "Kgs sold (household) (all seasons)"
-foreach p of global topcropname_area {
-	lab var value_harv_`p' "Value harvested of `p' (household)" 
-	lab var value_sold_`p' "Value sold of `p' (household)" 
-	lab var kgs_harvest_`p'  "Harvest of `p' (kgs) (household) (all seasons)" 
-	lab var kgs_sold_`p'  "Quantity sold of `p' (kgs) (household) (all seasons)" 
-	lab var total_harv_area_`p'  "Total area harvested of `p' (ha) (household) (all seasons)" 
-	lab var total_planted_area_`p'  "Total area planted of `p' (ha) (household) (all seasons)" 
-	lab var harvest_`p' "Harvest of `p' (kgs) (household) - LRS" 
-	lab var harvest_male_`p' "Harvest of `p' (kgs) (male-managed plots) - LRS" 
-	lab var harvest_female_`p' "Harvest of `p' (kgs) (female-managed plots) - LRS" 
-	lab var harvest_mixed_`p' "Harvest of `p' (kgs) (mixed-managed plots) - LRS"
-	lab var harvest_pure_`p' "Harvest of `p' (kgs) - purestand (household) - LRS"
-	lab var harvest_pure_male_`p'  "Harvest of `p' (kgs) - purestand (male-managed plots) - LRS"
-	lab var harvest_pure_female_`p'  "Harvest of `p' (kgs) - purestand (female-managed plots) - LRS"
-	lab var harvest_pure_mixed_`p'  "Harvest of `p' (kgs) - purestand (mixed-managed plots) - LRS"
-	lab var harvest_inter_`p' "Harvest of `p' (kgs) - intercrop (household) - LRS"
-	lab var harvest_inter_male_`p' "Harvest of `p' (kgs) - intercrop (male-managed plots) - LRS" 
-	lab var harvest_inter_female_`p' "Harvest of `p' (kgs) - intercrop (female-managed plots) - LRS"
-	lab var harvest_inter_mixed_`p' "Harvest  of `p' (kgs) - intercrop (mixed-managed plots) - LRS"
-	lab var area_harv_`p' "Area harvested of `p' (ha) (household) - LRS" 
-	lab var area_harv_male_`p' "Area harvested of `p' (ha) (male-managed plots) - LRS" 
-	lab var area_harv_female_`p' "Area harvested of `p' (ha) (female-managed plots) - LRS" 
-	lab var area_harv_mixed_`p' "Area harvested of `p' (ha) (mixed-managed plots) - LRS"
-	lab var area_harv_pure_`p' "Area harvested of `p' (ha) - purestand (household) - LRS"
-	lab var area_harv_pure_male_`p'  "Area harvested of `p' (ha) - purestand (male-managed plots) - LRS"
-	lab var area_harv_pure_female_`p'  "Area harvested of `p' (ha) - purestand (female-managed plots) - LRS"
-	lab var area_harv_pure_mixed_`p'  "Area harvested of `p' (ha) - purestand (mixed-managed plots) - LRS"
-	lab var area_harv_inter_`p' "Area harvested of `p' (ha) - intercrop (household) - LRS"
-	lab var area_harv_inter_male_`p' "Area harvested of `p' (ha) - intercrop (male-managed plots) - LRS" 
-	lab var area_harv_inter_female_`p' "Area harvested of `p' (ha) - intercrop (female-managed plots) - LRS"
-	lab var area_harv_inter_mixed_`p' "Area harvested  of `p' (ha) - intercrop (mixed-managed plots - LRS)"
-	lab var area_plan_`p' "Area planted of `p' (ha) (household) - LRS" 
-	lab var area_plan_male_`p' "Area planted of `p' (ha) (male-managed plots) - LRS" 
-	lab var area_plan_female_`p' "Area planted of `p' (ha) (female-managed plots) - LRS" 
-	lab var area_plan_mixed_`p' "Area planted of `p' (ha) (mixed-managed plots) - LRS"
-	lab var area_plan_pure_`p' "Area planted of `p' (ha) - purestand (household) - LRS"
-	lab var area_plan_pure_male_`p'  "Area planted of `p' (ha) - purestand (male-managed plots) - LRS"
-	lab var area_plan_pure_female_`p'  "Area planted of `p' (ha) - purestand (female-managed plots) - LRS"
-	lab var area_plan_pure_mixed_`p'  "Area planted of `p' (ha) - purestand (mixed-managed plots) - LRS"
-	lab var area_plan_inter_`p' "Area planted of `p' (ha) - intercrop (household) - LRS"
-	lab var area_plan_inter_male_`p' "Area planted of `p' (ha) - intercrop (male-managed plots) - LRS" 
-	lab var area_plan_inter_female_`p' "Area planted of `p' (ha) - intercrop (female-managed plots) - LRS"
-	lab var area_plan_inter_mixed_`p' "Area planted  of `p' (ha) - intercrop (mixed-managed plots) - LRS"
-}
-*Household grew crop
-foreach p of global topcropname_area {
-	gen grew_`p'=(total_harv_area_`p'!=. & total_harv_area_`p'!=.0 ) | (total_planted_area_`p'!=. & total_planted_area_`p'!=.0)
-	lab var grew_`p' "1=Household grew `p'" 
-	gen harvested_`p'= (total_harv_area_`p'!=. & total_harv_area_`p'!=.0 )
-	lab var harvested_`p' "1= Household harvested `p'"
-}
-foreach p in cassav banana { //tree/permanent crops have no area in this instrument 
-	replace grew_`p' = 1 if number_trees_planted_`p'!=0 & number_trees_planted_`p'!=.
-}
-
-*Household grew crop in the LRS
-foreach p of global topcropname_area {
-	gen grew_`p'_lrs=(area_harv_`p'!=. & area_harv_`p'!=.0 ) | (area_plan_`p'!=. & area_plan_`p'!=.0)
-	lab var grew_`p'_lrs "1=Household grew `p' in the long rainy season" 
-	gen harvested_`p'_lrs= (area_harv_`p'!=. & area_harv_`p'!=.0 )
-	lab var harvested_`p'_lrs "1= Household harvested `p' in the long rainy season"
-}
-
-foreach p of global topcropname_area {
-	recode kgs_harvest_`p' (.=0) if grew_`p'==1 
-	recode value_sold_`p' (.=0) if grew_`p'==1 
-	recode value_harv_`p' (.=0) if grew_`p'==1 
-}
-drop harvest- harvest_pure_mixed area_harv- area_harv_pure_mixed area_plan- area_plan_pure_mixed value_harv value_sold total_planted_area total_harv_area number_trees_planted_*
-save "${Tanzania_NPS_W4_created_data}/Tanzania_NPS_W4_yield_hh_crop_level.dta", replace
-
-*/
-
-
 *Start DYA 9.13.2020 
 ********************************************************************************
 *PRODUCTION BY HIGH/LOW VALUE CROPS
@@ -5851,21 +5407,22 @@ drop w_ha_planted_all
 gen individual_weight=hh_members*weight
 gen adulteq_weight=adulteq*weight
 
-************Rural poverty headcount ratio***************
-*First, we convert $1.90/day to local currency in 2011 using https://data.worldbank.org/indicator/PA.NUS.PRVT.PP?end=2011&locations=TZ&start=1990
-	// 1.90 * 585.52 = 1112.488  
-*NOTE: this is using the "Private Consumption, PPP" conversion factor because that's what we have been using. 
-* This can be changed this to the "GDP, PPP" if we change the rest of the conversion factors.
-*The global poverty line of $1.90/day is set by the World Bank
-*http://www.worldbank.org/en/topic/poverty/brief/global-poverty-line-faq
-*Second, we inflate the local currency to the year that this survey was carried out using the CPI inflation rate using https://data.worldbank.org/indicator/FP.CPI.TOTL?end=2017&locations=TZ&start=2003
-	// 1+(158.021 - 112.691)/ 112.691 = 1.4022504	
-	// 1112.488* 1.4022504 = 1559.9867 TSH
-*NOTE: if the survey was carried out over multiple years we use the last year
-*This is the poverty line at the local currency in the year the survey was carried out
+********Currency Conversion Factors*********
+gen ccf_loc = (1/$Tanzania_NPS_W4_infl_adj) 
+lab var ccf_loc "currency conversion factor - 2017 $NGN"
+gen ccf_usd = ccf_loc/$Tanzania_NPS_W4_exchange_rate 
+lab var ccf_usd "currency conversion factor - 2017 $USD"
+gen ccf_1ppp = ccf_loc/$Tanzania_NPS_W4_cons_ppp_dollar
+lab var ccf_1ppp "currency conversion factor - 2017 $Private Consumption PPP"
+gen ccf_2ppp = ccf_loc/$Tanzania_NPS_W4_gdp_ppp_dollar
+lab var ccf_2ppp "currency conversion factor - 2017 $GDP PPP"
 
-gen poverty_under_1_9 = (daily_percap_cons<1559.9867)
-la var poverty_under_1_9 "Household has a percapita conumption of under $1.90 in 2011 $ PPP)"
+************Rural poverty headcount ratio***************
+gen poverty_under_1_9 = daily_percap_cons < $Tanzania_NPS_W4_poverty_190
+la var poverty_under_1_9 "Household per-capita conumption is below $1.90 in 2011 $ PPP"
+gen poverty_under_2_15 = daily_percap_cons < $Tanzania_NPS_W4_poverty_215
+la var poverty_under_2_15 "Household per-capita consumption is below $2.15 in 2017 $ PPP"
+gen poverty_under_npl = daily_percap_cons < $Tanzania_NPS_W4_poverty_npl
 
 *average consumption expenditure of the bottom 40% of the rural consumption expenditure distribution
 *By per capita consumption
@@ -5877,16 +5434,6 @@ replace bottom_40_percap = 1 if r(r1) > w_daily_percap_cons & rural==1
 _pctile w_daily_peraeq_cons [aw=adulteq_weight] if rural==1, p(40)
 gen bottom_40_peraeq = 0
 replace bottom_40_peraeq = 1 if r(r1) > w_daily_peraeq_cons & rural==1
-
-********Currency Conversion Factors*********
-gen ccf_loc = (1+$Tanzania_NPS_W4_inflation) 
-lab var ccf_loc "currency conversion factor - 2016 $TSH"
-gen ccf_usd = (1+$Tanzania_NPS_W4_inflation) / $Tanzania_NPS_W4_exchange_rate 
-lab var ccf_usd "currency conversion factor - 2016 $USD"
-gen ccf_1ppp = (1+$Tanzania_NPS_W4_inflation) / $Tanzania_NPS_W4_cons_ppp_dollar 
-lab var ccf_1ppp "currency conversion factor - 2016 $Private Consumption PPP"
-gen ccf_2ppp = (1+$Tanzania_NPS_W4_inflation) / $Tanzania_NPS_W4_gdp_ppp_dollar
-lab var ccf_2ppp "currency conversion factor - 2016 $GDP PPP"
 
 *replace vars that cannot be created with .
 *empty crop vars (cassava and banana - no area information for permanent crops) 
@@ -5925,7 +5472,7 @@ gen survey = "LSMS-ISA"
 gen year = "2014-15" 
 gen instrument = 14 
 //Only runs if label isn't already defined.
-capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2" 13 "Tanzania NPS Wave 3" 14 "Tanzania NPS Wave 4" 15 "Tanzania NPS Wave 5" /*
+capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2" 13 "Tanzania NPS Wave 3" 14 "Tanzania NPS Wave 4" 15 "Tanzania NPS SDD" 16 "Tanzania NPS Wave 5" /*
 	*/ 21 "Ethiopia ESS Wave 1" 22 "Ethiopia ESS Wave 2" 23 "Ethiopia ESS Wave 3" 24 "Ethiopia ESS Wave 4" 25 "Ethiopia ESS Wave 5" /*
 	*/ 31 "Nigeria GHS Wave 1" 32 "Nigeria GHS Wave 2" 33 "Nigeria GHS Wave 3" 34 "Nigeria GHS Wave 4"/*
 	*/ 41 "Malawi IHS/IHPS Wave 1" 42 "Malawi IHS/IHPS Wave 2" 43 "Malawi IHS/IHPS Wave 3" 44 "Malawi IHS/IHPS Wave 4" /*
@@ -6061,27 +5608,33 @@ foreach v of varlist  plot_productivity  plot_labor_prod {
 	lab var  w_`v'  "`l`v'' - Winzorized top 1%"
 }	
 	
+	
+gen ccf_loc = (1/$Tanzania_NPS_W4_infl_adj) 
+lab var ccf_loc "currency conversion factor - 2017 $TSH"
+gen ccf_usd = ccf_loc/$Tanzania_NPS_W4_exchange_rate 
+lab var ccf_usd "currency conversion factor - 2017 $USD"
+gen ccf_1ppp = ccf_loc/$Tanzania_NPS_W4_cons_ppp_dollar
+lab var ccf_1ppp "currency conversion factor - 2017 $Private Consumption PPP"
+gen ccf_2ppp = ccf_loc/$Tanzania_NPS_W4_gdp_ppp_dollar
+lab var ccf_2ppp "currency conversion factor - 2017 $GDP PPP"
 global monetary_val plot_value_harvest plot_productivity plot_labor_prod 
+
 foreach p of varlist $monetary_val {
-	gen `p'_1ppp = (1+$Tanzania_NPS_W4_inflation) * `p' / $Tanzania_NPS_W4_cons_ppp_dollar 
-	gen `p'_2ppp = (1+$Tanzania_NPS_W4_inflation) * `p' / $Tanzania_NPS_W4_gdp_ppp_dollar 
-	gen `p'_usd = (1+$Tanzania_NPS_W4_inflation) * `p' / $Tanzania_NPS_W4_exchange_rate
-	gen `p'_loc = (1+$Tanzania_NPS_W4_inflation) * `p' 
-	local l`p' : var lab `p' 
-	lab var `p'_1ppp "`l`p'' (2016 $ Private Consumption PPP)"
-	lab var `p'_2ppp "`l`p'' (2016 $ GDP PPP)"
-	lab var `p'_usd "`l`p'' (2016 $ USD)"
-	lab var `p'_loc "`l`p'' (2016 TSH)"  
-	lab var `p' "`l`p'' (TSH)"  
-	gen w_`p'_1ppp = (1+$Tanzania_NPS_W4_inflation) * w_`p' / $Tanzania_NPS_W4_cons_ppp_dollar 
-	gen w_`p'_2ppp = (1+$Tanzania_NPS_W4_inflation) * w_`p' / $Tanzania_NPS_W4_gdp_ppp_dollar 
-	gen w_`p'_usd = (1+$Tanzania_NPS_W4_inflation) * w_`p' / $Tanzania_NPS_W4_exchange_rate 
-	gen w_`p'_loc = (1+$Tanzania_NPS_W4_inflation) * w_`p' 
+	foreach n in 1ppp 2ppp usd loc {
+	gen `p'_`n' =  `p' * ccf_`n'
+	gen w_`p'_`n' = w_`p'*ccf_`n'
 	local lw_`p' : var lab w_`p'
-	lab var w_`p'_1ppp "`lw_`p'' (2016 $ Private Consumption PPP)"
-	lab var w_`p'_2ppp "`lw_`p'' (2016 $ GDP PPP)"
-	lab var w_`p'_usd "`lw_`p'' (2016 $ USD)"
-	lab var w_`p'_loc "`lw_`p'' (2016 TSH)"
+}
+	local l`p' : var lab `p' 
+	lab var `p'_1ppp "`l`p'' (2017 $ Pvt Cons PPP)"
+	lab var `p'_2ppp "`l`p'' (2017 $ GDP PPP)"
+	lab var `p'_usd "`l`p'' (2017 $ USD)"
+	lab var `p'_loc "`l`p'' (2017 TSH)"  
+	lab var `p' "`l`p'' (TSH)"  
+	lab var w_`p'_1ppp "`lw_`p'' (2017 $ Pvt Cons PPP)"
+	lab var w_`p'_2ppp "`lw_`p'' (2017 $ GDP PPP)"
+	lab var w_`p'_usd "`lw_`p'' (2017 $ USD)"
+	lab var w_`p'_loc "`lw_`p'' (2017 TSH)"
 	lab var w_`p' "`lw_`p'' (TSH)"  
 }
 
@@ -6227,7 +5780,7 @@ gen survey = "LSMS-ISA"
 gen year = "2014-15" 
 gen instrument = 14 
 //Only runs if label isn't already defined.
-capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2" 13 "Tanzania NPS Wave 3" 14 "Tanzania NPS Wave 4" 15 "Tanzania NPS Wave 5" /*
+capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2" 13 "Tanzania NPS Wave 3" 14 "Tanzania NPS Wave 4" 15 "Tanzania NPS SDD" 16 "Tanzania NPS Wave 5" /*
 	*/ 21 "Ethiopia ESS Wave 1" 22 "Ethiopia ESS Wave 2" 23 "Ethiopia ESS Wave 3" 24 "Ethiopia ESS Wave 4" 25 "Ethiopia ESS Wave 5" /*
 	*/ 31 "Nigeria GHS Wave 1" 32 "Nigeria GHS Wave 2" 33 "Nigeria GHS Wave 3" 34 "Nigeria GHS Wave 4"/*
 	*/ 41 "Malawi IHS/IHPS Wave 1" 42 "Malawi IHS/IHPS Wave 2" 43 "Malawi IHS/IHPS Wave 3" 44 "Malawi IHS/IHPS Wave 4" /*

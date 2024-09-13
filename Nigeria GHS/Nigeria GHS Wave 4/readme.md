@@ -141,6 +141,7 @@ CODING STATUS: Fully completed, still under active review and expansion
 * Computes summary statistics for the variables in the previous 3 sections, reporting mean, standard deviation/standard error, percentiles, and n. See the summary statistics file in the main project folder.
  
 ## Known Issues and Changes from Previous Surveys
+* Previous waves of Nigeria consider yams under a single crop code (1120). In Wave 4, the category was broken out into four subcategories: white yam, yellow yam, water yam, and three-leaved yam. These crops were reunited under the 1120 umbrella, but have (sometimes significantly) different planting and harvest dates, so there's some loss of information occurring. In the October 2024 update, the decision was made to drop three-leaved yam from the combined category under the assumption that its cultivation and uses differ substantially from the other three.
 * The questions around family labor days worked have changed, resulting in underreporting compared to previous waves. Labor productivity statistics are not comparable to waves 1-3.
 * Fishing-related expenses are no longer included because the relevant questions were removed
 * Prior to version 3 of the dataset, the aggregate consumption files were unavailable, so a similar version was constructed _without_ using the regional and temporal deflation factors applied in consumption aggregate files. This code is left in for validation purposes but not currently used to construct estimates.

@@ -1,0 +1,1 @@
+This folder holds the processed data; created_data saves intermediate files produced from running the code and may be useful for targeting variables of interest, while final_data contains the final indicators organized by unit of observation (household, plot, or individual plot/livestock manager) and the processed summary statistics.
