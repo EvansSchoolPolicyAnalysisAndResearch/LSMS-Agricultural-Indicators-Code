@@ -6,7 +6,7 @@ set maxvar 32767
 set matsize 10000	 
 
 * Set directories 
-global directory "\\netid.washington.edu\wfs\EvansEPAR\Project\EPAR\Working Files\335 - Ag Team Data Support\Waves\_Summary_statistics"
+global directory "../../_Summary_statistics"
 
 **************
 *SUMMARY STATISTICS
@@ -1751,9 +1751,14 @@ foreach instrument of global list_instruments {
 	global final_outputfile      "$`instrument'_final_data/`instrument'_summary_stats.xlsx" 
 	*** Adding other meta-data
 	display "`instrument'"
+	import excel "$directory/EPAR_UW_335_master_list_indicators.xlsx", sheet("MASTER_LIST_INDICATORS") firstrow clear 
+	tempfile master_list 
+	save `master_list'
+	
 	import excel "$final_outputfile", sheet("Sheet1") firstrow clear
-	ren A variablenameinthedtafile
-	merge 1:1 variablenameinthedtafile using "${directory}\EPAR_UW_335_master_list_indicators.dta", nogen
+	ren A variableName
+	merge 1:1 variableName using `master_list', nogen keep(1 3)
+	
   if "`instrument'"=="BurkinaF_EMC_W1" { 
 		gen Geography="Burkina Faso" 
 		gen Survey="LSMS-ISA"	
@@ -1824,10 +1829,17 @@ foreach instrument of global list_instruments {
 		gen Year="2010-11"
 	}
   
-  if "`instrument'"=="Tanzania_NPS_W5" {
+    if "`instrument'"=="Tanzania_NPS_W5" {
     gen Geography="Tanzania"
     gen Survey="LSMS-ISA"
     gen Instrument="Tanzania NPS Wave 5"
+    gen Year="2020-21"
+  }
+  
+  if "`instrument'"=="Tanzania_NPS_SDD" {
+    gen Geography="Tanzania"
+    gen Survey="LSMS-ISA"
+    gen Instrument="Tanzania NPS SDD"
     gen Year="2019-20"
   }
 	if "`instrument'"=="Tanzania_NPS_W4" { 
@@ -1909,7 +1921,7 @@ foreach instrument of global list_instruments {
     gen Geography="Malawi"
     gen Survey="LSMS-ISA"
     gen Instrument="Malawi IHS/IHPS Wave 4"
-    gen year="2019"
+    gen Year="2019-20"
   }
   
 	if "`instrument'"=="MWI_IHS_IHPS_W3" {
@@ -1919,24 +1931,22 @@ foreach instrument of global list_instruments {
 		gen Year="2016-17"
 	}
 
-if "`instrument'"=="Malawi_IHPS_W2" {
+if "`instrument'"=="MWI_IHPS_W2" {
 	gen Geography="Malawi"
 	gen Survey="LSMS-ISA"
-	gen Instrument="Malawi IHPS Wave 2"
-	gen Year="2013"
+	gen Instrument="Malawi IHS/IHPS Wave 2"
+	gen Year="2012-13"
 }
 
-if "`instrument'"="Malawi_IHS_W1" {
+if "`instrument'"=="MWI_IHS_W1" {
   gen Geography="Malawi"
   gen Survey="LSMS-ISA"
-  gen Instrument="Malawi IHS Wave 1"
+  gen Instrument="Malawi IHS/IHPS Wave 1"
   gen Year="2010-11"
 }
 
-	order Geography Survey Instrument Year indicatorcategory indicatorname units commoditydisaggregation genderdisaggregation hhfarmsizedisaggregation ruraltotalpopulation subpopulationforestimate currencyconversion levelofindicator weight variablenameinthedtafile mean semean_strata sd p25 p50 p75 min max N 
+	order Geography Survey Instrument Year indicatorcategory indicatorname units commoditydisaggregation genderdisaggregation hhfarmsizedisaggregation ruraltotalpopulation subpopulationforestimate currencyconversion levelofindicator weight variableName mean semean_strata sd p25 p50 p75 min max N 
 	gen N_less_30=N<30
-	*sort row_num
-	*drop row_num
 	qui recode semean_strata (.=0)
 	gen all_zero_2_missing= (mean==0 & semean_strata==0  &  sd==0  &  p25==0  &  p50==0  &  p75==0  &  min==0  & max==0) 
 	recode mean semean_strata sd p25 p50 p75 min max N N_less_30 (0=.) if all_zero_2_missing==1
