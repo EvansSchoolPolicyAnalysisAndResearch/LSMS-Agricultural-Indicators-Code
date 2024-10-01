@@ -5,7 +5,7 @@ CODING STATUS: Work in progress
 - ![Pending Review](https://placehold.co/15x15/1589F0/1589F0.png) `Pending Review`
 
 ## Prerequisites
-* Download the raw data from MWI Fifth Integrated Household Survey 2019-2020  https://microdata.worldbank.org/index.php/catalog/3818
+* Download the raw data from MWI Fifth Integrated Household Survey (IHS) 2019-2020 at https://microdata.worldbank.org/index.php/catalog/3818 and the long panel survey (IHPS) at https://microdata.worldbank.org/index.php/catalog/3819. The long panel survey download contains all four LSMS-ISA waves.
 * Extract the files to the "Raw DTA Files" folder in the cloned directory
 * Update the paths on lines 176-177 and 180-184 with the correct paths to the raw data and output files. 
 
