@@ -8,7 +8,8 @@
 *Acknowledgments: We acknowledge the helpful contributions of members of the World Bank's LSMS-ISA team, the FAO's RuLIS team, IFPRI, IRRI, 
 				  and the Bill & Melinda Gates Foundation Agricultural Development Data and Policy team in discussing indicator construction decisions. 
 				  All coding errors remain ours alone.
-*Date			: August 28th, 2024
+*Date			: September 5th, 2024
+*Dataset version: ETH_2015_ESS_v02_M_STATA8
 ----------------------------------------------------------------------------------------------------------------------------------------------------*/
 
 *Data source
@@ -60,16 +61,12 @@ set maxvar 10000
 ssc install findname  // need this user-written ado file for some commands to work	
 
 *Set location of raw data and output
-global directory 					"//netid.washington.edu/wfs/EvansEPAR/Project/EPAR/Working Files/335 - Ag Team Data Support/Waves"
-*global directory					"/Volumes/wfs/Project/EPAR/Working Files/335 - Ag Team Data Support/Waves" // Mac 
-*global directory					"/Volumes/EvansEPAR-1/Project/EPAR/Working Files/335 - Ag Team Data Support/Waves" // Mac 
-*global directory "/Volumes/EvansEPAR/Project/EPAR/Working Files/335 - Ag Team Data Support/Waves" // Mac with R Drive
-*global directory "/Volumes/EvansEPAR/Project/EPAR/Working Files/335 - Ag Team Data Support/Waves" // Mac with R Drive
-*Set directories
-global Ethiopia_ESS_W3_raw_data			"$directory/Ethiopia ESS/Ethiopia ESS Wave 3/Raw DTA Files/ETH_2015_ESS_v02_M_STATA8"
-global Ethiopia_ESS_W3_temp_data		"$directory/Ethiopia ESS/Ethiopia ESS Wave 3/Final DTA Files - JM/temp_data"
-global Ethiopia_ESS_W3_created_data		"$directory/Ethiopia ESS/Ethiopia ESS Wave 3/Final DTA Files - JM/created_data"
-global Ethiopia_ESS_W3_final_data		"$directory/Ethiopia ESS/Ethiopia ESS Wave 3/Final DTA Files - JM/final_data" 
+global directory 					"../.."
+global Ethiopia_ESS_W3_raw_data			"$directory/Ethiopia ESS/Ethiopia ESS Wave 3/Raw DTA Files"
+global Ethiopia_ESS_W3_temp_data		"$directory/Ethiopia ESS/Ethiopia ESS Wave 3/Final DTA Files/temp_data"
+global Ethiopia_ESS_W3_created_data		"$directory/Ethiopia ESS/Ethiopia ESS Wave 3/Final DTA Files/created_data"
+global Ethiopia_ESS_W3_final_data		"$directory/Ethiopia ESS/Ethiopia ESS Wave 3/Final DTA Files/final_data" 
+global summary_stats 					"$directory/_Summary_statistics/EPAR_UW_335_SUMMARY_STATISTICS.do"
 
 
 ********************************************************************************
@@ -88,7 +85,7 @@ global Ethiopia_ESS_W3_poverty_thres (1.90*221.028*659.2/133.25) //see calculati
 		* https://data.worldbank.org/indicator/FP.CPI.TOTL?end=2022&locations=ET&start=2011
 * Divided by 133.25 - 2011 Consumer price index (2010 = 100)
 		* https://data.worldbank.org/indicator/FP.CPI.TOTL?end=2022&locations=ET&start=2011
-global Ethiopia_ESS_W3_poverty_ifpri (7184*221.028/221.028/365) //see calculation and sources below
+global Ethiopia_ESS_W3_poverty_npl (7184*221.028/221.028/365) //see calculation and sources below
 * 7184 Birr is the Ethiopian National Poverty Line in 2015/2016
 		* Mekasha, T. J., & Tarp, F. (2021). Understanding poverty dynamics in Ethiopia: Implications for the likely impact of 	COVID-19. Review of Development Economics, 25(4), 1838–1868. https://doi.org/10.1111/rode.12841
 * Multiplied by 221.028 - 2016 Consumer price index (2010 = 100) - CHANGE THIS ONE TO ALIGN WITH SURVEY YEAR
@@ -140,17 +137,15 @@ drop rnum
 save "${Ethiopia_ESS_W3_created_data}/Ethiopia_ESS_W3_cropname_table.dta", replace 
 
 ********************************************************************************
-* UNIQUELY IDENTIFIABLE GEOGRAPHIES AND PLOTS - note that without this code, collapsing by [zone, woreda, kebele, ea] ALONE (as we do to get median prices) will result in inaccurate medians. We need to create unique identifiers to collapse on! On top of that, some of the raw data needs cleaning and aligning between files
+* UNIQUELY IDENTIFIABLE GEOGRAPHIES AND PLOTS - note that without this code, collapsing by [zone, woreda, kebele, ea] using raw data (as we do to get median prices) will result in inaccurate medians. We need to create unique identifiers to collapse on!
 * UNIQUELY IDENTIFIABLE PARCELS AND FIELDS AT THE HOUSEHOLD LEVEL (for AqQuery+)
 
-* To create uniquely identified variables:
-* Comment the below section in
-* Create a "temp_data" folder in the "Final DTA Files" folder in 335
-* Create a Global for temp_data (e.g. global Ethiopia_ESS_W3_temp_data		"$directory/Ethiopia ESS/Ethiopia ESS Wave 3/Final DTA Files - JM/temp_data")
-* Run the code below
-* Comment this section back out - only need to run once!
-* When using any "raw" data moving forward, pull from the "${Ethiopia_ESS_W3_temp_data}/file.dta" so that you now use the amended file rather than the original raw file.
+* STEPS:
+* Create a "temp_data" folder in the "Final DTA Files" folder, similar to "created_data" and "final_data"
+* Create a Global for temp_data (e.g. global Ethiopia_ESS_W5_temp_data		"$directory/Ethiopia ESS/Ethiopia ESS Wave 3/Final DTA Files/temp_data")
 ********************************************************************************
+capture confirm file "$Ethiopia_ESS_W3_temp_data/sect_cover_hh_w3.dta" //Simple check for an output file; this block only needed one time, so code will only run the code if it's missing from the temp_data folder. Delete it to make the code re-run.
+if(_rc){
 * Some COVER files contain geovariables named region, zone, etc. with no info - handling separately, otherwise we cannot create variables region, zone, etc. in the loops below
 local directory_raw "$Ethiopia_ESS_W3_raw_data"
 local directory_temp "$Ethiopia_ESS_W3_temp_data"
@@ -485,7 +480,7 @@ foreach file of local raw_files {
 }
 
 * LOCAL AREA UNIT CONVERSION
-use "${Ethiopia_ESS_W3_raw_data}\ET_local_area_unit_conversion.dta", clear		
+use "${Ethiopia_ESS_W3_temp_data}\ET_local_area_unit_conversion.dta", clear		
 		 // ZONE
 		capture confirm variable zone 
 		if(!_rc) {
@@ -534,17 +529,7 @@ use "`directory_raw'/`file'", clear
 save "`directory_temp'/`file'", replace
 
 }
-
-/*
-********************************************************************************
-* CROP CONVERSION FACTOR ADJUSTMENT
-********************************************************************************
-// W5 raw data file Crop_CF_Wave5.dta has duplicate observations for crop_code=74, unit_cd=62. Based on W3 data, we have chosen to retain cf=4.34 (and drop cf=6.125) for continuity. 
-use "$Ethiopia_ESS_W5_temp_data/Crop_CF_Wave5.dta", clear
-drop if crop_code==74 & unit_cd==62 & mean_cf_nat==6.125
-save "${Ethiopia_ESS_W5_created_data}/Crop_CF_Wave5_adj.dta", replace
-*/
-
+}
 
 
 *******************************************************************************
@@ -702,11 +687,6 @@ total hh_members [pweight=weight_pop_rururb]
 lab var weight_pop_rururb "Survey weight - adjusted to match rural and urban population"
 drop weight_pop_rur weight_pop_urb
 save "${Ethiopia_ESS_W3_created_data}/Ethiopia_ESS_W3_hhsize.dta", replace 
-
-********************************************************************************
-* FIELD AREAS * // Joaquin 03.14.2023: Need to add 
-********************************************************************************
-
 
 ********************************************************************************
 *PLOT DECISION-MAKERS
@@ -1051,7 +1031,7 @@ use "${Ethiopia_ESS_W3_temp_data}/sect4_pp_w3.dta", clear
 	ren saq06 kebele
 	ren saq07 ea
 	rename ph_s9q04_b unit_cd
-	la def cropcode 1 "barley" 2 "maize" 3 "millet" 4 "oats" 5 "rice" 6 "sorghum" 7 "teff" 8 "wheat" 9 "mung bean" 10 "cassava" 11 "chick peas" 12 "haricot beans" 13 "horse beans" /*=fava bean*/ 14 "lentils" 15 "field peas" 16 "vetch" /*ALT: not a food crop*/ 17 "gibto" /*ALT: White lupin*/ 18 "soybeans" 19 "kidney beans" 20 "fennel" 21 "castor beans" 22 "cottonseed" 23 "flaxseed" 24 "groundnuts" 25 "nueg" /*Nyjerseed, feed crop*/ 26 "rapeseed" /*i.e. canola*/ 27 "sesame" 28 "sunflower" 29 "mego" 30 "savory" 31 "black cumin" /*Nigella*/ 32 "black pepper" 33 "cardamom" 34 "chili pepper" 35 "cinnamon" 36 "fenugreek" 37 "ginger" 38 "red pepper" 39 "tumeric" 40 "white lupin" /*ALT: This is the same as 17, does the separate cropcode imply it's being used as livestock forage or cover? */  41 "apples" 42 "bananas" 43 "grapes" 44 "lemons" 45 "mandarins" 46 "mangos" 47 "oranges" 48 "papaya" 49 "pineapple" 50 "citron" 51 "beer root" /*ALT: I cannot find any English-language references to this outside of LSMS - is it supposed to be beetroot? */ 52 "cabbage" 53 "carrot" 54 "cauliflower" 55 "garlic" 56 "kale" 57 "lettuce" 58 "onion" 59 "green pepper" 60 "potatoes" 61 "pumpkin" 62 "sweet potato" 63 "tomatoes" 64 "godere" /*ALT: Likely taro, should update crop codes to reduce regional variants like this one */ 65 "guava" 66 "peach" 67 "mustard" 68 "feto" /*garden cress?*/ 69 "spinach" 70 "green beans" 71 "chat" 72 "coffee" 73 "cotton" 74 "enset" 75 "gesho" /*buckthorn*/ 76 "sugarcane" 77 "tea" 78 "tobacco" 79 "coriander" 80 "sacred basil" /* tulsi */ 81 "rue" 82 "gishita" /*soursop*/ 83 "watermelon" 84 "avocado" 85 "forage" /*clarifying this from "Grazing land" */ 86 "temporary gr" /*Temporary forage? Not clear what this is*/ 97 "pijapin" /*Doesn't appear outside of LSMS, no obs */ 98 "other root crop" /*Cut off by char limit?*/ 99 "other land" 108 "amboshika" /*skipping 100-112, no obs, no idea what some of these are. Couldn't find any database entries with NL20F. */ 112 "kazmir" /*white sapote*/ 113 "strawberry" 114 "shiferaw" /*moringa*/ 115 "other fruit" 116 "timez kimem" /*Spice?*/ 117 "other spices" 118 "other pulses" 119 "other oilseed" 120 "other cereal" 121 "other case crop" /*=cover crop?*/ 123 "other vegetable"
+	la def cropcode 1 "barley" 2 "maize" 3 "millet" 4 "oats" 5 "rice" 6 "sorghum" 7 "teff" 8 "wheat" 9 "mung bean" 10 "cassava" 11 "chick peas" 12 "haricot beans" 13 "horse beans" /*=fava bean*/ 14 "lentils" 15 "field peas" 16 "vetch" /*ALT: not a food crop*/ 17 "gibto" /*ALT: White lupin*/ 18 "soybeans" 19 "kidney beans" 20 "fennel" 21 "castor beans" 22 "cottonseed" 23 "flaxseed" 24 "groundnuts" 25 "nueg" /*Nyjerseed, feed crop*/ 26 "rapeseed" /*i.e. canola*/ 27 "sesame" 28 "sunflower" 29 "mego" 30 "savory" 31 "black cumin" /*Nigella*/ 32 "black pepper" 33 "cardamom" 34 "chili pepper" 35 "cinnamon" 36 "fenugreek" 37 "ginger" 38 "red pepper" 39 "tumeric" 40 "white cumin"  41 "apples" 42 "bananas" 43 "grapes" 44 "lemons" 45 "mandarins" 46 "mangos" 47 "oranges" 48 "papaya" 49 "pineapple" 50 "citron" 51 "beer root" /*ALT: I cannot find any English-language references to this outside of LSMS - is it supposed to be beetroot? */ 52 "cabbage" 53 "carrot" 54 "cauliflower" 55 "garlic" 56 "kale" 57 "lettuce" 58 "onion" 59 "green pepper" 60 "potatoes" 61 "pumpkin" 62 "sweet potato" 63 "tomatoes" 64 "godere" /*ALT: Likely taro, should update crop codes to reduce regional variants like this one */ 65 "guava" 66 "peach" 67 "mustard" 68 "feto" /*garden cress?*/ 69 "spinach" 70 "green beans" 71 "chat" 72 "coffee" 73 "cotton" 74 "enset" 75 "gesho" /*buckthorn*/ 76 "sugarcane" 77 "tea" 78 "tobacco" 79 "coriander" 80 "sacred basil" /* tulsi */ 81 "rue" 82 "gishita" /*soursop*/ 83 "watermelon" 84 "avocado" 85 "forage" /*clarifying this from "Grazing land" */ 86 "temporary gr" /*Temporary forage? Not clear what this is*/ 97 "pijapin" /*Doesn't appear outside of LSMS, no obs */ 98 "other root crop" /*Cut off by char limit?*/ 99 "other land" 108 "amboshika" /*skipping 100-112, no obs, no idea what some of these are. Couldn't find any database entries with NL20F. */ 112 "kazmir" /*white sapote*/ 113 "strawberry" 114 "shiferaw" /*moringa*/ 115 "other fruit" 116 "timez kimem" /*Spice?*/ 117 "other spices" 118 "other pulses" 119 "other oilseed" 120 "other cereal" 121 "other case crop" /*=cover crop?*/ 123 "other vegetable"
 	la val crop_code cropcode 
 	rename pp_s4q14 number_trees_planted
 	merge m:1 crop_code unit_cd region using "${Ethiopia_ESS_W3_created_data}/Ethiopia_ESS_W3_cf.dta", nogen keep(1 3)
@@ -1274,9 +1254,9 @@ ren crop_code_master crop_code
 //ren val_harv value_harvest 
 collapse (sum) value_harvest , by (hhid crop_code) 
 merge 1:1 hhid crop_code using "${Ethiopia_ESS_W3_created_data}/Ethiopia_ESS_W3_cropsales_value.dta"
+recode  value_harvest sales_value  (.=0) // go back and just call this value_cropsales from the start
 replace value_harvest = sales_value if sales_value>value_harvest & sales_value!=. /* In a few cases, sales value reported exceeds the estimated value of crop harvest */
 ren sales_value value_crop_sales 
-recode  value_harvest value_crop_sales  (.=0)
 collapse (sum) value_harvest value_crop_sales, by (hhid crop_code)
 ren value_harvest value_crop_production
 lab var value_crop_production "Gross value of crop production, summed over main and short season"
@@ -1607,7 +1587,7 @@ collapse (sum) val*, by(hhid)
 save "${Ethiopia_ESS_W3_created_data}/Ethiopia_ESS_W3_hh_cost_labor.dta", replace
 
 ****************************************************** ***************************
-* CHEMICALS, FERTILIZER, LAND, ANIMALS, AND MACHINES * // Added Joaquin 03.14.2023
+* CHEMICALS, FERTILIZER, LAND, ANIMALS, AND MACHINES *
 ****************************************************** ***************************
 **# Plot inputs 
 	*** Pesticides/Herbicides/Animals/Machines
@@ -1689,7 +1669,7 @@ use "$Ethiopia_ESS_W3_temp_data/sect3_pp_w3.dta", clear // Joaquin 04.06.23: Thi
 	gen unitfertexp3 = 1 if pp_s3q20a_1==1 // Qty is in kilos 
 	gen valfertexp3 = pp_s3q20a_5 if pp_s3q20a_1==1 
 
-	// Other inorganic fertexpilizer  
+	// Other inorganic fertilizer  
 	gen usefertexp4 = 1 if pp_s3q20a==1 
 	//gen itemcodefertexpexp = 4 if usefertexpexp4 == 1 
 	gen qtyfertexp4 = pp_s3q20a_7
@@ -1884,16 +1864,19 @@ use "$Ethiopia_ESS_W3_temp_data/sect3_pp_w3.dta", clear // Joaquin 04.06.23: Thi
 		keep if strmatch(input,"orgfert") | strmatch(input,"inorg") | strmatch(input,"herb") | strmatch(input,"pest") | strmatch(input,"fung")
 		//Unfortunately we have to compress liters and kg here, which isn't ideal.
 		collapse (max) use_=use (sum) qty_=qty, by(hhid holder_id parcel_id field_id input) // ALT INSERT 7.30.2024
+		recode qty (0=.) if input != "inorgfert" // this is a special case because the survey instrument in W1-W3 does not ask about qty of organic fert, pest, herb, and fung although it does for inorganic fertilizer - the collapse sum incorrectly turns blanks into zeroes.
 		// collapse (sum) use_=use qty_=qty, by(hhid holder_id parcel_id field_id input)
 		reshape wide use_ qty_, i(hhid holder_id parcel_id field_id) j(input) string
 		ren qty_inorg inorg_fert_rate
 		ren qty_orgfert org_fert_rate
-		//ren qty_herb herb_rate
-		//ren qty_pest pest_rate
+		ren qty_herb herb_rate
+		ren qty_pest pest_rate
+		ren qty_fung fung_rate
 		la var inorg_fert_rate "Qty inorganic fertilizer used (kg)"
 		la var org_fert_rate "Qty organic fertilizer used (kg)"
-		//a var herb_rate "Qty of herbicide used (kg/L)"
-		//la var pest_rate "Qty of pesticide used (kg/L)"
+		la var herb_rate "Qty of herbicide used (kg/L)"
+		la var pest_rate "Qty of pesticide used (kg/L)"
+		la var fung_rate "Qty of fungicide used (kg/L)"
 		save "${Ethiopia_ESS_W3_created_data}/Ethiopia_ESS_W3_input_quantities.dta", replace
 		/*
 		use "${Ethiopia_ESS_W3_created_data}/Ethiopia_ESS_W3_input_quantities.dta", clear
@@ -2064,10 +2047,6 @@ preserve
 	save "${Ethiopia_ESS_W3_created_data}/Ethiopia_ESS_W3_inputs_`cn'.dta", replace
 restore
 }
-
-********************************************************************************
-* TLU (Tropical Livestock Units) * // Added Joaquin: 03.16.2023 
-********************************************************************************
 
 
 ********************************************************************************
@@ -2797,6 +2776,26 @@ lab var labor_hired_female "Workdays for female hired labor allocated to the far
 keep hhid labor_total labor_hired labor_family labor_hired_male labor_hired_female
 save "${Ethiopia_ESS_W3_created_data}/Ethiopia_ESS_W3_family_hired_labor.dta", replace
 
+********************************************************************************
+*LAND SIZE // JM 10.30.23L: JM 10.30.23L: Updated for caompatibility with HOUSEHOLD VARIABLES 
+********************************************************************************
+use "$Ethiopia_ESS_W3_temp_data/sect2_pp_w3.dta", clear
+gen rented_in = (pp_s2q03==3 | pp_s2q03==6)
+gen plot_not_owned = ( pp_s2q03==3 | pp_s2q03==4 | pp_s2q03==5 | pp_s2q03==6 ) 
+gen plot_owned = (pp_s2q03==1 | pp_s2q03==2 | pp_s2q03==7 | pp_s2q03==8)
+gen rented_out= (pp_s2q10==1)
+drop if rented_out==1
+keep if pp_s2q01b==1
+gen parcel_held = 1 
+save "${Ethiopia_ESS_W3_created_data}/Ethiopia_ESS_W3_parcels_held.dta", replace // JM 10.27.23: Added 
+use "${Ethiopia_ESS_W3_created_data}/Ethiopia_ESS_W3_field_area.dta", clear
+collapse (sum) area_meas_hectares, by (hhid holder_id parcel_id)
+merge 1:1 hhid holder_id parcel_id using "${Ethiopia_ESS_W3_created_data}/Ethiopia_ESS_W3_parcels_held.dta", nogen keep(1 3)
+keep if parcel_held==1 
+collapse (sum) area_meas_hectares, by(hhid)
+ren area_meas_hectares land_size
+lab var land_size "Land size in hectares, including all plots listed by the household (and not rented out)"
+save "${Ethiopia_ESS_W3_created_data}/Ethiopia_ESS_W3_land_size_all.dta", replace
 
 ********************************************************************************
 * VACCINE USAGE *
@@ -2952,7 +2951,7 @@ use "${Ethiopia_ESS_W3_created_data}/Ethiopia_ESS_W3_input_quantities.dta", clea
 rename use_inorg use_inorg_fert
 rename use_org use_org_fert
 collapse (max) use_org_fert use_inorg_fert use_fung use_herb use_pest, by(hhid holder_id parcel_id field_id)
-merge 1:m hhid holder_id parcel_id field_id using "${Ethiopia_ESS_W3_created_data}/Ethiopia_ESS_W3_all_fields.dta", nogen keep(1 3) keepusing(crop_code_master)
+merge 1:m hhid holder_id parcel_id field_id using "${Ethiopia_ESS_W3_created_data}/Ethiopia_ESS_W3_all_fields.dta", nogen keepusing(crop_code_master) // we want all plots from all_fields.dta
 ren crop_code_master crop_code
 collapse (max) use*, by(hhid holder_id parcel_id field_id crop_code)
 merge 1:1 hhid holder_id parcel_id field_id crop_code using `imprv_seed', nogen 
@@ -3064,6 +3063,78 @@ gen mobile_owned= hh_number_mobile_owned>0 //DYA.11.13.2020
 collapse (max) mobile_owned, by(hhid)
 keep hhid mobile_owned
 save "${Ethiopia_ESS_W3_created_data}/Ethiopia_2016_mobile_own", replace
+
+********************************************************************************
+* IRRIGATION * MGM 9.18.2024: adding this for ATA indicators
+********************************************************************************
+* AREA PLANTED IRRIGATED
+use "${Ethiopia_ESS_W3_created_data}/Ethiopia_ESS_W3_all_fields.dta", clear
+collapse (sum) ha_planted, by(hhid holder_id parcel_id field_id dm_gender)
+//Winsorization is necessary here because small plots generated either from lack of GPS measurement or bad nonstandard unit conversion factors can seriously distort the estimates.
+merge m:1 hhid using  "${Ethiopia_ESS_W3_created_data}/Ethiopia_ESS_W3_hhsize.dta", keep (1 3) nogen
+_pctile ha_planted [aw=weight_pop_rururb]  if ha_planted!=0 , p($wins_lower_thres $wins_upper_thres)
+gen w_ha_planted = ha_planted 
+replace w_ha_planted =r(r1) if w_ha_planted < r(r1)   & w_ha_planted !=. &  w_ha_planted !=0 
+replace w_ha_planted = r(r2) if  w_ha_planted > r(r2) & w_ha_planted !=.   
+
+merge 1:1 hhid holder_id parcel_id field_id using "${Ethiopia_ESS_W3_temp_data}/sect3_pp_W3.dta", nogen
+ren pp_s3q12 plot_irr
+recode plot_irr (2=0) // 2 is "No"
+gen ha_irr = plot_irr * ha_planted
+gen w_ha_irr = plot_irr * w_ha_planted // we want to use the winsorized ha_planted here
+
+gen dm_gender2 = "male" if dm_gender==1
+replace dm_gender2 = "female" if dm_gender==2
+replace dm_gender2 = "mixed" if dm_gender==3
+replace dm_gender2 = "other" if dm_gender==. 
+drop dm_gender
+
+foreach var in ha_planted w_ha_planted ha_irr w_ha_irr {
+    rename `var' `var'_
+}
+
+reshape wide *_, i(hhid holder_id parcel_id field_id) j(dm_gender2) string
+recode w_ha_planted* ha_planted* ha_irr* w_ha_irr* (0=.)
+collapse (rawsum) *planted* *irr*, by(hhid)
+
+foreach i in male female mixed {
+	gen share_plant_irr_`i' = ha_irr_`i'/ha_planted_`i'
+	gen w_share_plant_irr_`i' = w_ha_irr_`i'/w_ha_planted_`i'
+	lab var ha_irr_`i' "Total hectares irrigated for `i'-managed plots"
+	lab var w_ha_irr_`i' "Total hectares irrigated for `i'-managed plots (winsorized)"
+	lab var share_plant_irr_`i' "Share of area planted irrigated for `i'-managed plots"
+	lab var w_share_plant_irr_`i' "Share of area planted irrigated for `i'-managed plots (using winsorized area planted)"
+}
+
+egen ha_planted = rowtotal(ha_planted*)
+egen w_ha_planted = rowtotal(w_ha_planted*)
+
+egen ha_irr = rowtotal(ha_irr*)
+egen w_ha_irr = rowtotal(w_ha_irr*)
+
+gen share_plant_irr = ha_irr / ha_planted
+gen w_share_plant_irr = w_ha_irr / w_ha_planted
+* tab share_plant_irr* 
+* tab w_share_plant_irr* // I verified that all proportions are between 0 and 1
+
+tempfile irr
+save `irr' // hh level
+
+* IRRIGATION USE
+use "${Ethiopia_ESS_W3_temp_data}/sect3_pp_W3.dta", clear
+gen useirrigation= (pp_s3q12==1|pp_s3q13!=.|pp_s3q13b!=.) //irrigation dummy
+
+collapse (max) useirrigation, by(hhid)
+merge 1:1 hhid using `irr', nogen
+
+* LABEL VARIABLES
+lab var useirrigation "1 = Household used irrigation for at least one purpose during the current agricultural season" // a few households seemingly use irrigation but do not report using irrigation on plots with crops
+lab var ha_irr "Total hectares irrigated by household"
+lab var w_ha_irr "Total hectares irrigated by household (using winsorized area planted)"
+lab var share_plant_irr "Share of area planted irrigated by household"
+lab var w_share_plant_irr "Share of area planted irrigated by household (using winsorized area planted)"
+
+save "${Ethiopia_ESS_W3_created_data}/Ethiopia_ESS_W3_irrigation.dta", replace
 
 ********************************************************************************
 * FORMAL FINANCIAL SERVICES USE *
@@ -3231,48 +3302,74 @@ save "${Ethiopia_ESS_W3_created_data}/Ethiopia_ESS_W3_hh_rental_rate.dta", repla
 ********************************************************************************
 * RATE OF FERTILIZER APPLICATION *
 ********************************************************************************
-//ALT 12.27.22: Update to match ETH
-//ALSO NOTE to follow up with Didier - are we using Winsorization or MAD to trim outliers for this section?
-//ALT 08.04.21: Added in org fert, herbicide, and pesticide; additional coding needed to integrate these into summary stats
 use "${Ethiopia_ESS_W3_created_data}/Ethiopia_ESS_W3_all_fields.dta", clear
 collapse (sum) ha_planted, by(hhid holder_id parcel_id field_id dm_gender)
-merge 1:1 hhid holder_id parcel_id field_id using "${Ethiopia_ESS_W3_created_data}/Ethiopia_ESS_W3_input_quantities.dta", nogen keep(1 3) //11 plots have expenses but don't show up in the all_plots roster.
-codebook dm_gender
+
+merge 1:1 hhid holder_id parcel_id field_id using "${Ethiopia_ESS_W3_created_data}/Ethiopia_ESS_W3_input_quantities.dta", nogen keep(1 3) //11 plots have expenses but don't show up in the all_plots roster. //MGM 5.18.2024: 80 not matched, 10,527 matched
+//codebook dm_gender
+//Winsorization is necessary here because small plots generated either from lack of GPS measurement or bad nonstandard unit conversion factors can seriously distort the estimates.
+merge m:1 hhid using  "${Ethiopia_ESS_W3_created_data}/Ethiopia_ESS_W3_hhsize.dta", keep (1 3) nogen
+_pctile ha_planted [aw=weight_pop_rururb]  if ha_planted!=0 , p($wins_lower_thres $wins_upper_thres)
+gen w_ha_planted = ha_planted 
+replace w_ha_planted =r(r1) if w_ha_planted < r(r1)   & w_ha_planted !=. &  w_ha_planted !=0 
+replace w_ha_planted = r(r2) if  w_ha_planted > r(r2) & w_ha_planted !=.    
+//This "rate" juggle occurs for backwards compatibility, where the rate variables were previously just the quantity applied
+ren *_rate *_kg_
+
 gen dm_gender2 = "male" if dm_gender==1
 replace dm_gender2 = "female" if dm_gender==2
 replace dm_gender2 = "mixed" if dm_gender==3
-replace dm_gender2 = "mixed" if dm_gender==. // JM 10/9/23: Ask Andrew about this imputation. 
+replace dm_gender2 = "other" if dm_gender==. 
 drop dm_gender
+ren inorg_fert_kg_ fert_inorg_kg_ 
+ren org_fert_kg_ fert_org_kg_ 
+// ren qty_fung fung_kg_
+// ren qty_herb herb_kg_
+// ren qty_pest pest_kg_
 ren ha_planted ha_planted_
-ren inorg_fert_rate fert_inorg_kg_ 
-ren org_fert_rate fert_org_kg_ 
-//ren pest_rate pest_kg_ // JM 10.9.23: No pest_rate for ETH W3
-//ren herb_rate herb_kg_ // JM 10.9.23: No herb_rate for ETH W3
-reshape wide ha_planted_ fert_inorg_kg_ fert_org_kg_ /*pest_kg_ herb_kg_*/, i(hhid holder_id parcel_id field_id) j(dm_gender2) string
-collapse (sum) *male *mixed, by(hhid)
-recode ha_planted* (0=.)
-foreach i in ha_planted fert_inorg_kg fert_org_kg /*pest_kg_ herb_kg_*/ {
-	egen `i' = rowtotal(`i'_*)
+ren w_ha_planted w_ha_planted_
+
+reshape wide *_, i(hhid holder_id parcel_id field_id) j(dm_gender2) string
+recode w_ha_planted* ha_planted* (0=.)
+collapse (rawsum) *planted* *kg*, by(hhid)
+
+foreach i in fert_inorg fert_org herb pest fung {
+	foreach j in male female mixed other {
+		gen `i'_rate_`j' = `i'_kg_`j'/w_ha_planted_`j'
 }
-merge m:1 hhid using  "${Ethiopia_ESS_W3_created_data}/Ethiopia_ESS_W3_hhsize.dta", keep (1 3) nogen
-_pctile ha_planted [aw=weight_pop_rururb]  if ha_planted!=0 , p($wins_lower_thres $wins_upper_thres)
-foreach x of varlist ha_planted ha_planted_male ha_planted_female ha_planted_mixed {
-		replace `x' =r(r1) if `x' < r(r1)   & `x' !=. &  `x' !=0 
-		replace `x' = r(r2) if  `x' > r(r2) & `x' !=.    
 }
+
+egen w_ha_planted = rowtotal(w_ha_planted*)
+egen ha_planted = rowtotal(ha_planted*)
+
+
+foreach i in fert_inorg fert_org pest herb fung {
+	egen `i'_kg = rowtotal(`i'_kg*)
+	gen `i'_rate = `i'_kg/ha_planted
+	gen w_`i'_rate = `i'_kg/w_ha_planted
+	lab var `i'_rate "Rate of fertilizer application for household"
+	lab var w_`i'_rate "Rate of fertilizer application for household (using winsorized area planted)"
+}
+
+
+drop *other* //Need this for household totals but otherwise we don't track plots with unknown management
+//Some high inorg fert rates as a result of large tonnages on small plots. 
 lab var fert_inorg_kg "Inorganic fertilizer (kgs) for household"
 lab var fert_org_kg "Organic fertilizer (kgs) for household" 
-//lab var pest_kg "Pesticide (kgs) for household"
-//lab var herb_kg "Herbicide (kgs) for household"
+lab var pest_kg "Pesticide (kgs) for household"
+lab var herb_kg "Herbicide (kgs) for household"
+lab var fung_kg "Fungicide (kgs) for household"
 lab var ha_planted "Area planted (ha), all crops, for household"
 
 foreach i in male female mixed {
 lab var fert_inorg_kg_`i' "Inorganic fertilizer (kgs) for `i'-managed plots"
 lab var fert_org_kg_`i' "Organic fertilizer (kgs) for `i'-managed plots" 
-//lab var pest_kg_`i' "Pesticide (kgs) for `i'-managed plots"
-//lab var herb_kg_`i' "Herbicide (kgs) for `i'-managed plots"
+lab var pest_kg_`i' "Pesticide (kgs) for `i'-managed plots"
+lab var herb_kg_`i' "Herbicide (kgs) for `i'-managed plots"
+lab var fung_kg_`i' "Fungicide (kgs) for `i'-managed plots"
 lab var ha_planted_`i' "Area planted (ha), all crops, `i'-managed plots"
 }
+recode *fert_org* *pest* *herb* *fung* (0=.) // this is a special case because the survey instrument does not ask about qty of any input except inorganic fertilizer - the collapses and rowtotals incorrectly turns blanks into zeroes.
 save "${Ethiopia_ESS_W3_created_data}/Ethiopia_ESS_W3_fertilizer_application.dta", replace
 
 
@@ -4547,9 +4644,11 @@ egen all_other_income = rowtotal (investment_income /*rental_income_buildings*/ 
 lab var all_other_income "Income from other revenue streams not captured elsewhere"
 
 * Farm size 
-merge 1:1 hhid using  "${Ethiopia_ESS_W3_created_data}/Ethiopia_ESS_W3_land_size.dta", nogen keep(1 3)
+//merge 1:1 hhid using  "${Ethiopia_ESS_W3_created_data}/Ethiopia_ESS_W3_land_size.dta", nogen keep(1 3)
+merge 1:1 hhid using  "${Ethiopia_ESS_W3_created_data}/Ethiopia_ESS_W3_farm_area.dta", nogen keep(1 3)
 merge 1:1 hhid using  "${Ethiopia_ESS_W3_created_data}/Ethiopia_ESS_W3_land_size_all.dta", nogen keep(1 3)
 merge 1:1 hhid using  "${Ethiopia_ESS_W3_created_data}/Ethiopia_ESS_W3_farmsize_all_agland.dta", nogen keep(1 3)
+
 //merge 1:1 hhid using "${Ethiopia_ESS_W3_created_data}/Ethiopia_ESS_W3_land_size_total.dta", nogen
 //ren area_meas_hectares land_size
 recode land_size (.=0) /* If no farm, then no farm area */
@@ -4580,6 +4679,7 @@ merge 1:1 hhid using "${Ethiopia_ESS_W3_created_data}/Ethiopia_ESS_W3_vaccine.dt
 merge 1:1 hhid using "${Ethiopia_ESS_W3_created_data}/Ethiopia_ESS_W3_input_use.dta", nogen keep(1 3)
 merge 1:1 hhid using "${Ethiopia_ESS_W3_created_data}/Ethiopia_ESS_W3_imprvseed_crop.dta", nogen keep(1 3)
 merge 1:1 hhid using "${Ethiopia_ESS_W3_created_data}/Ethiopia_ESS_W3_any_ext.dta", nogen keep(1 3)
+merge 1:1 hhid using "${Ethiopia_ESS_W3_created_data}/Ethiopia_ESS_W3_irrigation.dta", nogen keep(1 3) keepusing(*irr*) // MGM 9.18.2024: added for ATA indicators
 merge 1:1 hhid using "${Ethiopia_ESS_W3_created_data}/Ethiopia_ESS_W3_fin_serv.dta", nogen keep(1 3)
 ren use_imprv_seed imprv_seed_use //ALT 02.03.22: Should probably fix code to align this with other inputs.
 ren use_hybrid_seed hybrid_seed_use
@@ -4622,7 +4722,7 @@ lab var egg_poultry_year "average number of eggs per year per hen"
 merge 1:1 hhid using "${Ethiopia_ESS_W3_created_data}/Ethiopia_ESS_W3_cropcosts.dta", nogen keep(1 3)
  
 *Rate of fertilizer application (new)
-merge 1:1 hhid using "${Ethiopia_ESS_W3_created_data}/Ethiopia_ESS_W3_fertilizer_application.dta", nogen keep(1 3)
+merge 1:1 hhid using "${Ethiopia_ESS_W3_created_data}/Ethiopia_ESS_W3_fertilizer_application.dta", nogen keep(1 3) keepusing(*fung* *fert* *pest* *herb* ha_planted*)
 
 *Agricultural wage rate (new)
 merge 1:1 hhid using "${Ethiopia_ESS_W3_created_data}/Ethiopia_ESS_W3_ag_wage.dta", nogen keep(1 3)
@@ -4994,9 +5094,9 @@ global empty_vars $empty_vars cost_per_lit_milk
 
 *****getting correct subpopulations*** 
 *all rural housseholds engaged in crop production 
-recode inorg_fert_rate* cost_total_ha* cost_expli_ha* cost_expli_hh_ha land_productivity labor_productivity /*
+recode *fert_inorg_rate* /*fert_org_rate *pest_rate* *herb_rate* *fung_rate*  not calculable for W3*/ cost_total_ha* cost_expli_ha* cost_expli_hh_ha land_productivity labor_productivity /*
 */ encs* num_crops* multiple_crops (.=0) if crop_hh==1
-recode inorg_fert_rate* cost_total_ha* cost_expli_ha* cost_expli_hh_ha land_productivity labor_productivity /*
+recode *fert_inorg_rate* /*fert_org_rate *pest_rate* *herb_rate* *fung_rate*  not calculable for W3*/  cost_total_ha* cost_expli_ha* cost_expli_hh_ha land_productivity labor_productivity /*
 */ encs* num_crops* multiple_crops (nonmissing=.) if crop_hh==0
 
 *all rural households engaged in livestcok production of a given species 
@@ -5173,9 +5273,9 @@ foreach i in lrum srum poultry{
 }
 
 *households engaged in crop production
-recode w_proportion_cropvalue_sold w_farm_size_agland w_labor_family w_labor_hired /*
+recode *fert_inorg_rate* /*fert_org_rate *pest_rate* *herb_rate* *fung_rate*  not calculable for W3*/  w_proportion_cropvalue_sold w_farm_size_agland w_labor_family w_labor_hired /*
 */ imprv_seed_use use_inorg_fert /*w_dist_agrodealer*/ w_labor_productivity w_land_productivity /*
-*/ w_inorg_fert_rate w_cost_expli_hh w_cost_expli_hh_ha w_cost_expli_ha w_cost_total_ha /*
+*/ w_cost_expli_hh w_cost_expli_hh_ha w_cost_expli_ha w_cost_total_ha /*
 */ w_value_crop_production w_value_crop_sales w_all_area_planted w_all_area_harvested (.=0) if crop_hh==1
 recode w_proportion_cropvalue_sold w_farm_size_agland w_labor_family w_labor_hired /*
 */ imprv_seed_use use_inorg_fert /*w_dist_agrodealer*/ w_labor_productivity w_land_productivity /*
@@ -5306,7 +5406,7 @@ gen poverty_under_1_9 = (daily_percap_cons < $Ethiopia_ESS_W3_poverty_thres)
 la var poverty_under_1_9 "Household per-capita consumption is below $1.90 in 2011 $ PPP"
 gen poverty_under_2_15 = daily_percap_cons < $Ethiopia_ESS_W3_poverty_215
 la var poverty_under_2_15 "Household per-capita consumption is below $2.15 in 2017 $ PPP"
-gen poverty_under_npl = daily_percap_cons < $Ethiopia_ESS_W3_poverty_ifpri
+gen poverty_under_npl = daily_percap_cons < $Ethiopia_ESS_W3_poverty_npl
 
 *Cleaning up output to get below 5,000 variables
 *dropping unnecessary variables and recoding to missing any variables that cannot be created in this instrument
@@ -5325,7 +5425,7 @@ keep hhid fhh clusterid strataid *weight* *wgt* region zone woreda town subcity 
 */ *all_area_* grew_* agactivities_hh ag_hh crop_hh livestock_hh fishing_hh *_milk_produced* *eggs_total_year *value_eggs_produced* /*
 */ *value_livestock_products* *value_livestock_sales* *total_cons* nb_cattle_today nb_largerum_today nb_poultry_today bottom_40_percap bottom_40_peraeq /*
 */ ccf_loc ccf_usd ccf_1ppp ccf_2ppp *sales_livestock_products   nb_cows_today lvstck_holding_srum  nb_smallrum_today nb_chickens_today  *value_pro* *value_sal* /*
-*/ /*DYA 10.6.2020*/ *value_livestock_sales*  *w_value_farm_production* *value_slaughtered* *value_lvstck_sold* *value_crop_sales* *sales_livestock_products* *value_livestock_sales* animals_lost12months /*MGM 8.29.2024: adding in additional indicators for ATA estimates*/ hh_work_age hh_women hh_adult_women tlu_today use_org_fert use_pest use_herb use_fung /* crop_rotation useirrigation*/
+*/ /*DYA 10.6.2020*/ *value_livestock_sales*  *w_value_farm_production* *value_slaughtered* *value_lvstck_sold* *value_crop_sales* *sales_livestock_products* *value_livestock_sales* animals_lost12months /*MGM 8.29.2024: adding in additional indicators for ATA estimates*/ hh_work_age hh_women hh_adult_women tlu_today use_org_fert use_pest use_herb use_fung *_rate* useirrigation *share_plant_irr /* crop_rotation useirrigation*/
 
 /*
 foreach v of varlist $empty_vars { 
@@ -5349,7 +5449,7 @@ gen survey = "LSMS-ISA"
 gen year = "2015-16" 
 gen instrument = 23
 //Only runs if label isn't already defined.
-capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2" 13 "Tanzania NPS Wave 3" 14 "Tanzania NPS Wave 4" 15 "Tanzania NPS Wave 5" /*
+capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2" 13 "Tanzania NPS Wave 3" 14 "Tanzania NPS Wave 4" 15 "Tanzania NPS SDD" 16 "Tanzania NPS W5" /*
 	*/ 21 "Ethiopia ESS Wave 1" 22 "Ethiopia ESS Wave 2" 23 "Ethiopia ESS Wave 3" 24 "Ethiopia ESS Wave 4" 25 "Ethiopia ESS Wave 5" /*
 	*/ 31 "Nigeria GHS Wave 1" 32 "Nigeria GHS Wave 2" 33 "Nigeria GHS Wave 3" 34 "Nigeria GHS Wave 4"/*
 	*/ 41 "Malawi IHS/IHPS Wave 1" 42 "Malawi IHS/IHPS Wave 2" 43 "Malawi IHS/IHPS Wave 3" 44 "Malawi IHS/IHPS Wave 4" /*
@@ -5460,7 +5560,7 @@ gen survey = "LSMS-ISA"
 gen year = "2015-16" 
 gen instrument = 23
 //Only runs if label isn't already defined.
-capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2" 13 "Tanzania NPS Wave 3" 14 "Tanzania NPS Wave 4" 15 "Tanzania NPS Wave 5" /*
+capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2" 13 "Tanzania NPS Wave 3" 14 "Tanzania NPS Wave 4" 15 "Tanzania NPS SDD" 16 "Tanzania NPS W5" /*
 	*/ 21 "Ethiopia ESS Wave 1" 22 "Ethiopia ESS Wave 2" 23 "Ethiopia ESS Wave 3" 24 "Ethiopia ESS Wave 4" 25 "Ethiopia ESS Wave 5" /*
 	*/ 31 "Nigeria GHS Wave 1" 32 "Nigeria GHS Wave 2" 33 "Nigeria GHS Wave 3" 34 "Nigeria GHS Wave 4"/*
 	*/ 41 "Malawi IHS/IHPS Wave 1" 42 "Malawi IHS/IHPS Wave 2" 43 "Malawi IHS/IHPS Wave 3" 44 "Malawi IHS/IHPS Wave 4" /*
@@ -5699,7 +5799,7 @@ gen survey = "LSMS-ISA"
 gen year = "2015-16" 
 gen instrument = 23
 //Only runs if label isn't already defined.
-capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2" 13 "Tanzania NPS Wave 3" 14 "Tanzania NPS Wave 4" 15 "Tanzania NPS Wave 5" /*
+capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2" 13 "Tanzania NPS Wave 3" 14 "Tanzania NPS Wave 4" 15 "Tanzania NPS SDD" 16 "Tanzania NPS W5" /*
 	*/ 21 "Ethiopia ESS Wave 1" 22 "Ethiopia ESS Wave 2" 23 "Ethiopia ESS Wave 3" 24 "Ethiopia ESS Wave 4" 25 "Ethiopia ESS Wave 5" /*
 	*/ 31 "Nigeria GHS Wave 1" 32 "Nigeria GHS Wave 2" 33 "Nigeria GHS Wave 3" 34 "Nigeria GHS Wave 4"/*
 	*/ 41 "Malawi IHS/IHPS Wave 1" 42 "Malawi IHS/IHPS Wave 2" 43 "Malawi IHS/IHPS Wave 3" 44 "Malawi IHS/IHPS Wave 4" /*
@@ -5711,7 +5811,7 @@ label values instrument instrument
 
 saveold "$Ethiopia_ESS_W3_final_data/Ethiopia_ESS_W3_field_plot_variables.dta", replace
 
-/*
+
 ********************************************************************************
 *SUMMARY STATISTICS
 ******************************************************************************** 
@@ -5722,5 +5822,4 @@ The code for outputting the summary statistics is in a separare dofile that is c
 */ 
 *Parameters
 global list_instruments  "Ethiopia_ESS_W3"
-do "${directory}/_Summary_statistics/EPAR_UW_335_SUMMARY_STATISTICS_02.08.24.do" 
-*/
+do "$summary_stats" 

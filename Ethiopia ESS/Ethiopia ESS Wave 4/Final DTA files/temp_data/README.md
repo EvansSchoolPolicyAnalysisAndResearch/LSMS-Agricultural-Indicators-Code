@@ -1,0 +1,1 @@
+This folder holds the raw dta files with modified ID variables as described in the main wave do file readme and the do file header.
