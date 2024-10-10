@@ -172,10 +172,11 @@ ssc install findname  // need this user-written ado file for some commands to wo
 * These paths correspond to the folders where the raw data files are located 
 * and where the created data and final data will be stored.
 
-global directory "~/LSMS-Agricultural-Indicator-Code"
-global Uganda_NPS_W8_raw_data 	"$directory /Uganda UNPS/Uganda UNPS Wave 8/Raw DTA Files"
-global Uganda_NPS_W8_created_data "$directory /Uganda UNPS/Uganda UNPS Wave 8/Final DTA Files/created_data"
-global Uganda_NPS_W8_final_data  "$directory /Uganda UNPS/Uganda UNPS Wave 8/Final DTA Files/final_data"
+global directory  "../.."
+global Uganda_NPS_W8_raw_data 	"$directory/Uganda UNPS/Uganda UNPS Wave 8/Raw DTA Files"
+global Uganda_NPS_W8_created_data "$directory/Uganda UNPS/Uganda UNPS Wave 8/Final DTA Files/created_data"
+global Uganda_NPS_W8_final_data  "$directory/Uganda UNPS/Uganda UNPS Wave 8/Final DTA Files/final_data"
+global summary_stats "$directory/_Summary_statistics/EPAR_UW_335_SUMMARY_STATISTICS.do" //Path to the summary statistics file. This can take a long time to run, so comment out if you don't need it. The do file will end with an error.
 
 ********************************************************************************
 *EXCHANGE RATE AND INFLATION FOR CONVERSION IN SUD IDS
@@ -186,9 +187,9 @@ global Uganda_NPS_W8_exchange_rate 3704.5036		// Average rate of 2019 from https
 global Uganda_NPS_W8_gdp_ppp_dollar 1270.608398 // updated 4.6.23 to 2017 values from https://data.worldbank.org/indicator/PA.NUS.PPP
 global Uganda_NPS_W8_cons_ppp_dollar 1221.087646 // updated 4.6.23 to 2017 values from https://data.worldbank.org/indicator/PA.NUS.PRVT.PP
 global Uganda_NPS_W8_inflation 1.09056114201 //CPI_SURVEY_YEAR/CPI_2017 -> CPI_2020/CPI_2017 -> 181.882451/166.7787747 The data were collected over the period February 2019 - February 2020.
-global Uganda_NPS_W8_poverty_190 (1.90*944.255*181.882451/116.6)
-global Uganda_NPS_W8_poverty_215 2.15 * $Uganda_NPS_W8_inflation * $Uganda_NPS_W8_cons_ppp_dollar 
-global Uganda_NPS_W8_poverty_npl 361*183.9/267.5 
+global Uganda_NPS_W8_poverty_190 ((1.90*944.255)*(181.882451/116.6))
+global Uganda_NPS_W8_poverty_215 (2.15 * ($Uganda_NPS_W8_inflation) * $Uganda_NPS_W8_cons_ppp_dollar) 
+global Uganda_NPS_W8_poverty_npl (361*183.9/267.5) 
 //Updated 11.15.23 - Re-scaling survey weights to match population estimates
 *https://databank.worldbank.org/source/world-development-indicators#
 *Using 2020 numbers
@@ -533,17 +534,20 @@ replace indiv1 = s3bq03_3 if indiv1 == . & s3bq03_3 != .
 //drop female indiv
 
 *Second decision-maker variables
-gen indiv2 = s3aq03_4b
-replace indiv2 = s3bq03_4b if indiv2 == . &  s3bq03_4b != .
+gen indiv2 = s3aq03_4a
+replace indiv2 = s3bq03_4a if indiv2 == . &  s3bq03_4a != .
+gen indiv3 = s3aq03_4b
+replace indiv3 = s3bq03_4b if indiv3 == . &  s3bq03_4b != .
 keep hhid parcel_id plot_id season indiv* 
 reshape long indiv, i(hhid parcel_id plot_id season) j(individ)
 keep if indiv!=.
 merge m:1 hhid indiv using "${Uganda_NPS_W8_created_data}/Uganda_NPS_W8_gender_merge.dta", gen(dm_merge) keep(1 3)	 
-gen dm_gender = 1+female
+
 //drop female indiv
 
 *They only collected information on two decision-makers per plot - no 3rd decision maker.
-collapse (mean) dm_gender, by(hhid parcel_id plot_id season)
+collapse (mean) female, by(hhid parcel_id plot_id season)
+gen dm_gender = 1 + female
 replace dm_gender = 3 if dm_gender!=1 & dm_gender!=2
 
 *collapse (max) dm1_female dm2_female, by (hhid parcel_id plot_id season)
@@ -1787,7 +1791,7 @@ reshape wide val*, i(hhid parcel_id plot_id season) j(dm_gender2) string
 collapse (sum) val* field_size* ha_planted*, by(hhid) //JHG 7_5_22: double-check this section to make sure there is now weirdness with summing up to household level when there are multiple seasons - was too tired when coding this to go back and check
 //Renaming variables to plug into later steps
 //check for mixed?
-foreach i in male female /*mixed*/ {
+foreach i in male female mixed {
 gen cost_expli_`i' = val_exp_`i'
 egen cost_total_`i' = rowtotal(val_exp_`i' val_imp_`i')
 }
@@ -1861,7 +1865,7 @@ drop dm*
 save "${Uganda_NPS_W8_created_data}/Uganda_NPS_W8_`cn'_monocrop_hh_area.dta", replace
 restore
 }
-
+/*
 use "${Uganda_NPS_W8_created_data}/Uganda_NPS_W8_plot_cost_inputs_long.dta", clear
 foreach cn in $topcropname_area {
 preserve
@@ -1885,6 +1889,39 @@ preserve
 save "${Uganda_NPS_W8_created_data}/Uganda_NPS_W8_inputs_`cn'.dta", replace
 restore
 }
+*/
+use "${Uganda_NPS_W8_created_data}/Uganda_NPS_W8_plot_cost_inputs_long.dta", clear
+foreach cn in $topcropname_area {
+    preserve
+        keep if strmatch(exp, "exp")
+        drop exp
+        levelsof input, clean l(input_names)
+        ren val val_
+		
+        gen dummy = _n
+
+        reshape wide val_, i(hhid parcel_id plot_id dm_gender season dummy) j(input) string
+
+        ren val* val*_`cn'_
+        gen dm_gender2 = "male" if dm_gender==1
+        replace dm_gender2 = "female" if dm_gender==2
+        replace dm_gender2 = "mixed" if dm_gender==3 | dm_gender==.
+        drop dm_gender
+    
+        reshape wide val*, i(hhid parcel_id plot_id season dummy) j(dm_gender2) string
+
+        merge m:1 hhid parcel_id plot_id season using "${Uganda_NPS_W8_created_data}/Uganda_NPS_W8_`cn'_monocrop.dta", nogen keep(3)
+        collapse (sum) val*, by(hhid)
+        
+        foreach i in `input_names' {
+            egen val_`i'_`cn'_hh = rowtotal(val_`i'_`cn'_male val_`i'_`cn'_female val_`i'_`cn'_mixed)
+        }
+
+        // To do: labels
+        save "${Uganda_NPS_W8_created_data}/Uganda_NPS_W8_inputs_`cn'.dta", replace
+    restore
+}
+
 *Notes: Final datasets are sum of all cost at the household level for specific crops. 
 
 ********************************************************************************
@@ -1966,21 +2003,21 @@ drop if sa_ownership == 2 //2 = see above
 rename s6cq01 po_ownership_today
 drop if po_ownership == 2 //2 = see above
 
-rename s6aq03a ls_number_today
-rename s6bq03a sa_number_today
-rename s6cq03a po_number_today
-gen livestock_number_today = ls_number_today
-replace livestock_number_today = sa_number_today if livestock_number_today == .
-replace livestock_number_today = po_number_today if livestock_number_today == .
-lab var livestock_number_today "Number of animals owned at time of survey (see livestockid for type)"
+rename s6aq03a ls_number_today_all
+rename s6bq03a sa_number_today_all
+rename s6cq03a po_number_today_all
+gen livestock_number_today_all = ls_number_today_all
+replace livestock_number_today_all = sa_number_today_all if livestock_number_today_all == .
+replace livestock_number_today_all = po_number_today_all if livestock_number_today_all == .
+lab var livestock_number_today_all "Number of animals owned at time of survey (see livestockid for type)"
 
-gen nb_cattle_today = livestock_number_today if cattle == 1
-gen nb_cows_today = livestock_number_today if cows == 1
-gen nb_smallrum_today = livestock_number_today if smallrum == 1
-gen nb_poultry_today = livestock_number_today if poultry == 1
-gen nb_chickens_today = livestock_number_today if chickens == 1
-gen nb_other_today = livestock_number_today if otherlivestock == 1
-gen nb_tlu_today = livestock_number_today * tlu_coefficient
+gen nb_cattle_today = livestock_number_today_all if cattle == 1
+gen nb_cows_today = livestock_number_today_all if cows == 1
+gen nb_smallrum_today = livestock_number_today_all if smallrum == 1
+gen nb_poultry_today = livestock_number_today_all if poultry == 1
+gen nb_chickens_today = livestock_number_today_all if chickens == 1
+gen nb_other_today = livestock_number_today_all if otherlivestock == 1
+gen nb_tlu_today = livestock_number_today_all * tlu_coefficient
 
 *Generate "number of animals" variable per livestock category and household (12 Months Before Survey)
 rename s6aq06 ls_number_past
@@ -2381,14 +2418,14 @@ gen number_1yearago = s6aq06
 replace number_1yearago = s6bq06 if number_1yearago==.
 replace number_1yearago = s6cq06 if number_1yearago==.
 
-gen number_today= s6aq03a
-replace number_today = s6bq03a if number_today==. 
-replace number_today = s6cq03a if number_today==. 
+gen number_today_all= s6aq03a
+replace number_today_all = s6bq03a if number_today_all==. 
+replace number_today_all = s6cq03a if number_today_all==. 
 
-gen number_today_exotic = number_today if inlist(livestock_code,1,2,3,4,5,13,14,15,16,17)
+gen number_today_exotic = number_today_all if inlist(livestock_code,1,2,3,4,5,13,14,15,16,17)
 
 gen tlu_1yearago = number_1yearago * tlu_coefficient
-gen tlu_today = number_today * tlu_coefficient
+gen tlu_today = number_today_all * tlu_coefficient
 gen income_live_sales = s6aq14b // this is avg value of livestock type sold
 replace income_live_sales = s6bq14b if income_live_sales==. & s6bq14b!=. 
 replace income_live_sales = s6cq14b if income_live_sales==. & s6cq14b!=. 
@@ -2431,17 +2468,18 @@ foreach i in region district_name county subcounty_name parish_name {
 }
 
 *gen value_start_agseas = number_start_agseas * price_per_animal
-gen value_today = number_today * price_per_animal
+gen value_today = number_today_all * price_per_animal
 gen value_1yearago = number_1yearago * price_per_animal
-*gen value_today_est = number_today * price_per_animal_est
+*gen value_today_est = number_today_all * price_per_animal_est
 
-collapse (sum) number_today number_1yearago lost_theft lost_other lost_disease animals_lost lvstck_holding=number_today value* tlu*, by(hhid species)
-egen mean_12months=rowmean(number_today number_1yearago)
+collapse (sum) number_today_all number_today_exotic number_1yearago lost_theft lost_other lost_disease animals_lost lvstck_holding=number_today_all value* tlu*, by(hhid species)
+egen mean_12months=rowmean(number_today_all number_1yearago)
+gen 	animals_lost12months	= animals_lost	
 save "${Uganda_NPS_W8_created_data}/Uganda_NPS_W8_herd_characteristics_long.dta", replace //AgQuery
 
 preserve
-keep hhid species number_today number_1yearago /*animals_lost*/ lost_disease lost_other lost_theft lvstck_holding mean_12months
-global lvstck_vars number_today number_1yearago lost_other lost_theft lost_disease lvstck_holding mean_12months
+keep hhid species number_today_all number_today_exotic animals_lost12months number_1yearago /*animals_lost*/ lost_disease lost_other lost_theft lvstck_holding mean_12months
+global lvstck_vars number_today_all number_today_exotic animals_lost12months number_1yearago lost_other lost_theft lost_disease lvstck_holding mean_12months
 foreach i in $lvstck_vars {
 	ren `i' `i'_
 }
@@ -2450,6 +2488,26 @@ gen lvstck_holding_all = lvstck_holding_lrum + lvstck_holding_srum + lvstck_hold
 la var lvstck_holding_all "Total number of livestock holdings (# of animals) - large ruminants, small ruminants, poultry"
 //drop lvstck_holding animals_lost_agseas mean_agseas lost_disease //No longer needed 
 save "${Uganda_NPS_W8_created_data}/Uganda_NPS_W8_herd_characteristics.dta", replace
+restore 
+preserve 
+gen any_imp_herd = number_today_exotic != 0 if number_today_all != . & number_today_all != 0
+
+
+foreach i in animals_lost12months mean_12months any_imp_herd lvstck_holding lost_disease {
+	gen `i'_lrum = `i' if species=="lrum"
+	gen `i'_srum = `i' if species=="srum"
+	gen `i'_pigs = `i' if species=="pigs"
+	gen `i'_equine = `i' if species=="equine"
+	gen `i'_poultry = `i' if species=="poultry"
+}
+collapse (sum)  mean_12months lvstck_holding animals_lost12months number_today_all number_today_exotic lost_disease (firstnm) *lrum *srum *pigs *equine *poultry any_imp_herd, by(hhid)
+la var lvstck_holding "Total number of livestock holdings (# of animals)"
+la var any_imp_herd "At least one improved animal in herd"
+*la var share_imp_herd_cows "Share of improved animals in total herd - Cows only"
+lab var animals_lost12months  "Total number of livestock  lost to disease or injury"
+lab var  mean_12months  "Average number of livestock  today and 1  year ago"
+lab var lost_disease "Total number of livestock lost to disease"
+
 restore
 
 collapse (sum) tlu_1yearago tlu_today value_1yearago value_today, by (hhid)
@@ -4271,7 +4329,7 @@ save "${Uganda_NPS_W8_created_data}/Uganda_NPS_W8_shannon_diversity_index.dta", 
 ********************************************************************************
 *                                   CONSUMPTION                                *
 ******************************************************************************** 
-use "${Uganda_NPS_W8_raw_data}/consagg_pov2019_20.dta", clear
+use "${Uganda_NPS_W8_raw_data}/pov2019_20.dta", clear
 ren cpexp30  total_cons // using real consumption-adjusted for region price disparities
 ren equiv adulteq
 gen peraeq_cons = (total_cons / adulteq)
@@ -4287,7 +4345,7 @@ keep hhid total_cons peraeq_cons percapita_cons daily_peraeq_cons daily_percap_c
 save "${Uganda_NPS_W8_created_data}/Uganda_NPS_W8_consumption.dta", replace
 
 **We create an adulteq dataset for summary statistics sections
-use "${Uganda_NPS_W8_raw_data}/consagg_pov2019_20.dta", clear
+use "${Uganda_NPS_W8_raw_data}/pov2019_20.dta", clear
 rename equiv adulteq
 keep hhid adulteq
 save "${Uganda_NPS_W8_created_data}/Uganda_NPS_W8_hh_adulteq.dta", replace
@@ -4544,7 +4602,7 @@ gen egg_poultry_year = .
 global empty_vars $empty_vars *egg_poultry_year
 
 *Costs of crop production per hectare
-merge 1:1 hhid using  "${Uganda_NPS_W8_created_data}/Uganda_NPS_W8_cropcosts_total.dta", nogen keep(1 3)
+merge 1:1 hhid using  "${Uganda_NPS_W8_created_data}/Uganda_NPS_W8_cropcosts.dta", nogen keep(1 3)
 recast str50 hhid, force
  
 *Rate of fertilizer application 
@@ -4693,8 +4751,8 @@ foreach v in $topcropname_area {
 	global wins_var_top1_gender $wins_var_top1_gender `v'_exp
 }
 
-*gen cost_total = cost_total_hh
-*gen cost_expli = cost_expli_hh //ALT 08.04.21: Kludge til I get names fully consistent
+gen cost_total = cost_total_hh
+gen cost_expli = cost_expli_hh //ALT 08.04.21: Kludge til I get names fully consistent
 global wins_var_top1_gender $wins_var_top1_gender cost_total cost_expli fert_inorg_kg wage_paid_aglabor
 
 gen wage_paid_aglabor_female=. 
@@ -5292,7 +5350,8 @@ gen geography = "Uganda"
 gen survey = "LSMS-ISA"
 gen year = "2019-20"
 gen instrument = 57
-capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2" 13 "Tanzania NPS Wave 3" 14 "Tanzania NPS Wave 4" 15 "Tanzania NPS SDD 16 "Tanzania NPS Wave 5" /*
+*la var instrument "Wave and location of survey"
+capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2" 13 "Tanzania NPS Wave 3" 14 "Tanzania NPS Wave 4" 15 "Tanzania NPS SDD" 16 "Tanzania NPS Wave 5" /*
 	*/ 21 "Ethiopia ESS Wave 1" 22 "Ethiopia ESS Wave 2" 23 "Ethiopia ESS Wave 3" 24 "Ethiopia ESS Wave 4" 25 "Ethiopia ESS Wave 5" /*
 	*/ 31 "Nigeria GHS Wave 1" 32 "Nigeria GHS Wave 2" 33 "Nigeria GHS Wave 3" 34 "Nigeria GHS Wave 4"/*
 	*/ 41 "Malawi IHS/IHPS Wave 1" 42 "Malawi IHS/IHPS Wave 2" 43 "Malawi IHS/IHPS Wave 3" 44 "Malawi IHS/IHPS Wave 4" /*
@@ -5384,7 +5443,7 @@ gen geography = "Uganda"
 gen survey = "LSMS-ISA"
 gen year = "2019-20"
 gen instrument = 57
-capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2" 13 "Tanzania NPS Wave 3" 14 "Tanzania NPS Wave 4" 15 "Tanzania NPS SDD 16 "Tanzania NPS Wave 5" /*
+capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2" 13 "Tanzania NPS Wave 3" 14 "Tanzania NPS Wave 4" 15 "Tanzania NPS SDD" 16 "Tanzania NPS Wave 5" /*
 	*/ 21 "Ethiopia ESS Wave 1" 22 "Ethiopia ESS Wave 2" 23 "Ethiopia ESS Wave 3" 24 "Ethiopia ESS Wave 4" 25 "Ethiopia ESS Wave 5" /*
 	*/ 31 "Nigeria GHS Wave 1" 32 "Nigeria GHS Wave 2" 33 "Nigeria GHS Wave 3" 34 "Nigeria GHS Wave 4"/*
 	*/ 41 "Malawi IHS/IHPS Wave 1" 42 "Malawi IHS/IHPS Wave 2" 43 "Malawi IHS/IHPS Wave 3" 44 "Malawi IHS/IHPS Wave 4" /*
@@ -5634,7 +5693,8 @@ gen geography = "Uganda"
 gen survey = "LSMS-ISA"
 gen year = "2019-20"
 gen instrument = 57
-capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2" 13 "Tanzania NPS Wave 3" 14 "Tanzania NPS Wave 4" 15 "Tanzania NPS SDD 16 "Tanzania NPS Wave 5" /*
+*la var instrument "Wave and location of survey"
+capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2" 13 "Tanzania NPS Wave 3" 14 "Tanzania NPS Wave 4" 15 "Tanzania NPS SDD" 16 "Tanzania NPS Wave 5" /*
 	*/ 21 "Ethiopia ESS Wave 1" 22 "Ethiopia ESS Wave 2" 23 "Ethiopia ESS Wave 3" 24 "Ethiopia ESS Wave 4" 25 "Ethiopia ESS Wave 5" /*
 	*/ 31 "Nigeria GHS Wave 1" 32 "Nigeria GHS Wave 2" 33 "Nigeria GHS Wave 3" 34 "Nigeria GHS Wave 4"/*
 	*/ 41 "Malawi IHS/IHPS Wave 1" 42 "Malawi IHS/IHPS Wave 2" 43 "Malawi IHS/IHPS Wave 3" 44 "Malawi IHS/IHPS Wave 4" /*
@@ -5642,7 +5702,7 @@ capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2
 */ 61 "Burkina Faso EMC Wave 1" /* 
 */ 71 "Mali EACI Wave 1" 72 "Mali EACI Wave 2" /*
 */ 81 "Niger ECVMA Wave 1" 82 "Niger ECVMA Wave 2"
-capture label values instrument instrument	
+label values instrument instrument	
 saveold "${Uganda_NPS_W8_final_data}/Uganda_NPS_W8_field_plot_variables.dta", replace
 
 ********************************************************************************
@@ -5655,4 +5715,6 @@ The code for outputting the summary statistics is in a separare dofile that is c
 */ 
 *Parameters
 global list_instruments  "Uganda_NPS_W8"
-do "$directory\_Summary_statistics/EPAR_UW_335_SUMMARY_STATISTICS.do"
+do "$summary_stats"
+
+************************************ STOP ************************************

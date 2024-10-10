@@ -26,11 +26,7 @@
 *Summary of Executing the Master do.file
 *This Master do.file constructs selected indicators using the Uganda UNPS (UN LSMS) data set.
 *Using data files from within the "Uganda UNPS - LSMS-ISA - Wave 1 (2009-10)" folder within the "Raw DTA files" folder, 
-*the do.file first constructs common and intermediate variables, saving dta files when appropriate 
-*in the folder "/Tanzania TNPS - LSMS-ISA - Wave 4 (2014-15)/TZA_W4_created_data" within the "Final DTA files" folder. //EFW 1.22.19 Update this with new file paths. Double check with Leigh et al. that OK to change
-*These variables are then brought together at the household, plot, or individual level, saving dta files at each level when available 
-*in the folder "Tanzania TNPS - LSMS-ISA - Wave 4 (2014-15)" within the "Final DTA files" folder. //EFW 1.22.19 Update this with new file path 
-
+*the do.file first constructs common and intermediate variables, saving dta files when appropriate.
 *The processed files include all households, individuals, and plots in the sample.
 *Toward the end of the do.file, a block of code estimates summary statistics (mean, standard error of the mean, minimum, first quartile, median, third quartile, maximum) 
 *of final indicators, restricted to the rural households only, disaggregated by gender of head of household or plot manager.
@@ -142,32 +138,32 @@ ssc install findname
 //set directories
 *These paths correspond to the folders where the raw data files are located and where the created data andNon Ag Waves Income Secondary Job final data will be stored.
 
+global directory "../.."
+global Uganda_NPS_W1_raw_data 	"$directory/Uganda UNPS/Uganda UNPS Wave 1/Raw DTA Files"
+global Uganda_NPS_W1_created_data "$directory/Uganda UNPS/Uganda UNPS Wave 1/Final DTA Files/created_data"
+global Uganda_NPS_W1_final_data  "$directory/Uganda UNPS/Uganda UNPS Wave 1/Final DTA Files/final_data"
+global summary_stats "$directory/_Summary_statistics/EPAR_UW_335_SUMMARY_STATISTICS.do" //Path to the summary statistics file. This can take a long time to run, so comment out if you don't need it. The do file will end with an error.
 
-global directory "~/LSMS-Agricultural-Indicator-Code"
-global Uganda_NPS_W1_raw_data 	"$directory/Uganda NPS Wave 1/Raw DTA Files"
-global Uganda_NPS_W1_created_data "$directory/Uganda NPS Wave 1/Final DTA Files/created_data"
-global Uganda_NPS_W1_final_data  "$directory/Uganda NPS Wave 1/Final DTA Files/final_data"
-
-*Wave 1 does not ask the same questions about time worked as subsequent Uganda waves; thus, we use Wave 2 to estimate median weeks worked by occupation with the assumption that time in employment does not vary substantially. Skip lines 2299-2333, 2446-2462 if you do not need these variables or download the Uganda Wave 2 raw data (see Uganda Wave 2 readme)
+*Wave 1 does not ask the same questions about time worked as subsequent Uganda waves; thus, we use Wave 2 to estimate median weeks worked by occupation with the assumption that time in employment does not vary substantially. Skip lines 2296-2327, 2347-2356, 2442, 2450-2453 if you do not need these variables or download the Uganda Wave 2 raw data (see Uganda Wave 2 readme)
 *Wave 1 also doesn't use secondary wage variables in the final analysis, due to which we have commented out the code. However, if you wish to use the code feel free to uncomment the required lines. 
 
-global Uganda_NPS_W2_raw_data 	"$directory/Uganda NPS Wave 2/Raw DTA Files"
-global Uganda_NPS_W2_created_data "$directory/Uganda NPS Wave 2/Final DTA Files/created_data"
-global Uganda_NPS_W2_final_data  "$directory/Uganda NPS Wave 2/Final DTA Files/final_data"
+global Uganda_NPS_W2_raw_data 	"$directory/Uganda UNPS/Uganda UNPS Wave 2/Raw DTA Files"
+global Uganda_NPS_W2_created_data "$directory/Uganda UNPS/Uganda UNPS Wave 2/Final DTA Files/created_data"
+global Uganda_NPS_W2_final_data  "$directory/Uganda UNPS/Uganda UNPS Wave 2/Final DTA Files/final_data"
 
 ****************************
 *EXCHANGE RATE AND INFLATION
 ****************************
 global Uganda_NPS_W1_exchange_rate 2248.58 //https://archive.bou.or.ug/bou/collateral/interbank_forms/2010/Aug/Major_27Aug10.html
 global Uganda_NPS_W1_gdp_ppp_dollar 1270.608398
-    // https://data.worldbank.org/indicator/PA.NUS.PPP //updated 4.6.23 to 2017 value
+    // https://data.worldbank.org/indicator/PA.NUS.PPP 
 global Uganda_NPS_W1_cons_ppp_dollar 1221.087646
-	 // https://data.worldbank.org/indicator/PA.NUS.PRVT.PP //updated 4.6.23 to 2017 value
+	 // https://data.worldbank.org/indicator/PA.NUS.PRVT.PP value
 global Uganda_NPS_W1_inflation  0.59959668237 // CPI_Survey_Year/CPI_2017 -> CPI_2010/CPI_2017 ->  (100/166.7787747)
 //https://data.worldbank.org/indicator/FP.CPI.TOTL?end=2016&locations=UG&start=2010 // The data were collected over the period 2009 - 2010
-global Uganda_NPS_W1_poverty_190 (1.90*944.26)*(116.6/116.6) 
+global Uganda_NPS_W1_poverty_190 ((1.90*944.26)*(116.6/116.6)) 
 global Uganda_NPS_W1_poverty_npl 29.100 // Source for poverty line: https://documents.worldbank.org/en/publication/documents-reports/documentdetail/456801530034180435/poverty-maps-of-uganda. Since in the same year as survey not adjusted for inflation. 
-global Uganda_NPS_W1_poverty_215 2.15*($Uganda_NPS_W1_inflation)*$Uganda_NPS_W1_cons_ppp_dollar 
+global Uganda_NPS_W1_poverty_215 (2.15*($Uganda_NPS_W1_inflation)*$Uganda_NPS_W1_cons_ppp_dollar) 
 
 ********Currency Conversion Factors*********
 
@@ -654,8 +650,6 @@ save "${Uganda_NPS_W1_created_data}/Uganda_NPS_W1_crop_value.dta", replace
 	save `price_kg_country_median'
 	
 	restore
-**# Look into this code - 08/12/2024
-
 	recode crop_code (811 812 = 810) (741 742 744 = 740) (224 = 223) //740 is bananas, which is being reduced from different types to just bananas. Same for peas (220).
 label define cropID 740 "Bananas", modify //need to add new codes to the value label, cropID
 label values crop_code cropID //apply crop labels to crop_code_master
@@ -737,8 +731,6 @@ ren HHID hhid
 	bysort hhid parcel_id plot_id: gen perm_crop= _N
 	gen perm_code =crop_code if perm_crop!=0 //Assuming perm_crop == 1 if crop is a tree crop and 0 otherwise
 	bys hhid parcel_id plot_id : egen mean_pc = mean(perm_code)	
-**# Fix
-	
 	replace purestand = 0 if cropcount>1
 	replace purestand = 0 if cropcount==1 & perm_crop>1
 	replace purestand = 0 if cropcount==1 & perm_crop==1 & crop_code!=perm_code
@@ -1432,8 +1424,6 @@ preserve
 collapse (sum) val, by(HHID exp input) //JHG 7_5_22: includes both seasons, is that okay?
 save "${Uganda_NPS_W1_created_data}/Uganda_NPS_W1_hh_cost_inputs_long.dta", replace
 restore
-
-**# Check before collapse what is happening by category....losing something or dividing something 
 preserve
 collapse (sum) val_ = val, by(HHID parcel_id plot_id season exp dm_gender)
 reshape wide val_, i(HHID parcel_id plot_id season dm_gender) j(exp) string
@@ -2759,7 +2749,6 @@ recode species (0=.)
 label values species species
 la def species 1 "Large ruminants (cows, buffalos)" 4 "Equines (donkeys, mules, horses)"
 
-**# wave 3
 *A loop to create species variables
 foreach i in vac_animal {
 	gen `i'_lrum = `i' if species==1
@@ -4176,7 +4165,6 @@ save "${Uganda_NPS_W1_created_data}/Uganda_NPS_W1_hh_assets.dta", replace
 ********************************************************************************
                           *HOUSEHOLD VARIABLES*
 ********************************************************************************
-**# Bookmark #2
 
 global empty_vars ""
 use "${Uganda_NPS_W1_created_data}/Uganda_NPS_W1_hhids.dta", clear
@@ -5079,7 +5067,7 @@ la var poverty_under_1_9 "Household per-capita conumption is below $1.90 in 2011
 gen poverty_under_2_15 = (daily_percap_cons < $Uganda_NPS_W1_poverty_215)
 la var poverty_under_2_15 "Household per-capita consumption is below $2.15 in 2017 $ PPP"
 
-**# Bookmark #4
+
 *We merge the national poverty line provided by the World bank 
 preserve
 use "${Uganda_NPS_W1_raw_data}/pov2009_10.dta", clear
@@ -5145,15 +5133,14 @@ gen year = "2011-12"
 la var year "Year survey was carried out"
 gen instrument = 25
 la var instrument "Wave and location of survey"
-label define instrument 1 "Tanzania NPS Wave 1" 2 "Tanzania NPS Wave 2" 3 "Tanzania NPS Wave 3" 4 "Tanzania NPS Wave 4" /*
-	*/ 5 "Ethiopia ESS Wave 1" 6 "Ethiopia ESS Wave 2" 7 "Ethiopia ESS Wave 3" /*
-	*/ 8 "Nigeria GHS Wave 1" 9 "Nigeria GHS Wave 2" 10 "Nigeria GHS Wave 3" /*
-	*/ 11 "Tanzania TBS AgDev (Lake Zone)" 12 "Tanzania TBS AgDev (Northern Zone)" 13 "Tanzania TBS AgDev (Southern Zone)" /*
-	*/ 14 "Ethiopia ACC Baseline" /*
-	*/ 15 "India RMS Baseline (Bihar)" 16 "India RMS Baseline (Odisha)" 17 "India RMS Baseline (Uttar Pradesh)" 18 "India RMS Baseline (West Bengal)" /*
-	*/ 19 "Nigeria NIBAS AgDev (Nassarawa)" 20 "Nigeria NIBAS AgDev (Benue)" 21 "Nigeria NIBAS AgDev (Kaduna)" /*
-	*/ 22 "Nigeria NIBAS AgDev (Niger)" 23 "Nigeria NIBAS AgDev (Kano)" 24 "Nigeria NIBAS AgDev (Katsina)" /*
-    */ 25 "Uganda Wave 3" 
+capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2" 13 "Tanzania NPS Wave 3" 14 "Tanzania NPS Wave 4" 15 "Tanzania NPS SDD" 16 "Tanzania NPS Wave 5" /*
+	*/ 21 "Ethiopia ESS Wave 1" 22 "Ethiopia ESS Wave 2" 23 "Ethiopia ESS Wave 3" 24 "Ethiopia ESS Wave 4" 25 "Ethiopia ESS Wave 5" /*
+	*/ 31 "Nigeria GHS Wave 1" 32 "Nigeria GHS Wave 2" 33 "Nigeria GHS Wave 3" 34 "Nigeria GHS Wave 4"/*
+	*/ 41 "Malawi IHS/IHPS Wave 1" 42 "Malawi IHS/IHPS Wave 2" 43 "Malawi IHS/IHPS Wave 3" 44 "Malawi IHS/IHPS Wave 4" /*
+    */ 51 "Uganda NPS Wave 1" 52 "Uganda NPS Wave 2" 53 "Uganda NPS Wave 3" 54 "Uganda NPS Wave 4" 55 "Uganda NPS Wave 5" /*W6 does not exist*/ 56 "Uganda NPS Wave 7" 57 "Uganda NPS Wave 8" /* 
+*/ 61 "Burkina Faso EMC Wave 1" /* 
+*/ 71 "Mali EACI Wave 1" 72 "Mali EACI Wave 2" /*
+*/ 81 "Niger ECVMA Wave 1" 82 "Niger ECVMA Wave 2"
 label values instrument instrument	
 *SAW Notes: We need an actual number for Uganda waves. 
 saveold  "${Uganda_NPS_W1_final_data}/Uganda_NPS_W1_household_variables.dta", replace
@@ -5264,7 +5251,7 @@ gen geography = "Nigeria"
 gen survey = "LSMS-ISA"
 gen year = "2009-10"
 gen instrument = 51
-capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2" 13 "Tanzania NPS Wave 3" 14 "Tanzania NPS Wave 4" 15 "Tanzania NPS Wave 5" /*
+capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2" 13 "Tanzania NPS Wave 3" 14 "Tanzania NPS Wave 4" 15 "Tanzania NPS SDD" 16 "Tanzania NPS Wave 5" /*
 	*/ 21 "Ethiopia ESS Wave 1" 22 "Ethiopia ESS Wave 2" 23 "Ethiopia ESS Wave 3" 24 "Ethiopia ESS Wave 4" 25 "Ethiopia ESS Wave 5" /*
 	*/ 31 "Nigeria GHS Wave 1" 32 "Nigeria GHS Wave 2" 33 "Nigeria GHS Wave 3" 34 "Nigeria GHS Wave 4"/*
 	*/ 41 "Malawi IHS/IHPS Wave 1" 42 "Malawi IHS/IHPS Wave 2" 43 "Malawi IHS/IHPS Wave 3" 44 "Malawi IHS/IHPS Wave 4" /*
@@ -5508,7 +5495,7 @@ label var `v' "`l`v''"
  
 xpose, varname clear
 order _varname v1
-rename v1 UGA_wave3
+rename v1 UGA_wave1
 
 save "${Uganda_NPS_W1_created_data}/Uganda_NPS_W1_gendergap.dta", replace 
 restore
@@ -5538,7 +5525,7 @@ gen survey = "LSMS-ISA"
 gen year = "2009-10"
 gen instrument = 51
 //Only runs if label isn't already defined.
-capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2" 13 "Tanzania NPS Wave 3" 14 "Tanzania NPS Wave 4" 15 "Tanzania NPS Wave 5" /*
+capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2" 13 "Tanzania NPS Wave 3" 14 "Tanzania NPS Wave 4" 15 "Tanzania NPS SDD" 16 "Tanzania NPS Wave 5" /*
 	*/ 21 "Ethiopia ESS Wave 1" 22 "Ethiopia ESS Wave 2" 23 "Ethiopia ESS Wave 3" 24 "Ethiopia ESS Wave 4" 25 "Ethiopia ESS Wave 5" /*
 	*/ 31 "Nigeria GHS Wave 1" 32 "Nigeria GHS Wave 2" 33 "Nigeria GHS Wave 3" 34 "Nigeria GHS Wave 4"/*
 	*/ 41 "Malawi IHS/IHPS Wave 1" 42 "Malawi IHS/IHPS Wave 2" 43 "Malawi IHS/IHPS Wave 3" 44 "Malawi IHS/IHPS Wave 4" /*
@@ -5549,8 +5536,6 @@ capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2
 label values instrument instrument			
 saveold "${Uganda_NPS_W1_final_data}/Uganda_NPS_W1_field_plot_variables.dta", replace 
 
-
-
 ********************************************************************************
 *SUMMARY STATISTICS
 ******************************************************************************** 
@@ -5560,6 +5545,6 @@ The summary statistics are outputted only for the sub_population of households, 
 The code for outputting the summary statistics is in a separare dofile that is called here
 */ 
 global list_instruments  "Uganda_NPS_W1"
-do "$directory/_Summary_statistics/EPAR_UW_335_SUMMARY_STATISTICS.do"
+do "$summary_stats"
 
 ************************************ STOP ************************************

@@ -155,12 +155,11 @@ ssc install findname  // need this user-written ado file for some commands to wo
 //set directories
 *These paths correspond to the folders where the raw data files are located and where the created data and final data will be stored.
 
-global directory "~/LSMS-Agricultural-Indicator-Code"
-
-global Uganda_NPS_W3_raw_data "$directory/Uganda NPS/Uganda NPS Wave 3/Raw DTA Files"
-global Uganda_NPS_W3_final_data "$directory/Uganda NPS/Uganda NPS Wave 3/Final DTA Files/final_data"
-global Uganda_NPS_W3_created_data "$directory/Uganda NPS/Uganda NPS Wave 3/Final DTA Files/created_data"
-
+global directory "../.."
+global Uganda_NPS_W3_raw_data 	"$directory/Uganda UNPS/Uganda UNPS Wave 3/Raw DTA Files"
+global Uganda_NPS_W3_created_data "$directory/Uganda UNPS/Uganda UNPS Wave 3/Final DTA Files/created_data"
+global Uganda_NPS_W3_final_data  "$directory/Uganda UNPS/Uganda UNPS Wave 3/Final DTA Files/final_data"
+global summary_stats "$directory/_Summary_statistics/EPAR_UW_335_SUMMARY_STATISTICS.do"
 
 
 ****************************
@@ -171,7 +170,7 @@ global Uganda_NPS_W3_exchange_rate 3690.85
 global Uganda_NPS_W3_gdp_ppp_dollar 1270.608398 
 global Uganda_NPS_W3_cons_ppp_dollar 1221.087646 // updated to 2017 values from https://data.worldbank.org/indicator/PA.NUS.PRVT.PP?locations=UG // for 2014 
 global Uganda_NPS_W3_inflation .78753179 //CPI_SURVEY_YEAR/CPI_2017 - > CPI_2012/CPI_2017 ->  131.3435875/166.7787747 from https://data.worldbank.org/indicator/FP.CPI.TOTL?locations=UG  //The data were collected over the period 2011 to 2012 (therefore we use 2012 the latest year)
-global Uganda_NPS_W3_poverty_threshold (1.90*944.255*131.3/116.6)
+global Uganda_NPS_W3_poverty_threshold ((1.90*944.255*131.3)/116.6)
 
 
 *Re-scaling survey weights to match population estimates
@@ -182,7 +181,7 @@ global Uganda_NPS_W3_pop_urb 6999978
 
 *Calculation for WB' previous $1.90 (PPP) poverty threshold, 2020.2696 Uganda Shilling UGX. This is calculated as the following: PovertyLine x PPP conversion factor (private consumption)t=2011 (reference year of PL, therefore 2011. This is fixed across waves so no need to change it) x Inflation(from t=2011 to t+1=last year survey was implemented). Inflation is calculated as the following: CPI Uganda inflation from 2011 (baseline year) to 2012 (last survey year) Inflation = Inflation (t=last survey year =2012)/Inflation (t= baseline year of PL =2011) https://data.worldbank.org/indicator/PA.NUS.PRVT.PP?locations=UG&name_desc=false and https://data.worldbank.org/indicator/FP.CPI.TOTL?locations=UG
 
-global Uganda_NPS_W3_poverty_215 2.15*($Uganda_NPS_W3_inflation) * $Uganda_NPS_W3_cons_ppp_dollar
+global Uganda_NPS_W3_poverty_215 (2.15*($Uganda_NPS_W3_inflation) * $Uganda_NPS_W3_cons_ppp_dollar)
 *The $2.15 Poverty line ($US) is converted to Uganda Shillings using the PPP Conversion Factor, Consumption of 2017 (so we get the value in UGX 2017) and then we deflate this value to the last year of the survey implementation 2012. The 2.15 PL is 2067.5375 UGX (2017) Notes: This time we had to deflate since our cpp was in 2017 but the last year of the survey was 2012, for the 2011 1.90 poverty line we had to inflate given that the baseline year was 2011 but the last year of the survey was 2012. 
 *The national poverty line is merged later since it's already provided by the raw data (Also there npl has variation across regions so it's not a single number)
 
@@ -1268,7 +1267,7 @@ replace unit = 2 if unit == .
 replace unit = 0 if inlist(unit_code, 20, 21, 22, 66, 85, 99) //the units above that could not be converted will not be useful for price calculations
 
 ren crop_code itemcode
-collapse (sum) val qty, by(HHID parcel_id plot_id season input itemcode unit) //Andrew's note from Nigeria code: Eventually, quantity won't matter for things we don't have units for. JHG 7_5_22: all this code does is drop variables, it doesn't actually collapse anything
+collapse (sum) val qty, by(HHID parcel_id plot_id season input itemcode unit) 
 gen exp = "exp"
 tostring HHID, format(%18.0f) replace
 
@@ -1282,7 +1281,7 @@ merge m:1 HHID parcel_id plot_id season using "${Uganda_NPS_W3_created_data}/Uga
 drop region regurb ea district county subcounty parish weight rural
 merge m:1 HHID using "${Uganda_NPS_W3_created_data}/Uganda_NPS_W3_hhids.dta", nogen keep(1 3) //merge in regional data (districts, etc.)
 tempfile all_plot_inputs
-save `all_plot_inputs' //Woo, now we can estimate values.
+save `all_plot_inputs' 
 
 //Calculating geographic medians
 keep if strmatch(exp,"exp") & qty != . //Keep only explicit prices with actual values for quantity
@@ -1386,10 +1385,8 @@ foreach i in `stubs3' {
 egen val_exp_hh = rowtotal(*_exp_hh)
 egen val_imp_hh = rowtotal(*_imp_hh)
 
-*drop val_mech_imp* // AR: This variable isn't being created
+drop val_mech_imp* 
 save "${Uganda_NPS_W3_created_data}/Uganda_NPS_W3_hh_cost_inputs_verbose.dta", replace 
-
-
 
 //Create area planted tempfile for use at the end of the crop expenses section
 use "${Uganda_NPS_W3_created_data}/Uganda_NPS_W3_all_plots.dta", replace 
@@ -1828,6 +1825,7 @@ tostring HHID, format(%18.0f) replace
 ren lvstid livestock_code
 ren a6aq2 animal_owned
 replace animal_owned=a6bq2 if animal_owned==.
+**# Bookmark #1
 replace animal_owned=a6cq2 if animal_owned==.
 keep if animal_owned==1
 ren a6aq14a number_sold
@@ -1937,15 +1935,13 @@ lab var tlu_coefficient "Tropical Livestock Unit coefficient"
 gen number_1yearago = a6aq6
 replace number_1yearago = a6bq6 if number_1yearago==.
 replace number_1yearago = a6cq6 if number_1yearago==. 
-gen number_today= a6aq3a
-replace number_today = a6bq3a if number_today==. 
-replace number_today = a6cq3a if number_today==. //No estimated price value by farmers questions or owned  at the start of the ag season like Nigeria_GHS_W3_raw_data
-gen number_today_exotic = number_today if inlist(livestock_code,1,2,3,4,5,13,14,15,16,17)
-//ALT 12.05.19: End of work. Be sure to update the variables below because they don't match up between waves.
+gen number_today_all= a6aq3a
+replace number_today_all = a6bq3a if number_today_all==. 
+replace number_today_all = a6cq3a if number_today_all==. //No estimated price value by farmers questions or owned  at the start of the ag season like Nigeria_GHS_W3_raw_data
+gen number_today_exotic = number_today_all if inlist(livestock_code,1,2,3,4,5,13,14,15,16,17)
 
-//SW 7.22.21 Continue working updating the variables below since they don't seem to work.
 gen tlu_1yearago = number_1yearago * tlu_coefficient
-gen tlu_today = number_today * tlu_coefficient
+gen tlu_today = number_today_all * tlu_coefficient
 gen income_live_sales = a6aq14b // Value of each animal sold on average
 replace income_live_sales = a6bq14b*2 if income_live_sales==. & a6bq14b!=. //EFW 8.26.19 multiply by 2 because question asks in last 6 months
 replace income_live_sales = a6cq14b*4 if income_live_sales==. & a6cq14b!=. //EFW 8.26.19 multiplu by 4 because question asks in last 3 months
@@ -1981,17 +1977,18 @@ foreach i in region district county subcounty parish ea {
 }
 
 *gen value_start_agseas = number_start_agseas * price_per_animal
-gen value_today = number_today * price_per_animal
+gen value_today = number_today_all * price_per_animal
 gen value_1yearago = number_1yearago * price_per_animal
-*gen value_today_est = number_today * price_per_animal_est
+*gen value_today_est = number_today_all * price_per_animal_est
 
-collapse (sum) number_today number_1yearago lost_theft lost_other lost_disease animals_lost lvstck_holding=number_today value* tlu*, by(HHID species)
-egen mean_12months=rowmean(number_today number_1yearago)
+collapse (sum) number_today_exotic animals_lost number_today_all number_1yearago lost_theft lost_other lost_disease lvstck_holding=number_today_all value* tlu*, by(HHID species)
+egen mean_12months=rowmean(number_today_all number_1yearago)
+gen 	animals_lost12months	= animals_lost		
 save "${Uganda_NPS_W3_created_data}/Uganda_NPS_W3_herd_characteristics_long.dta", replace //AgQuery
 
 preserve
-keep HHID species number_today number_1yearago /*animals_lost*/ lost_disease lost_other lost_theft  lvstck_holding mean_12months
-global lvstck_vars number_today number_1yearago lost_other lost_theft lost_disease lvstck_holding mean_12months
+keep HHID species number_today_exotic animals_lost12months number_today_all number_1yearago lost_disease lost_other lost_theft  lvstck_holding mean_12months
+global lvstck_vars number_1yearago number_today_exotic number_today_all lost_other lost_theft lost_disease lvstck_holding animals_lost12months mean_12months
 foreach i in $lvstck_vars {
 	ren `i' `i'_
 }
@@ -2000,6 +1997,25 @@ gen lvstck_holding_all = lvstck_holding_lrum + lvstck_holding_srum + lvstck_hold
 
 la var lvstck_holding_all "Total number of livestock holdings (# of animals) - large ruminants, small ruminants, poultry"
 save "${Uganda_NPS_W3_created_data}/Uganda_NPS_W3_herd_characteristics.dta", replace
+restore 
+preserve 
+gen any_imp_herd = number_today_exotic!=0 if number_today_all!=. & number_today_all!=0
+**# Bookmark #3
+
+foreach i in animals_lost12months mean_12months any_imp_herd lvstck_holding lost_disease {
+	gen `i'_lrum = `i' if species=="lrum"
+	gen `i'_srum = `i' if species=="srum"
+	gen `i'_pigs = `i' if species=="pigs"
+	gen `i'_equine = `i' if species=="equine"
+	gen `i'_poultry = `i' if species=="poultry"
+}
+collapse (sum)  mean_12months lvstck_holding animals_lost12months number_today_all number_today_exotic lost_disease (firstnm) *lrum *srum *pigs *equine *poultry any_imp_herd, by(HHID)
+la var lvstck_holding "Total number of livestock holdings (# of animals)"
+la var any_imp_herd "At least one improved animal in herd"
+*la var share_imp_herd_cows "Share of improved animals in total herd - Cows only"
+lab var animals_lost12months  "Total number of livestock  lost to disease or injury"
+lab var  mean_12months  "Average number of livestock  today and 1  year ago"
+lab var lost_disease "Total number of livestock lost to disease"
 restore
 
 collapse (sum) tlu_1yearago tlu_today value_1yearago value_today, by (HHID)
@@ -2100,7 +2116,7 @@ sort industry
 collapse(median) weeks, by(industry)
 sort industry
 
-save "${Uganda_NPS_W3_raw_data}/Uganda_NPS_W3_wage_hours_imputation.dta", replace
+save "${Uganda_NPS_W3_created_data}/Uganda_NPS_W3_wage_hours_imputation.dta", replace
 restore 
 
 
@@ -2646,6 +2662,9 @@ append using "${Uganda_NPS_W3_raw_data}/AGSEC4B"
 replace season = 2 if season == .
 gen imprv_seed_use = (a4aq13==2) if a4aq13!=.
 replace imprv_seed_use= (a4bq13==2) if imprv_seed_use==. & a4bq13!=.
+recode cropID (811 812 = 810) (741 742 744 = 740) (224 = 223)  //  Same for bananas (740)
+label define cropID 740 "Bananas", modify //need to add new codes to the value label, cropID
+label values cropID cropID //apply crop labels to crop_code_master
 
 *Use of seed by type of crop
 forvalues k=1/$nb_topcrops {
@@ -2662,7 +2681,6 @@ foreach v in $topcropname_area {
 	*lab var hybrid_seed_`v' "1= Household uses improved `v' seed"
 }
 *SAW No information found on hybrid seeds.
-*replace imprv_seed_cassav = . // not sure why?
 replace imprv_seed_banana = . 
 save "${Uganda_NPS_W3_created_data}/Uganda_NPS_W3_improvedseed_use.dta", replace
 
@@ -3806,6 +3824,8 @@ foreach i in lrum srum poultry {
 	gen `v'_`i' = .
 	}
 }
+**# Bookmark #2
+
 *SAW 3/14/23 Notes: We do have information for mean_12months and animals_lost12months by type of livestock but not for household level maybe we can add it. We can calculate mean_12months and animals_lost12months (in uganda the variable is named lost_disease_*) at the household level for all livestock (if thats what we are looking for)
 
 //adding - starting list of missing variables - recode all of these to missing at end of HH level file
@@ -4186,7 +4206,7 @@ foreach s of global animal_species {
 	gen mortality_rate_`s' = lost_disease_`s'/mean_12months_`s'
 	lab var mortality_rate_`s' "Mortality rate - `s'"
 }
-*SAw 3/13/23 There is an issue with the number_today_poultry variable (all zeros) that its affecting the calculation of mean_12_months_poultry and therefore the mortality rates for poultry. Needs to be checked in the Livestock income section. Also, it might be helpful to use the winsorized version of the variables that are available.
+*SAw 3/13/23 There is an issue with the number_today_all_poultry variable (all zeros) that its affecting the calculation of mean_12_months_poultry and therefore the mortality rates for poultry. Needs to be checked in the Livestock income section. Also, it might be helpful to use the winsorized version of the variables that are available.
  
  *generating top crop expenses using winsoried values (monocropped)
 foreach c in $topcropname_area{		
@@ -4466,6 +4486,7 @@ foreach i in lrum srum poultry{
 	recode vac_animal_`i' any_imp_herd_`i' w_lost_disease_`i' w_ls_exp_vac_`i' (nonmissing=.) if lvstck_holding_`i'==0
 	recode vac_animal_`i' any_imp_herd_`i' w_lost_disease_`i' w_ls_exp_vac_`i' (.=0) if lvstck_holding_`i'==1	
 }
+**# Bookmark #1
  
 *households engaged in crop production
 recode w_proportion_cropvalue_sold w_farm_size_agland w_labor_family w_labor_hired /*
@@ -4644,11 +4665,11 @@ gen survey = "LSMS-ISA"
 gen year = "2012-13" 
 gen instrument = 53 
 //Only runs if label isn't already defined.
-capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2" 13 "Tanzania NPS Wave 3" 14 "Tanzania NPS Wave 4" 15 "Tanzania NPS Wave 5" /*
+capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2" 13 "Tanzania NPS Wave 3" 14 "Tanzania NPS Wave 4" 15 "Tanzania NPS SDD" 16 "Tanzania NPS Wave 5" /*
 	*/ 21 "Ethiopia ESS Wave 1" 22 "Ethiopia ESS Wave 2" 23 "Ethiopia ESS Wave 3" 24 "Ethiopia ESS Wave 4" 25 "Ethiopia ESS Wave 5" /*
 	*/ 31 "Nigeria GHS Wave 1" 32 "Nigeria GHS Wave 2" 33 "Nigeria GHS Wave 3" 34 "Nigeria GHS Wave 4"/*
 	*/ 41 "Malawi IHS/IHPS Wave 1" 42 "Malawi IHS/IHPS Wave 2" 43 "Malawi IHS/IHPS Wave 3" 44 "Malawi IHS/IHPS Wave 4" /*
-    */ 51 "Uganda NPS Wave 1" 52 "Uganda NPS Wave 2" 53 "Uganda NPS Wave 3" 54 "Uganda NPS Wave 4" 55 "Uganda NPSf Wave 5" /*W6 does not exist*/ 56 "Uganda NPS Wave 7" 57 "Uganda NPS Wave 8" /* 
+    */ 51 "Uganda NPS Wave 1" 52 "Uganda NPS Wave 2" 53 "Uganda NPS Wave 3" 54 "Uganda NPS Wave 4" 55 "Uganda NPS Wave 5" /*W6 does not exist*/ 56 "Uganda NPS Wave 7" 57 "Uganda NPS Wave 8" /* 
 */ 61 "Burkina Faso EMC Wave 1" /* 
 */ 71 "Mali EACI Wave 1" 72 "Mali EACI Wave 2" /*
 */ 81 "Niger ECVMA Wave 1" 82 "Niger ECVMA Wave 2"
@@ -4746,7 +4767,7 @@ gen survey = "LSMS-ISA"
 gen year = "2012-13" 
 gen instrument = 53 
 //Only runs if label isn't already defined.
-capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2" 13 "Tanzania NPS Wave 3" 14 "Tanzania NPS Wave 4" 15 "Tanzania NPS Wave 5" /*
+capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2" 13 "Tanzania NPS Wave 3" 14 "Tanzania NPS Wave 4" 15 "Tanzania NPS SDD" 16 "Tanzania NPS Wave 5" /*
 	*/ 21 "Ethiopia ESS Wave 1" 22 "Ethiopia ESS Wave 2" 23 "Ethiopia ESS Wave 3" 24 "Ethiopia ESS Wave 4" 25 "Ethiopia ESS Wave 5" /*
 	*/ 31 "Nigeria GHS Wave 1" 32 "Nigeria GHS Wave 2" 33 "Nigeria GHS Wave 3" 34 "Nigeria GHS Wave 4"/*
 	*/ 41 "Malawi IHS/IHPS Wave 1" 42 "Malawi IHS/IHPS Wave 2" 43 "Malawi IHS/IHPS Wave 3" 44 "Malawi IHS/IHPS Wave 4" /*
@@ -4992,11 +5013,11 @@ gen survey = "LSMS-ISA"
 gen year = "2012-13" 
 gen instrument = 53
 //Only runs if label isn't already defined.
-capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2" 13 "Tanzania NPS Wave 3" 14 "Tanzania NPS Wave 4" 15 "Tanzania NPS Wave 5" /*
+capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2" 13 "Tanzania NPS Wave 3" 14 "Tanzania NPS Wave 4" 15 "Tanzania NPS SDD" 16 "Tanzania NPS Wave 5" /*
 	*/ 21 "Ethiopia ESS Wave 1" 22 "Ethiopia ESS Wave 2" 23 "Ethiopia ESS Wave 3" 24 "Ethiopia ESS Wave 4" 25 "Ethiopia ESS Wave 5" /*
 	*/ 31 "Nigeria GHS Wave 1" 32 "Nigeria GHS Wave 2" 33 "Nigeria GHS Wave 3" 34 "Nigeria GHS Wave 4"/*
 	*/ 41 "Malawi IHS/IHPS Wave 1" 42 "Malawi IHS/IHPS Wave 2" 43 "Malawi IHS/IHPS Wave 3" 44 "Malawi IHS/IHPS Wave 4" /*
-    */ 51 "Uganda NPS Wave 1" 52 "Uganda NPS Wave 2" 53 "Uganda NPS Wave 3" 54 "Uganda NPS Wave 4" 55 "Uganda NPS Wave 5" /*W6 does not exist*/ 56 "Uganda NPS Wave 7" 57 "Uganda NPS_ Wave 8" /* 
+    */ 51 "Uganda NPS Wave 1" 52 "Uganda NPS Wave 2" 53 "Uganda NPS Wave 3" 54 "Uganda NPS Wave 4" 55 "Uganda NPS Wave 5" /*W6 does not exist*/ 56 "Uganda NPS Wave 7" 57 "Uganda NPS Wave 8" /* 
 */ 61 "Burkina Faso EMC Wave 1" /* 
 */ 71 "Mali EACI Wave 1" 72 "Mali EACI Wave 2" /*
 */ 81 "Niger ECVMA Wave 1" 82 "Niger ECVMA Wave 2"
@@ -5015,7 +5036,7 @@ The code for outputting the summary statistics is in a separare dofile that is c
 
 
 global list_instruments  "Uganda_NPS_W3"
-do "$directory/EPAR_UW_335_Summary_statistics.do"
+do "$summary_stats"
 
 
 

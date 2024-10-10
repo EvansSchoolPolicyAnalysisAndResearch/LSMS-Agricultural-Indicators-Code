@@ -38,7 +38,7 @@
 * statistics (mean, standard error of the mean, minimum, first quartile, 
 * median, third quartile, maximum) of final indicators, restricted to the rural households only, disaggregated by gender of head of household or plot manager.
 
-* The results are saved in the excel file "UGA_NPS_W4_summary_stats.xlsx" in the "Final DTA Files/final_data" folder. 
+* The results are saved in the excel file "Uganda_NPS_W4_summary_stats.xlsx" in the "Final DTA Files/final_data" folder. 
 
 
 /*
@@ -47,108 +47,108 @@ Below are the list of the main files created by running this Master do.file
  					
 *INTERMEDIATE FILES					MAIN FILES CREATED
 *-------------------------------------------------------------------------------------
-*HOUSEHOLD IDS						Uganda_NPS_LSMS_ISA_W4_hhids.dta
-*INDIVIDUAL IDS						Uganda_NPS_LSMS_ISA_W4_person_ids.dta
-*HOUSEHOLD SIZE						Uganda_NPS_LSMS_ISA_W4_hhsize.dta
-*PARCEL AREAS						Uganda_NPS_LSMS_ISA_W4_parcel_areas.dta
+*HOUSEHOLD IDS						Uganda_NPS_W4_hhids.dta
+*INDIVIDUAL IDS						Uganda_NPS_W4_person_ids.dta
+*HOUSEHOLD SIZE						Uganda_NPS_W4_hhsize.dta
+*PARCEL AREAS						Uganda_NPS_W4_parcel_areas.dta
 *PLOT-CROP DECISION MAKERS			Uganda_NPS_W4_plot_decision_makers.dta
 
-*MONOCROPPED PLOTS					Uganda_NPS_LSMS_ISA_W4_[CROP]_monocrop_hh_area.dta					
-*TLU (Tropical Livestock Units)		Uganda_NPS_LSMS_ISA_W4_TLU_Coefficients.dta
+*MONOCROPPED PLOTS					Uganda_NPS_W4_[CROP]_monocrop_hh_area.dta					
+*TLU (Tropical Livestock Units)		Uganda_NPS_W4_TLU_Coefficients.dta
 
-*GROSS CROP REVENUE					Uganda_NPS_LSMS_ISA_W4_tempcrop_harvest.dta
-									Uganda_NPS_LSMS_ISA_W4_tempcrop_sales.dta
-									Uganda_NPS_LSMS_ISA_W4_permcrop_harvest.dta
-									Uganda_NPS_LSMS_ISA_W4_permcrop_sales.dta
-									Uganda_NPS_LSMS_ISA_W4_hh_crop_production.dta
-									Uganda_NPS_LSMS_ISA_W4_plot_cropvalue.dta
-									Uganda_NPS_LSMS_ISA_W4_parcel_cropvalue.dta
-									Uganda_NPS_LSMS_ISA_W4_crop_residues.dta
-									Uganda_NPS_LSMS_ISA_W4_hh_crop_prices.dta
-									Uganda_NPS_LSMS_ISA_W4_crop_losses.dta
+*GROSS CROP REVENUE					Uganda_NPS_W4_tempcrop_harvest.dta
+									Uganda_NPS_W4_tempcrop_sales.dta
+									Uganda_NPS_W4_permcrop_harvest.dta
+									Uganda_NPS_W4_permcrop_sales.dta
+									Uganda_NPS_W4_hh_crop_production.dta
+									Uganda_NPS_W4_plot_cropvalue.dta
+									Uganda_NPS_W4_parcel_cropvalue.dta
+									Uganda_NPS_W4_crop_residues.dta
+									Uganda_NPS_W4_hh_crop_prices.dta
+									Uganda_NPS_W4_crop_losses.dta
 
-*CROP EXPENSES						Uganda_NPS_LSMS_ISA_W4_wages_mainseason.dta
-									Uganda_NPS_LSMS_ISA_W4_wages_shortseason.dta
-									Uganda_NPS_LSMS_ISA_W4_fertilizer_costs.dta
-									Uganda_NPS_LSMS_ISA_W4_seed_costs.dta
-									Uganda_NPS_LSMS_ISA_W4_land_rental_costs.dta
-									Uganda_NPS_LSMS_ISA_W4_asset_rental_costs.dta
-									Uganda_NPS_LSMS_ISA_W4_transportation_cropsales.dta
+*CROP EXPENSES						Uganda_NPS_W4_wages_mainseason.dta
+									Uganda_NPS_W4_wages_shortseason.dta
+									Uganda_NPS_W4_fertilizer_costs.dta
+									Uganda_NPS_W4_seed_costs.dta
+									Uganda_NPS_W4_land_rental_costs.dta
+									Uganda_NPS_W4_asset_rental_costs.dta
+									Uganda_NPS_W4_transportation_cropsales.dta
 									
-*CROP INCOME						Uganda_NPS_LSMS_ISA_W4_crop_income.dta
+*CROP INCOME						Uganda_NPS_W4_crop_income.dta
 									
-*LIVESTOCK INCOME					Uganda_NPS_LSMS_ISA_W4_livestock_products.dta
-									Uganda_NPS_LSMS_ISA_W4_livestock_expenses.dta
-									Uganda_NPS_LSMS_ISA_W4_hh_livestock_products.dta
-									Uganda_NPS_LSMS_ISA_W4_livestock_sales.dta
-									Uganda_NPS_LSMS_ISA_W4_TLU.dta
-									Uganda_NPS_LSMS_ISA_W4_livestock_income.dta
+*LIVESTOCK INCOME					Uganda_NPS_W4_livestock_products.dta
+									Uganda_NPS_W4_livestock_expenses.dta
+									Uganda_NPS_W4_hh_livestock_products.dta
+									Uganda_NPS_W4_livestock_sales.dta
+									Uganda_NPS_W4_TLU.dta
+									Uganda_NPS_W4_livestock_income.dta
 
 *FISH INCOME						n/a
 																	
 *SELF-EMPLOYMENT INCOME				n/a
 
 									
-*WAGE INCOME						Uganda_NPS_LSMS_ISA_W4_wage_income.dta
-									Uganda_NPS_LSMS_ISA_W4_agwage_income.dta					
+*WAGE INCOME						Uganda_NPS_W4_wage_income.dta
+									Uganda_NPS_W4_agwage_income.dta					
 
-*OTHER INCOME						Uganda_NPS_LSMS_ISA_W4_other_income.dta
-									Uganda_NPS_LSMS_ISA_W4_land_rental_income.dta
+*OTHER INCOME						Uganda_NPS_W4_other_income.dta
+									Uganda_NPS_W4_land_rental_income.dta
 
-*FARM SIZE / LAND SIZE				Uganda_NPS_LSMS_ISA_W4_land_size.dta
-									Uganda_NPS_LSMS_ISA_W4_farmsize_all_agland.dta
-									Uganda_NPS_LSMS_ISA_W4_land_size_all.dta
-									Uganda_NPS_LSMS_ISA_W4_land_size_total.dta					
+*FARM SIZE / LAND SIZE				Uganda_NPS_W4_land_size.dta
+									Uganda_NPS_W4_farmsize_all_agland.dta
+									Uganda_NPS_W4_land_size_all.dta
+									Uganda_NPS_W4_land_size_total.dta					
 
-*FARM LABOR							Uganda_NPS_LSMS_ISA_W4_farmlabor_mainseason.dta
-									Uganda_NPS_LSMS_ISA_W4_farmlabor_shortseason.dta
-									Uganda_NPS_LSMS_ISA_W4_family_hired_labor.dta
+*FARM LABOR							Uganda_NPS_W4_farmlabor_mainseason.dta
+									Uganda_NPS_W4_farmlabor_shortseason.dta
+									Uganda_NPS_W4_family_hired_labor.dta
 									
-*VACCINE USAGE						Uganda_NPS_LSMS_ISA_W4_vaccine.dta
-									Uganda_NPS_LSMS_ISA_W4_farmer_vaccine.dta					//NEW//
+*VACCINE USAGE						Uganda_NPS_W4_vaccine.dta
+									Uganda_NPS_W4_farmer_vaccine.dta					//NEW//
 							
-*ANIMAL HEALTH						Uganda_NPS_LSMS_ISA_W4_livestock_diseases.dta				//NEW//
-									Uganda_NPS_LSMS_ISA_W4_livestock_feed_water_house.dta		//NEW//
+*ANIMAL HEALTH						Uganda_NPS_W4_livestock_diseases.dta				//NEW//
+									Uganda_NPS_W4_livestock_feed_water_house.dta		//NEW//
 
-*USE OF INORGANIC FERTILIZER		Uganda_NPS_LSMS_ISA_W4_fert_use.dta
-									Uganda_NPS_LSMS_ISA_W4_farmer_fert_use.dta							//NEW//
+*USE OF INORGANIC FERTILIZER		Uganda_NPS_W4_fert_use.dta
+									Uganda_NPS_W4_farmer_fert_use.dta							//NEW//
 
-*USE OF IMPROVED SEED				Uganda_NPS_LSMS_ISA_W4_improvedseed_use.dta
-									Uganda_NPS_LSMS_ISA_W4_farmer_improvedseed_use.dta			//NEW//
+*USE OF IMPROVED SEED				Uganda_NPS_W4_improvedseed_use.dta
+									Uganda_NPS_W4_farmer_improvedseed_use.dta			//NEW//
 
-*REACHED BY AG EXTENSION			Uganda_NPS_LSMS_ISA_W4_any_ext.dta
-*USE OF FORMAL FINANACIAL SERVICES	Uganda_NPS_LSMS_ISA_W4_fin_serv.dta
-*GENDER PRODUCTIVITY GAP 			Uganda_NPS_LSMS_ISA_W4_gender_productivity_gap.dta
-*MILK PRODUCTIVITY					Uganda_NPS_LSMS_ISA_W4_milk_animals.dta
-*EGG PRODUCTIVITY					Uganda_NPS_LSMS_ISA_W4_eggs_animals.dta
+*REACHED BY AG EXTENSION			Uganda_NPS_W4_any_ext.dta
+*USE OF FORMAL FINANACIAL SERVICES	Uganda_NPS_W4_fin_serv.dta
+*GENDER PRODUCTIVITY GAP 			Uganda_NPS_W4_gender_productivity_gap.dta
+*MILK PRODUCTIVITY					Uganda_NPS_W4_milk_animals.dta
+*EGG PRODUCTIVITY					Uganda_NPS_W4_eggs_animals.dta
 
-*CROP PRODUCTION COSTS PER HECTARE	Uganda_NPS_LSMS_ISA_W4_hh_rental_rate.dta 			//NEW//
-									Uganda_NPS_LSMS_ISA_W4_hh_cost_land.dta
-									Uganda_NPS_LSMS_ISA_W4_hh_cost_inputs_fcs.dta
-									Uganda_NPS_LSMS_ISA_W4_hh_cost_inputs_scs.dta
-									Uganda_NPS_LSMS_ISA_W4_hh_cost_seed_fcs.dta
-									Uganda_NPS_LSMS_ISA_W4_hh_cost_seed_scs.dta	
-									Uganda_NPS_LSMS_ISA_W4_asset_rental_costs.dta 			//NEW//
-									Uganda_NPS_LSMS_ISA_W4_cropcosts_total.dta
+*CROP PRODUCTION COSTS PER HECTARE	Uganda_NPS_W4_hh_rental_rate.dta 			//NEW//
+									Uganda_NPS_W4_hh_cost_land.dta
+									Uganda_NPS_W4_hh_cost_inputs_fcs.dta
+									Uganda_NPS_W4_hh_cost_inputs_scs.dta
+									Uganda_NPS_W4_hh_cost_seed_fcs.dta
+									Uganda_NPS_W4_hh_cost_seed_scs.dta	
+									Uganda_NPS_W4_asset_rental_costs.dta 			//NEW//
+									Uganda_NPS_W4_cropcosts_total.dta
 
-*RATE OF FERTILIZER APPLICATION		Uganda_NPS_LSMS_ISA_W4_fertilizer_application.dta
-*HOUSEHOLD'S DIET DIVERSITY SCORE	Uganda_NPS_LSMS_ISA_W4_household_diet.dta
-*WOMEN'S CONTROL OVER INCOME		Uganda_NPS_LSMS_ISA_W4_control_income.dta
-*WOMEN'S AG DECISION-MAKING			Uganda_NPS_LSMS_ISA_W4_make_ag_decision.dta
-*WOMEN'S ASSET OWNERSHIP			Uganda_NPS_LSMS_ISA_W4_ownasset.dta
-*AGRICULTURAL WAGES					Uganda_NPS_LSMS_ISA_W4_ag_wage.dta					// DOES THIS STILL EXIST?? NOT IN NEWER TZ FILE
-*CROP YIELDS						Uganda_NPS_LSMS_ISA_W4_yield_hh_crop_level.dta
-*SHANNON DIVERSITY INDEX			Uganda_NPS_LSMS_ISA_W4_shannon_diversity_index.dta
-*CONSUMPTION						Uganda_NPS_LSMS_ISA_W4_consumption.dta
-*HOUSEHOLD FOOD PROVISION			Uganda_NPS_LSMS_ISA_W4_food_insecurity.dta
-*HOUSEHOLD ASSETS					Uganda_NPS_LSMS_ISA_W4_hh_assets.dta
+*RATE OF FERTILIZER APPLICATION		Uganda_NPS_W4_fertilizer_application.dta
+*HOUSEHOLD'S DIET DIVERSITY SCORE	Uganda_NPS_W4_household_diet.dta
+*WOMEN'S CONTROL OVER INCOME		Uganda_NPS_W4_control_income.dta
+*WOMEN'S AG DECISION-MAKING			Uganda_NPS_W4_make_ag_decision.dta
+*WOMEN'S ASSET OWNERSHIP			Uganda_NPS_W4_ownasset.dta
+*AGRICULTURAL WAGES					Uganda_NPS_W4_ag_wage.dta					// DOES THIS STILL EXIST?? NOT IN NEWER TZ FILE
+*CROP YIELDS						Uganda_NPS_W4_yield_hh_crop_level.dta
+*SHANNON DIVERSITY INDEX			Uganda_NPS_W4_shannon_diversity_index.dta
+*CONSUMPTION						Uganda_NPS_W4_consumption.dta
+*HOUSEHOLD FOOD PROVISION			Uganda_NPS_W4_food_insecurity.dta
+*HOUSEHOLD ASSETS					Uganda_NPS_W4_hh_assets.dta
 
 *FINAL FILES						MAIN FILES CREATED
 *-------------------------------------------------------------------------------------
-*HOUSEHOLD VARIABLES				Uganda_NPS_LSMS_ISA_W4_household_variables.dta
-*INDIVIDUAL-LEVEL VARIABLES			Uganda_NPS_LSMS_ISA_W4_individual_variables.dta	
-*PLOT-LEVEL VARIABLES				Uganda_NPS_LSMS_ISA_W4_gender_productivity_gap.dta
-*SUMMARY STATISTICS					Uganda_NPS_LSMS_ISA_W4_summary_stats.xlsx
+*HOUSEHOLD VARIABLES				Uganda_NPS_W4_household_variables.dta
+*INDIVIDUAL-LEVEL VARIABLES			Uganda_NPS_W4_individual_variables.dta	
+*PLOT-LEVEL VARIABLES				Uganda_NPS_W4_gender_productivity_gap.dta
+*SUMMARY STATISTICS					Uganda_NPS_W4_summary_stats.xlsx
 */
 
 clear
@@ -162,27 +162,25 @@ ssc install findname  // need this user-written ado file for some commands to wo
 * These paths correspond to the folders where the raw data files are located 
 * and where the created data and final data will be stored.
 
-global directory "~/LSMS-Agricultural-Indicator-Code"
-
-global Uganda_NPS_W4_raw_data "$directory/Uganda NPS/Uganda NPS Wave 4/Raw DTA Files"
-global Uganda_NPS_W4_final_data "$directory/Uganda NPS/Uganda NPS Wave 4/Final DTA Files/final_data"
-global Uganda_NPS_W4_created_data "$directory/Uganda NPS/Uganda NPS Wave 4/Final DTA Files/created_data"
+global directory  "../.."
+global Uganda_NPS_W4_raw_data 	"$directory/Uganda UNPS/Uganda UNPS Wave 4/Raw DTA Files"
+global Uganda_NPS_W4_created_data "$directory/Uganda UNPS/Uganda UNPS Wave 4/Final DTA Files/created_data"
+global Uganda_NPS_W4_final_data  "$directory/Uganda UNPS/Uganda UNPS Wave 4/Final DTA Files/final_data"     
+global summary_stats "$directory/_Summary_statistics/EPAR_UW_335_SUMMARY_STATISTICS.do" //Path to the summary statistics file. This can take a long time to run, so comment out if you don't need it. The do file will end with an error.
 
 
 ********************************************************************************
 *           EXCHANGE RATE AND INFLATION FOR CONVERSION IN SUD IDS              *
 ********************************************************************************
-global UGA_W4_exchange_rate 3689.75      // https://www.bloomberg.com/quote/USDUGX:CUR 										// NKF 12.30.19 - What year? Present?
-global UGA_W4_gdp_ppp_dollar 1270.608398 // updated 4.6.23 to 2017 values from https://data.worldbank.org/indicator/PA.NUS.PPP?locations=UG 
-global UGA_W4_cons_ppp_dollar 1221.087646 // updated 4.6.23 to 2017 values from https://data.worldbank.org/indicator/PA.NUS.PRVT.PP?locations=UG // for 2014 
-global UGA_W4_inflation 0.8515721875 //CPI_SURVEY_YEAR/CPI_2017 -> CPI_2014/CPI_2017 ->  142.024166/166.7787747 from https://data.worldbank.org/indicator/FP.CPI.TOTL?locations=UG  //The data were collected over the period November 2013 - October 2014
-
-global UGA_W4_poverty_threshold (1.90*944.255*(1+(142.024166-116.6)/116.6)) 
-global UGA_W4_poverty_threshold (1.90*944.255*142.024166/116.6)
+global Uganda_NPS_W4_exchange_rate 3689.75      // https://www.bloomberg.com/quote/USDUGX:CUR 										// NKF 12.30.19 - What year? Present?
+global Uganda_NPS_W4_gdp_ppp_dollar 1270.608398 // updated 4.6.23 to 2017 values from https://data.worldbank.org/indicator/PA.NUS.PPP?locations=UG 
+global Uganda_NPS_W4_cons_ppp_dollar 1221.087646 // updated 4.6.23 to 2017 values from https://data.worldbank.org/indicator/PA.NUS.PRVT.PP?locations=UG // for 2014 
+global Uganda_NPS_W4_inflation 0.8515721875 //CPI_SURVEY_YEAR/CPI_2017 -> CPI_2014/CPI_2017 ->  142.024166/166.7787747 from https://data.worldbank.org/indicator/FP.CPI.TOTL?locations=UG  //The data were collected over the period November 2013 - October 2014
+global Uganda_NPS_W4_poverty_threshold ((1.90*944.255*142.024166)/116.6)
 
 * Notes:  Calculation for WB' previous $1.90 (PPP) poverty threshold, 2185.2775 Uganda Shilling UGX. This is calculated as the following: PovertyLine x PPP conversion factor (private consumption)t=2011 (reference year of PL, therefore 2011. This is fixed across waves so no need to change it) x Inflation(from t=2011 to t+1=last year survey was implemented). Inflation is calculated as the following: CPI Uganda inflation from 2011 (baseline year) to 2014 (last survey year) Inflation = Inflation (t=last survey year =2014)/Inflation (t= baseline year of PL =2011) https://data.worldbank.org/indicator/PA.NUS.PRVT.PP?locations=UG&name_desc=false and https://data.worldbank.org/indicator/FP.CPI.TOTL?locations=UG
 
-global UGA_W4_poverty_215 2.15*($UGA_W4_inflation) * $UGA_W4_cons_ppp_dollar
+global Uganda_NPS_W4_poverty_215 (2.15*($Uganda_NPS_W4_inflation)*$Uganda_NPS_W4_cons_ppp_dollar)
  
 *SAW Now: The $2.15 Poverty line ($US) is converted to Uganda Shillings using the PPP Conversion Factor, Consumption of 2017 (so we get the value in UGX 2017) and then we deflate this value to the last year of the survey implementation 2014. Thr 2.15 PL is 2235.6652 UGX (2017) Notes: This time we had to deflate since our cpp was in 2017 but the last year of the survey was 2014, for the 2011 1.90 poverty line we had to inflate given that the baseline year was 2011 but the last year of the survey was 2012. 
 
@@ -200,9 +198,9 @@ global wins_upper_thres 99							//  Threshold for winzorization at the top of t
 ********************************************************************************
 *Re-scaling survey weights to match population estimates
 *https://databank.worldbank.org/source/world-development-indicators#
-global UGA_W4_pop_tot  36336539
-global UGA_W4_pop_rur  28522730
-global UGA_W4_pop_urb   7813809
+global Uganda_NPS_W4_pop_tot  36336539
+global Uganda_NPS_W4_pop_rur  28522730
+global Uganda_NPS_W4_pop_urb   7813809
 
 ********************************************************************************
 *GLOBALS OF PRIORITY CROPS 
@@ -293,17 +291,17 @@ merge 1:1 HHID using "${Uganda_NPS_W4_created_data}\Uganda_NPS_W4_hhids.dta", no
 *Adjust to match total population
 total hh_members [pweight=weight]
 matrix temp =e(b)
-gen weight_pop_tot=weight*${UGA_W4_pop_tot}/el(temp,1,1)
+gen weight_pop_tot=weight*${Uganda_NPS_W4_pop_tot}/el(temp,1,1)
 total hh_members [pweight=weight_pop_tot]
 lab var weight_pop_tot "Survey weight - adjusted to match total population"
 *Adjust to match total population but also rural and urban
 total hh_members [pweight=weight] if rural==1
 matrix temp =e(b)
-gen weight_pop_rur=weight*${UGA_W4_pop_rur}/el(temp,1,1) if rural==1
+gen weight_pop_rur=weight*${Uganda_NPS_W4_pop_rur}/el(temp,1,1) if rural==1
 total hh_members [pweight=weight_pop_tot]  if rural==1
 total hh_members [pweight=weight] if rural==0
 matrix temp =e(b)
-gen weight_pop_urb=weight*${UGA_W4_pop_urb}/el(temp,1,1) if rural==0
+gen weight_pop_urb=weight*${Uganda_NPS_W4_pop_urb}/el(temp,1,1) if rural==0
 total hh_members [pweight=weight_pop_urb]  if rural==0
 egen weight_pop_rururb=rowtotal(weight_pop_rur weight_pop_urb)
 total hh_members [pweight=weight_pop_rururb]  
@@ -1562,7 +1560,7 @@ preserve
 save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_inputs_`cn'.dta", replace
 restore
 }
-*use "${UGS_W3_created_data}/Uganda_NPS_LSMS_ISA_W3_inputs_cassav.dta", replace // SAW 1.5.23 Checking how the new datasets look like
+*use "${UGS_W3_created_data}/Uganda_NPS_W3_inputs_cassav.dta", replace // SAW 1.5.23 Checking how the new datasets look like
 *Notes: Final datasets are sum of all cost at the household level for specific crops. 
 
 ********************************************************************************
@@ -1984,12 +1982,12 @@ lab var tlu_coefficient "Tropical Livestock Unit coefficient"
 gen number_1yearago = a6aq6
 replace number_1yearago = a6bq6 if number_1yearago==.
 replace number_1yearago = a6cq6 if number_1yearago==. 
-gen number_today= a6aq3a
-replace number_today = a6bq3a if number_today==. 
-replace number_today = a6bq3a if number_today==. //No estimated price value by farmers questions or owned  at the start of the ag season like Nigeria_GHS_W3_raw_data
-gen number_today_exotic = number_today if inlist(livestock_code,1,2,3,4,5,13,14,15,16,17)
+gen number_today_all= a6aq3a
+replace number_today_all = a6bq3a if number_today_all==. 
+replace number_today_all = a6bq3a if number_today_all==. //No estimated price value by farmers questions or owned  at the start of the ag season like Nigeria_GHS_W3_raw_data
+gen number_today_exotic = number_today_all if inlist(livestock_code,1,2,3,4,5,13,14,15,16,17)
 gen tlu_1yearago = number_1yearago * tlu_coefficient
-gen tlu_today = number_today * tlu_coefficient
+gen tlu_today = number_today_all * tlu_coefficient
 gen income_live_sales = a6aq14b // Value of each animal sold on average
 replace income_live_sales = a6bq14b*1 if income_live_sales==. & a6bq14b!=. //EFW 8.26.19 multiply by 2 because question asks in last 6 months
 replace income_live_sales = a6cq14b*1 if income_live_sales==. & a6cq14b!=. //EFW 8.26.19 multiplu by 4 because question asks in last 3 months
@@ -2027,15 +2025,16 @@ foreach i in region district county /*subcounty*/ parish ea {
 	replace price_per_animal = price_median_`i' if obs_`i' > 9 & price_per_animal==.
 }
 
-gen value_today = number_today * price_per_animal
+gen value_today = number_today_all * price_per_animal
 gen value_1yearago = number_1yearago * price_per_animal
-collapse (sum) number_today number_1yearago lost_theft lost_other lost_disease animals_lost lvstck_holding=number_today value* tlu*, by(HHID species)
-egen mean_12months=rowmean(number_today number_1yearago)
+collapse (sum) number_today_all number_today_exotic number_1yearago lost_theft lost_other lost_disease animals_lost lvstck_holding=number_today_all value* tlu*, by(HHID species)
+egen mean_12months=rowmean(number_today_all number_1yearago)
+gen 	animals_lost12months	= animals_lost	
 save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_herd_characteristics_long.dta", replace //AgQuery
 
 preserve
-keep HHID species number_today number_1yearago /*animals_lost*/ lost_disease lost_other lost_theft  lvstck_holding mean_12months
-global lvstck_vars number_today number_1yearago lost_other lost_theft lost_disease lvstck_holding mean_12months
+keep HHID species number_today_exotic number_today_all animals_lost12months number_1yearago /*animals_lost*/ lost_disease lost_other lost_theft  lvstck_holding mean_12months
+global lvstck_vars number_today_all number_today_exotic animals_lost12months number_1yearago lost_other lost_theft lost_disease lvstck_holding mean_12months
 foreach i in $lvstck_vars {
 	ren `i' `i'_
 }
@@ -2043,6 +2042,25 @@ reshape wide $lvstck_vars, i(HHID) j(species) string
 gen lvstck_holding_all = lvstck_holding_lrum + lvstck_holding_srum + lvstck_holding_poultry
 la var lvstck_holding_all "Total number of livestock holdings (# of animals) - large ruminants, small ruminants, poultry"
 save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_herd_characteristics.dta", replace 
+restore 
+preserve 
+gen any_imp_herd = number_today_exotic != 0 if number_today_all != . & number_today_all != 0
+
+
+foreach i in animals_lost12months mean_12months any_imp_herd lvstck_holding lost_disease {
+	gen `i'_lrum = `i' if species=="lrum"
+	gen `i'_srum = `i' if species=="srum"
+	gen `i'_pigs = `i' if species=="pigs"
+	gen `i'_equine = `i' if species=="equine"
+	gen `i'_poultry = `i' if species=="poultry"
+}
+collapse (sum)  mean_12months lvstck_holding animals_lost12months number_today_all number_today_exotic lost_disease (firstnm) *lrum *srum *pigs *equine *poultry any_imp_herd, by(HHID)
+la var lvstck_holding "Total number of livestock holdings (# of animals)"
+la var any_imp_herd "At least one improved animal in herd"
+*la var share_imp_herd_cows "Share of improved animals in total herd - Cows only"
+lab var animals_lost12months  "Total number of livestock  lost to disease or injury"
+lab var  mean_12months  "Average number of livestock  today and 1  year ago"
+lab var lost_disease "Total number of livestock lost to disease"
 restore
 
 collapse (sum) tlu_1yearago tlu_today value_1yearago value_today, by (HHID)
@@ -2241,7 +2259,7 @@ replace cultivated= (a2bq12a==1 | a2bq12a==2 | a2bq12b==1 | a2bq12b==2) if culti
 *??replace cultivated=. if cultivated==0 & (a2aq11a==. & a2aq11b==. & a2bq12a==. & a2bq12b==.)
 collapse (max) cultivated, by (HHID parcel_id)
 lab var cultivated "1= Parcel was cultivated in this data set"
-save "${Uganda_NPS_W4_created_data}/UGA_NPS_W4_parcels_cultivated.dta", replace
+save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_parcels_cultivated.dta", replace
 
 
 use "${Uganda_NPS_W4_raw_data}/AGSEC2A.dta", clear
@@ -2264,7 +2282,7 @@ collapse (sum) area_acres_meas, by (HHID)
 ren area_acres_meas farm_area
 replace farm_area = farm_area * (1/2.47105) /* Convert to hectares */
 lab var farm_area "Land size (denominator for land productivitiy), in hectares" 
-save "${Uganda_NPS_W4_created_data}/UGA_NPS_W4_land_size.dta", replace
+save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_land_size.dta", replace
 *Notes: Land Size in hectares of all parcels in each household.
 
 *All agricultural land
@@ -2274,7 +2292,7 @@ ren HHID hhid
 ren hh HHID
 ren parcelID parcel_id
 drop if parcel_id==.
-merge 1:1 HHID parcel_id using "${Uganda_NPS_W4_created_data}/UGA_NPS_W4_crops_grown.dta", nogen
+merge 1:1 HHID parcel_id using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_crops_grown.dta", nogen
 gen rented_out = (a2aq11a==3 | a2bq12a==3) 
 gen cultivated_short = (a2aq11b==1 | a2aq11b==2 | a2bq12b==1 | a2bq12b==2) //own cultivated annual and perennial crops
 bys HHID parcel_id: egen parcel_cult_short = max(cultivated_short)
@@ -2290,13 +2308,13 @@ ren area_acres_meas farm_area
 replace farm_area = farm_area * (1/2.47105) /* Convert to hectares */
 collapse (max) agland (sum) farm_area , by (HHID parcel_id)
 lab var agland "1= Parcel was used for crop cultivation or pasture or left fallow in this past year (forestland and other uses excluded)"
-save "${Uganda_NPS_W4_created_data}/UGA_NPS_W4_parcels_agland.dta", replace
+save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_parcels_agland.dta", replace
 
-use "${Uganda_NPS_W4_created_data}/UGA_NPS_W4_parcels_agland.dta", replace
+use "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_parcels_agland.dta", replace
 collapse (sum) farm_area, by (HHID)
 ren farm_area farm_size_agland
 lab var farm_size_agland "Land size in hectares, including all plots cultivated or left fallow" 
-save "${Uganda_NPS_W4_created_data}/UGA_NPS_W4_farmsize_all_agland.dta", replace
+save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_farmsize_all_agland.dta", replace
 
 use "${Uganda_NPS_W4_raw_data}/AGSEC2A.dta", clear
 append using "${Uganda_NPS_W4_raw_data}/AGSEC2B.dta"
@@ -2312,7 +2330,7 @@ drop if rented_out==1
 gen parcel_held = 1
 collapse (max) parcel_held, by (HHID parcel_id)
 lab var parcel_held "1= Parcel was NOT rented out in the main season"
-save "${Uganda_NPS_W4_created_data}/UGA_NPS_W4_parcels_held.dta", replace
+save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_parcels_held.dta", replace
 
 use "${Uganda_NPS_W4_raw_data}/AGSEC2A.dta", clear
 gen season=1
@@ -2332,7 +2350,7 @@ ren area_acres_meas land_size
 replace land_size = land_size * (1/2.47105) /* Convert to hectares */
 collapse (sum) land_size, by (HHID)
 lab var land_size "Land size in hectares, including all plots listed by the household except those rented out"
-save "${Uganda_NPS_W4_created_data}/UGA_NPS_W4_land_size_all.dta", replace
+save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_land_size_all.dta", replace
 
 *Total land holding including cultivated and rented out
 use "${Uganda_NPS_W4_raw_data}/AGSEC2A.dta", clear
@@ -2349,7 +2367,7 @@ collapse (sum) area_acres_meas, by (HHID)
 ren area_acres_meas land_size_total
 replace land_size_total = land_size_total * (1/2.47105) /* Convert to hectares */
 lab var land_size_total "Total land size in hectares, including rented in and rented out plots"
-save "${Uganda_NPS_W4_created_data}/UGA_NPS_W4_land_size_total.dta", replace
+save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_land_size_total.dta", replace
 
 **
 use "${Uganda_NPS_W4_raw_data}/AGSEC2A.dta", clear
@@ -3986,7 +4004,7 @@ global empty_vars $empty_vars animals_lost12months mean_12months *ls_exp_vac_lru
 
 *Self-employment income
 merge 1:1 HHID using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_self_employment_income.dta", nogen keep(1 3)
-*merge 1:1 HHID using  "${UGS_W3_created_data}/Uganda_NPS_LSMS_ISA_W3_agproducts_profits.dta", nogen keep(1 3)
+*merge 1:1 HHID using  "${UGS_W3_created_data}/Uganda_NPS_W3_agproducts_profits.dta", nogen keep(1 3)
 *: This dataset it is not calculated in Uganda waves. Want to make sure the reason why (not available or it is already part of the self_employment_income dta)
 egen self_employment_income = rowtotal(/*profit_processed_crop_sold*/ annual_selfemp_profit)
 recode self_employment_income (.=0)
@@ -4046,7 +4064,7 @@ merge 1:1 HHID using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_input_use.dta"
 *SAW: This Input Use dataset comes from the Plot Manager section that is constructed in the Nigeria Wave 3 do file which includes fert use and improved seed use along pesticides and fertilizers into one single dataset. We might want to construct this section in Uganda for fewer lines of code in the future. (It comes adter the Fertilizer Use and Improved Seed sections in Uganda)
 merge 1:1 HHID using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_imprvseed_crop.dta", nogen keep(1 3)
 merge 1:1 HHID using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_any_ext.dta", nogen keep(1 3)
-*merge 1:1 HHID using  "${UGS_W3_created_data}/Uganda_NPS_LSMS_ISA_W3_fin_serv.dta", nogen keep(1 3) // SAW Not Available for Uganda Wave 3 dta missing
+*merge 1:1 HHID using  "${UGS_W3_created_data}/Uganda_NPS_W3_fin_serv.dta", nogen keep(1 3) // SAW Not Available for Uganda Wave 3 dta missing
 ren use_imprv_seed imprv_seed_use //ALT 02.03.22: Should probably fix code to align this with other inputs.
 ren use_hybrid_seed hybrid_seed_use
 recode /*use_fin_serv**/ ext_reach* use_inorg_fert imprv_seed_use vac_animal (.=0)
@@ -4742,19 +4760,19 @@ gen bottom_40_peraeq = 0
 replace bottom_40_peraeq = 1 if r(r1) > w_daily_peraeq_cons & rural==1
 
 ****Currency Conversion Factors***
-gen ccf_loc = (1/$UGA_W4_inflation) 
+gen ccf_loc = (1/$Uganda_NPS_W4_inflation) 
 lab var ccf_loc "currency conversion factor - 2017 $UGX"
-gen ccf_usd = ccf_loc/$UGA_W4_exchange_rate
+gen ccf_usd = ccf_loc/$Uganda_NPS_W4_exchange_rate
 lab var ccf_usd "currency conversion factor - 2017 $USD"
-gen ccf_1ppp = ccf_loc/$UGA_W4_cons_ppp_dollar
+gen ccf_1ppp = ccf_loc/$Uganda_NPS_W4_cons_ppp_dollar
 lab var ccf_1ppp "currency conversion factor - 2017 $Private Consumption PPP"
-gen ccf_2ppp = ccf_loc/$UGA_W4_gdp_ppp_dollar
+gen ccf_2ppp = ccf_loc/$Uganda_NPS_W4_gdp_ppp_dollar
 lab var ccf_2ppp "currency conversion factor - 2017 $GDP PPP"
 
 *Poverty indicators 
-gen poverty_under_1_9 = (daily_percap_cons < $UGA_W4_poverty_threshold)
+gen poverty_under_1_9 = (daily_percap_cons < $Uganda_NPS_W4_poverty_threshold)
 la var poverty_under_1_9 "Household per-capita conumption is below $1.90 in 2011 $ PPP"
-gen poverty_under_2_15 = (daily_percap_cons < $UGA_W4_poverty_215)
+gen poverty_under_2_15 = (daily_percap_cons < $Uganda_NPS_W4_poverty_215)
 la var poverty_under_2_15 "Household per-capita consumption is below $2.15 in 2017 $ PPP"
 
 * Need to figure out National poverty lines for Uganda wave 4
@@ -4784,11 +4802,11 @@ keep HHID fhh poverty* clusterid strataid *weight* *wgt* region region sregion d
 */ *income* *share* *proportion_cropvalue_sold *farm_size_agland hh_members adulteq *labor_family *labor_hired use_inorg_fert vac_* /*
 */ feed* water* lvstck_housed* ext_* /*use_fin_**/ lvstck_holding* *mortality_rate* *lost_disease* disease* any_imp* formal_land_rights_hh /*
 */ *livestock_expenses* *ls_exp_vac* *prop_farm_prod_sold /*DYA.10.26.2020*/ *hrs_*   months_food_insec *value_assets* hhs_* *dist_agrodealer /*
-*/ encs* nb_crops_* multiple_crops* imprv_seed_* hybrid_seed_* *labor_total *farm_area *labor_productivity* *land_productivity* /*
+*/ encs* num_crops_* multiple_crops* imprv_seed_* hybrid_seed_* *labor_total *farm_area *labor_productivity* *land_productivity* /*
 */ *wage_paid_aglabor* *labor_hired /*ar_h_wgt_* *yield_hv_**/ ar_pl_wgt_* *yield_pl_* *liters_per_* milk_animals poultry_owned *costs_dairy* *cost_per_lit* /*
 */ *egg_poultry_year* *inorg_fert_rate* *ha_planted* *cost_expli_hh* *cost_expli_ha* *monocrop_ha* *kgs_harv_mono* *cost_total_ha* /*
 */ *_exp* poverty_under_* *value_crop_production* *value_harv* *value_crop_sales* *value_sold* *kgs_harvest* *total_planted_area* /**total_harv_area**/ /*
-*/ *all_area_* grew_* agactivities_hh ag_hh crop_hh livestock_hh /*fishing_hh*/ *_milk_produced* *eggs_total_year *value_eggs_produced* /*
+*/ *all_area_* grew_* agactivities_hh ag_hh crop_hh livestock_hh fishing_hh *_milk_produced* *eggs_total_year *value_eggs_produced* /*
 */ *value_livestock_products* *value_livestock_sales* *total_cons* nb* num_crops* /*nb_cattle_today nb_poultry_today*/ bottom_40_percap bottom_40_peraeq /*
 */ ccf_loc ccf_usd ccf_1ppp ccf_2ppp *sales_livestock_products area_plan* /*area_harv**/  *value_pro* *value_sal* *inter*
 *SAW 3/14/23 Need to check for the ones available in Uganda but not in Nigeria.
@@ -4812,7 +4830,7 @@ gen survey = "LSMS-ISA"
 gen year = "2013-14" 
 gen instrument = 54 
 //Only runs if label isn't already defined.
-capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2" 13 "Tanzania NPS Wave 3" 14 "Tanzania NPS Wave 4" 15 "Tanzania NPS Wave 5" /*
+capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2" 13 "Tanzania NPS Wave 3" 14 "Tanzania NPS Wave 4" 15 "Tanzania NPS SDD" 16 "Tanzania NPS Wave 5" /*
 	*/ 21 "Ethiopia ESS Wave 1" 22 "Ethiopia ESS Wave 2" 23 "Ethiopia ESS Wave 3" 24 "Ethiopia ESS Wave 4" 25 "Ethiopia ESS Wave 5" /*
 	*/ 31 "Nigeria GHS Wave 1" 32 "Nigeria GHS Wave 2" 33 "Nigeria GHS Wave 3" 34 "Nigeria GHS Wave 4"/*
 	*/ 41 "Malawi IHS/IHPS Wave 1" 42 "Malawi IHS/IHPS Wave 2" 43 "Malawi IHS/IHPS Wave 3" 44 "Malawi IHS/IHPS Wave 4" /*
@@ -4921,16 +4939,15 @@ ren PID indid
 gen geography = "Uganda"
 gen survey = "LSMS-ISA"
 gen year = "2013-14"
-gen instrument = 26
-capture label define instrument 1 "Tanzania NPS Wave 1" 2 "Tanzania NPS Wave 2" 3 "Tanzania NPS Wave 3" 4 "Tanzania NPS Wave 4" /*
-	*/ 5 "Ethiopia ESS Wave 1" 6 "Ethiopia ESS Wave 2" 7 "Ethiopia ESS Wave 3" /*
-	*/ 8 "Nigeria GHS Wave 1" 9 "Nigeria GHS Wave 2" 10 "Nigeria GHS Wave 3" /*
-	*/ 11 "Tanzania TBS AgDev (Lake Zone)" 12 "Tanzania TBS AgDev (Northern Zone)" 13 "Tanzania TBS AgDev (Southern Zone)" /*
-	*/ 14 "Ethiopia ACC Baseline" /*
-	*/ 15 "India RMS Baseline (Bihar)" 16 "India RMS Baseline (Odisha)" 17 "India RMS Baseline (Uttar Pradesh)" 18 "India RMS Baseline (West Bengal)" /*
-	*/ 19 "Nigeria NIBAS AgDev (Nassarawa)" 20 "Nigeria NIBAS AgDev (Benue)" 21 "Nigeria NIBAS AgDev (Kaduna)" /*
-	*/ 22 "Nigeria NIBAS AgDev (Niger)" 23 "Nigeria NIBAS AgDev (Kano)" 24 "Nigeria NIBAS AgDev (Katsina)"  /*
-	*/ 25 "Uganda Wave 3" 26 "Uganda NPS Wave 4" 
+gen instrument = 54
+capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2" 13 "Tanzania NPS Wave 3" 14 "Tanzania NPS Wave 4" 15 "Tanzania NPS SDD" 16 "Tanzania NPS Wave 5" /*
+	*/ 21 "Ethiopia ESS Wave 1" 22 "Ethiopia ESS Wave 2" 23 "Ethiopia ESS Wave 3" 24 "Ethiopia ESS Wave 4" 25 "Ethiopia ESS Wave 5" /*
+	*/ 31 "Nigeria GHS Wave 1" 32 "Nigeria GHS Wave 2" 33 "Nigeria GHS Wave 3" 34 "Nigeria GHS Wave 4"/*
+	*/ 41 "Malawi IHS/IHPS Wave 1" 42 "Malawi IHS/IHPS Wave 2" 43 "Malawi IHS/IHPS Wave 3" 44 "Malawi IHS/IHPS Wave 4" /*
+    */ 51 "Uganda NPS Wave 1" 52 "Uganda NPS Wave 2" 53 "Uganda NPS Wave 3" 54 "Uganda NPS Wave 4" 55 "Uganda NPS Wave 5" /*W6 does not exist*/ 56 "Uganda NPS Wave 7" 57 "Uganda NPS Wave 8" /* 
+*/ 61 "Burkina Faso EMC Wave 1" /* 
+*/ 71 "Mali EACI Wave 1" 72 "Mali EACI Wave 2" /*
+*/ 81 "Niger ECVMA Wave 1" 82 "Niger ECVMA Wave 2"
 
 label values instrument instrument	
 gen strataid=region
@@ -4996,13 +5013,13 @@ foreach v of varlist  plot_productivity  plot_labor_prod {
 
 
 ****Currency Conversion Factors***
-gen ccf_loc = (1/$UGA_W4_inflation) 
+gen ccf_loc = (1/$Uganda_NPS_W4_inflation) 
 lab var ccf_loc "currency conversion factor - 2017 $UGX"
-gen ccf_usd = ccf_loc/$UGA_W4_exchange_rate
+gen ccf_usd = ccf_loc/$Uganda_NPS_W4_exchange_rate
 lab var ccf_usd "currency conversion factor - 2017 $USD"
-gen ccf_1ppp = ccf_loc/$UGA_W4_cons_ppp_dollar
+gen ccf_1ppp = ccf_loc/$Uganda_NPS_W4_cons_ppp_dollar
 lab var ccf_1ppp "currency conversion factor - 2017 $Private Consumption PPP"
-gen ccf_2ppp = ccf_loc/$UGA_W4_gdp_ppp_dollar
+gen ccf_2ppp = ccf_loc/$Uganda_NPS_W4_gdp_ppp_dollar
 lab var ccf_2ppp "currency conversion factor - 2017 $GDP PPP"
 
 global monetary_val plot_value_harvest plot_productivity  plot_labor_prod 
@@ -5133,7 +5150,7 @@ label var `v' "`l`v''"
  
 xpose, varname clear
 order _varname v1
-rename v1 UGA_wave3
+rename v1 UGA_wave4
 save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_gendergap.dta", replace
 
 restore
@@ -5162,7 +5179,7 @@ gen survey = "LSMS-ISA"
 gen year = "2013-14" 
 gen instrument = 54 
 //Only runs if label isn't already defined.
-capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2" 13 "Tanzania NPS Wave 3" 14 "Tanzania NPS Wave 4" 15 "Tanzania NPS Wave 5" /*
+capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2" 13 "Tanzania NPS Wave 3" 14 "Tanzania NPS Wave 4" 15 "Tanzania NPS SDD" 16 "Tanzania NPS Wave 5" /*
 	*/ 21 "Ethiopia ESS Wave 1" 22 "Ethiopia ESS Wave 2" 23 "Ethiopia ESS Wave 3" 24 "Ethiopia ESS Wave 4" 25 "Ethiopia ESS Wave 5" /*
 	*/ 31 "Nigeria GHS Wave 1" 32 "Nigeria GHS Wave 2" 33 "Nigeria GHS Wave 3" 34 "Nigeria GHS Wave 4"/*
 	*/ 41 "Malawi IHS/IHPS Wave 1" 42 "Malawi IHS/IHPS Wave 2" 43 "Malawi IHS/IHPS Wave 3" 44 "Malawi IHS/IHPS Wave 4" /*
@@ -5183,7 +5200,6 @@ The code for outputting the summary statistics is in a separare dofile that is c
 */ 
 *Parameters
 global list_instruments  "Uganda_NPS_W4"
-do "$directory/_Summary_statistics/EPAR_UW_335_SUMMARY_STATISTICS.do"
-
+do "$summary_stats"
 
 ************************************ STOP ************************************

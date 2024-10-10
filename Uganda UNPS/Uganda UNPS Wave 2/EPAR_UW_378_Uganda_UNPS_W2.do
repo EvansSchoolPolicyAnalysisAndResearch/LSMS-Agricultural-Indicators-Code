@@ -150,13 +150,11 @@ set maxvar 8000
 // set directories
 * These paths correspond to the folders where the raw data files are located 
 * and where the created data and final data will be stored.
-
 global directory "../.."
 global Uganda_NPS_W2_raw_data 	"$directory/Uganda UNPS/Uganda UNPS Wave 2/Raw DTA Files"
 global Uganda_NPS_W2_created_data "$directory/Uganda UNPS/Uganda UNPS Wave 2/Final DTA Files/created_data"
 global Uganda_NPS_W2_final_data  "$directory/Uganda UNPS/Uganda UNPS Wave 2/Final DTA Files/final_data"
 global summary_stats "$directory/_Summary_statistics/EPAR_UW_335_SUMMARY_STATISTICS.do"
-
 
 *Re-scaling survey weights to match population estimates
 *https://databank.worldbank.org/source/world-development-indicators#
@@ -5094,7 +5092,7 @@ save "${Uganda_NPS_W2_created_data}/Uganda_NPS_W2_shannon_diversity_index.dta", 
 ********************************************************************************
                           * CONSUMPTION *
 ********************************************************************************
-use "${Uganda_NPS_W2_raw_data}/Archive/UNPS 2010-11 Consumption Aggregate.dta", clear
+use "${Uganda_NPS_W2_raw_data}/UNPS 2011-12 Consumption Aggregate.dta", clear
 ren cpexp30 total_cons
 ren equiv adulteq
 ren welfare peraeq_cons
@@ -5113,7 +5111,7 @@ keep hhid total_cons peraeq_cons percapita_cons daily_peraeq_cons daily_percap_c
 save "${Uganda_NPS_W2_created_data}/Uganda_NPS_W2_consumption.dta", replace
 
 **We create an adulteq dataset for summary statistics sections
-use "${Uganda_NPS_W2_raw_data}/Archive/UNPS 2010-11 Consumption Aggregate.dta", clear
+use "${Uganda_NPS_W2_raw_data}/UNPS 2011-12 Consumption Aggregate.dta", clear
 rename equiv adulteq
 rename HHID hhid
 keep hhid adulteq
@@ -5133,7 +5131,8 @@ rename h15bq11 fd_gift
 egen food_total = rowtotal(fd*) 
 collapse (sum) fd* food_total, by(HHID)
 duplicates report HHID
-merge 1:1 HHID using "${Uganda_NPS_W2_raw_data}/Archive/UNPS 2010-11 Consumption Aggregate.dta", nogen keep(1 3)
+tostring HHID, format(%18.0f) replace
+merge 1:1 HHID using "${Uganda_NPS_W2_raw_data}/UNPS 2011-12 Consumption Aggregate.dta", nogen keep(1 3)
 ren HHID hhid
 tostring hhid, format(%18.0f) replace
 merge 1:1 hhid using "${Uganda_NPS_W2_created_data}/Uganda_NPS_W2_hhsize.dta", nogen keep(1 3)
@@ -6089,6 +6088,7 @@ gen poverty_under_2_15 = (daily_percap_cons < $Uganda_NPS_W2_poverty_215)
 la var poverty_under_2_15 "Household per-capita consumption is below $2.15 in 2017 $ PPP"
 rename hhid HHID
 *We merge the national poverty line provided by the World bank 
+tostring HHID, format(%18.0f) replace
 merge 1:1 HHID using "${Uganda_NPS_W2_raw_data}/UNPS 2011-12 Consumption Aggregate.dta", keep(1 3) nogen 
 *gen poverty_under_npl = daily_percap_cons < $Nigeria_GHS_W1_poverty_nbs
 rename poor poverty_under_npl

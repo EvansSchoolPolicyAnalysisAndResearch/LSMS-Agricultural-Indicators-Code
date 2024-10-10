@@ -164,32 +164,39 @@ ssc install findname  // need this user-written ado file for some commands to wo
 * These paths correspond to the folders where the raw data files are located 
 * and where the created data and final data will be stored.
 
-global directory "~/LSMS-Agricultural-Indicator-Code"
+global directory "../.."
 global Uganda_NPS_W5_raw_data 	"$directory/Uganda UNPS/Uganda UNPS Wave 5/Raw DTA Files"
 global Uganda_NPS_W5_created_data "$directory/Uganda UNPS/Uganda UNPS Wave 5/Final DTA Files/created_data"
-global Uganda_NPS_W5_final_data  "$directory/Uganda UNPS/Uganda UNPS Wave 5/Final DTA Files/final_data"
+global Uganda_NPS_W5_final_data  "$directory/Uganda UNPS/Uganda UNPS Wave 5/Final DTA Files/final_data"    
+global summary_stats "$directory/_Summary_statistics/EPAR_UW_335_SUMMARY_STATISTICS.do" //Path to the summary statistics file. This can take a long time to run, so comment out if you don't need it. The do file will end with an error.
 
 *Re-scaling survey weights to match population estimates
 *https://databank.worldbank.org/source/world-development-indicators#
-global UGA_W5_pop_tot 37477456
-global UGA_W5_pop_rur 29209851
-global UGA_W5_pop_urb 8267505
+global Uganda_NPS_W5_pop_tot 37477456
+global Uganda_NPS_W5_pop_rur 29209851
+global Uganda_NPS_W5_pop_urb 8267505
 
 ********************************************************************************
 *EXCHANGE RATE AND INFLATION FOR CONVERSION IN SUD IDS
 ********************************************************************************
-global UGA_W5_exchange_rate 3346.0703		// Rate of Dec 1, 2015 from https://www.exchangerates.org.uk/USD-UGX-spot-exchange-rates-history-2015.html
-global UGA_W5_gdp_ppp_dollar 1125.471   		// Rate for 2015 from https://data.worldbank.org/indicator/PA.NUS.PPP?locations=UG
-global UGA_W5_cons_ppp_dollar 1127.687		// Rate for 2015 from https://data.worldbank.org/indicator/PA.NUS.PRVT.PP?locations=UG
-global UGA_W5_inflation 0.9468  		// inflation rate 2015-16 (years). Data was collected during the time period Oct 2015-Jan 2016. We want to adjust the monetary values to 2016 (year).
-*CPK - these need to be updated
-global UGA_W5_poverty_190 (1.90*944.255*(1+(142.024166-116.6)/116.6)) 
-global UGA_W5_poverty_190 (1.90*944.255*142.024166/116.6)
-global UGA_W5_poverty_npl 361*183.9/267.5 
+global Uganda_NPS_W5_exchange_rate 3346.0703		// Rate of Dec 1, 2015 from https://www.exchangerates.org.uk/USD-UGX-spot-exchange-rates-history-2015.html
+global Uganda_NPS_W5_gdp_ppp_dollar 1125.471   		// Rate for 2015 from https://data.worldbank.org/indicator/PA.NUS.PPP?locations=UG
+global Uganda_NPS_W5_cons_ppp_dollar 1127.687		// Rate for 2015 from https://data.worldbank.org/indicator/PA.NUS.PRVT.PP?locations=UG
+global Uganda_NPS_W5_inflation 1.05558616387 //CPI_SURVEY_YEAR/CPI_2017 -> CPI_2019/CPI_2017 -> 176.049367/166.7787747 from https://data.worldbank.org/indicator/FP.CPI.TOTL. The data were collected over the period February 2018 - February 2019.
+
+global Uganda_NPS_W5_poverty_190 ((1.90*944.255)*(142.024166/116.6))
+global Uganda_NPS_W5_poverty_215 (2.15*($Uganda_NPS_W5_inflation)*$Uganda_NPS_W5_cons_ppp_dollar)
+global Uganda_NPS_W5_poverty_npl (361*183.9/267.5) 
 
 *Notes:  Calculation for WB' previous $1.90 (PPP) poverty threshold, 2185.2775 Uganda Shilling UGX. This is calculated as the following: PovertyLine x PPP conversion factor (private consumption)t=2011 (reference year of PL, therefore 2011. This is fixed across waves so no need to change it) x Inflation(from t=2011 to t+1=last year survey was implemented). Inflation is calculated as the following: CPI Uganda inflation from 2011 (baseline year) to 2014 (last survey year) Inflation = Inflation (t=last survey year =2014)/Inflation (t= baseline year of PL =2011) https://data.worldbank.org/indicator/PA.NUS.PRVT.PP?locations=UG&name_desc=false and https://data.worldbank.org/indicator/FP.CPI.TOTL?locations=UG
 
-global UGA_W5_poverty_215 2.15*($UGA_W5_inflation) * $UGA_W5_cons_ppp_dollar
+global Uganda_NPS_W5_poverty_215 (2.15*($Uganda_NPS_W5_inflation) * $Uganda_NPS_W5_cons_ppp_dollar)
+*Re-scaling survey weights to match population estimates
+*https://databank.worldbank.org/source/world-development-indicators#
+global Uganda_NPS_W5_pop_tot 37477356
+global Uganda_NPS_W5_pop_rur 29209851
+global Uganda_NPS_W5_pop_urb 8267505
+
 
 ********************************************************************************
 *THRESHOLDS FOR WINSORIZATION
@@ -291,17 +298,17 @@ merge 1:1 hhid using "${Uganda_NPS_W5_created_data}/Uganda_NPS_W5_hhids.dta", no
 *Adjust to match total population
 total hh_members [pweight=weight]
 matrix temp =e(b)
-gen weight_pop_tot=weight*${UGA_W5_pop_tot}/el(temp,1,1)
+gen weight_pop_tot=weight*${Uganda_NPS_W5_pop_tot}/el(temp,1,1)
 total hh_members [pweight=weight_pop_tot]
 lab var weight_pop_tot "Survey weight - adjusted to match total population"
 *Adjust to match total population but also rural and urban
 total hh_members [pweight=weight] if rural==1
 matrix temp =e(b)
-gen weight_pop_rur=weight*${UGA_W5_pop_rur}/el(temp,1,1) if rural==1
+gen weight_pop_rur=weight*${Uganda_NPS_W5_pop_rur}/el(temp,1,1) if rural==1
 total hh_members [pweight=weight_pop_tot]  if rural==1
 total hh_members [pweight=weight] if rural==0
 matrix temp =e(b)
-gen weight_pop_urb=weight*${UGA_W5_pop_urb}/el(temp,1,1) if rural==0
+gen weight_pop_urb=weight*${Uganda_NPS_W5_pop_urb}/el(temp,1,1) if rural==0
 total hh_members [pweight=weight_pop_urb]  if rural==0
 egen weight_pop_rururb=rowtotal(weight_pop_rur weight_pop_urb)
 total hh_members [pweight=weight_pop_rururb]  
@@ -1220,7 +1227,7 @@ replace unit = 0 if inlist(unit_code, 20, 21, 22, 66, 85, 99) //the units above 
 
 ren crop_code itemcode
 ren HHID hhid
-collapse (sum) val qty, by(hhid parcel_id plot_id season input itemcode unit) //Andrew's note from Nigeria code: Eventually, quantity won't matter for things we don't have units for.
+collapse (sum) val qty, by(hhid parcel_id plot_id season input itemcode unit) 
 gen exp = "exp"
 
 //Combining and getting prices.
@@ -1232,7 +1239,7 @@ merge m:1 hhid parcel_id plot_id season using "${Uganda_NPS_W5_created_data}/Uga
 merge m:1 hhid parcel_id plot_id season using "${Uganda_NPS_W5_created_data}/Uganda_NPS_W5_plot_decision_makers.dta",nogen keep(1 3) keepusing(dm_gender)
 merge m:1 hhid using "${Uganda_NPS_W5_created_data}/Uganda_NPS_W5_hhids.dta", nogen keep(1 3) //merge in regional data (districts, etc.)
 tempfile all_plot_inputs
-save `all_plot_inputs' //Woo, now we can estimate values.
+save `all_plot_inputs' 
 
 //Calculating geographic medians
 keep if strmatch(exp,"exp") & qty != . //Keep only explicit prices with actual values for quantity
@@ -1336,8 +1343,12 @@ egen val_exp_hh = rowtotal(*_exp_hh)
 egen val_imp_hh = rowtotal(*_imp_hh)
 drop val_mech_imp* 
 save "${Uganda_NPS_W5_created_data}/Uganda_NPS_W5_hh_cost_inputs_verbose.dta", replace
-
-
+/*
+use "${Uganda_NPS_W5_created_data}/Uganda_NPS_W5_all_plots.dta", replace 
+collapse (sum) ha_planted, by(hhid parcel_id plot_id season)
+tempfile planted_area
+save `planted_area' 
+*/
 //We can do this more simply by:
 use "${Uganda_NPS_W5_created_data}/Uganda_NPS_W5_plot_cost_inputs_long.dta", clear
 //back to wide
@@ -1364,6 +1375,8 @@ egen cost_expli_hh = rowtotal(val_exp*)
 egen cost_total_hh = rowtotal(val*)
 drop val*
 save "${Uganda_NPS_W5_created_data}/Uganda_NPS_W5_hh_cost_inputs.dta", replace
+**# Bookmark #1
+
 ********************************************************************************
 *MONOCROPPED PLOTS
 ********************************************************************************
@@ -1635,7 +1648,7 @@ reshape long cost_, i(hhid) j(input) string
 rename cost_ val_total
 save "${Uganda_NPS_W5_created_data}/Uganda_NPS_W5_livestock_expenses_long.dta", replace // SAW In case is needed for AgQuery
 
-*****************************    LIVESTOCK PRODUCTS        *******************************
+*****************************    LIVESTOCK PRODUCTS      *******************************
 *Livestock products
 **MILK**
 use "${Uganda_NPS_W5_raw_data}/AGSEC8B.dta", clear
@@ -1873,12 +1886,12 @@ lab var tlu_coefficient "Tropical Livestock Unit coefficient"
 gen number_1yearago = a6aq6
 replace number_1yearago = a6bq6 if number_1yearago==.
 replace number_1yearago = a6cq6 if number_1yearago==. 
-gen number_today= a6aq3a
-replace number_today = a6bq3a if number_today==. 
-replace number_today = a6bq3a if number_today==. //No estimated price value by farmers questions or owned  at the start of the ag season like Nigeria_GHS_W3_raw_data
-gen number_today_exotic = number_today if inlist(livestock_code,1,2,3,4,5,13,14,15,16,17)
+gen number_today_all= a6aq3a
+replace number_today_all = a6bq3a if number_today_all==. 
+replace number_today_all = a6bq3a if number_today_all==. //No estimated price value by farmers questions or owned  at the start of the ag season like Nigeria_GHS_W3_raw_data
+gen number_today_exotic = number_today_all if inlist(livestock_code,1,2,3,4,5,13,14,15,16,17)
 gen tlu_1yearago = number_1yearago * tlu_coefficient
-gen tlu_today = number_today * tlu_coefficient
+gen tlu_today = number_today_all * tlu_coefficient
 gen income_live_sales = a6aq14b // Value of each animal sold on average
 replace income_live_sales = a6bq14b*1 if income_live_sales==. & a6bq14b!=. //EFW 8.26.19 multiply by 2 because question asks in last 6 months
 replace income_live_sales = a6cq14b*1 if income_live_sales==. & a6cq14b!=. //EFW 8.26.19 multiplu by 4 because question asks in last 3 months
@@ -1914,15 +1927,16 @@ foreach i in region district county /*subcounty*/ parish ea {
 	replace price_per_animal = price_median_`i' if obs_`i' > 9 & price_per_animal==.
 }
 
-gen value_today = number_today * price_per_animal
+gen value_today = number_today_all * price_per_animal
 gen value_1yearago = number_1yearago * price_per_animal
-collapse (sum) number_today number_1yearago lost_theft lost_other lost_disease animals_lost lvstck_holding=number_today value* tlu*, by(hhid species)
-egen mean_12months=rowmean(number_today number_1yearago)
+collapse (sum) number_today_all number_today_exotic number_1yearago lost_theft lost_other lost_disease animals_lost lvstck_holding=number_today_all value* tlu*, by(hhid species)
+egen mean_12months=rowmean(number_today_all number_1yearago)
+gen 	animals_lost12months	= animals_lost	
 save "${Uganda_NPS_W5_created_data}/Uganda_NPS_W5_herd_characteristics_long.dta", replace //AgQuery
 
 preserve
-keep hhid species number_today number_1yearago /*animals_lost*/ lost_disease lost_other lost_theft  lvstck_holding mean_12months
-global lvstck_vars number_today number_1yearago lost_other lost_theft lost_disease lvstck_holding mean_12months
+keep hhid species number_today_all number_today_exotic animals_lost12months number_1yearago /*animals_lost*/ lost_disease lost_other lost_theft  lvstck_holding mean_12months
+global lvstck_vars number_today_all number_today_exotic animals_lost12months number_1yearago lost_other lost_theft lost_disease lvstck_holding mean_12months
 foreach i in $lvstck_vars {
 	ren `i' `i'_
 }
@@ -1930,6 +1944,26 @@ reshape wide $lvstck_vars, i(hhid) j(species) string
 gen lvstck_holding_all = lvstck_holding_lrum + lvstck_holding_srum + lvstck_holding_poultry
 la var lvstck_holding_all "Total number of livestock holdings (# of animals) - large ruminants, small ruminants, poultry"
 save "${Uganda_NPS_W5_created_data}/Uganda_NPS_W5_herd_characteristics.dta", replace 
+restore 
+preserve 
+gen any_imp_herd = number_today_exotic != 0 if number_today_all != . & number_today_all != 0
+
+
+foreach i in animals_lost12months mean_12months any_imp_herd lvstck_holding lost_disease {
+	gen `i'_lrum = `i' if species=="lrum"
+	gen `i'_srum = `i' if species=="srum"
+	gen `i'_pigs = `i' if species=="pigs"
+	gen `i'_equine = `i' if species=="equine"
+	gen `i'_poultry = `i' if species=="poultry"
+}
+collapse (sum)  mean_12months lvstck_holding animals_lost12months number_today_all number_today_exotic lost_disease (firstnm) *lrum *srum *pigs *equine *poultry any_imp_herd, by(hhid)
+la var lvstck_holding "Total number of livestock holdings (# of animals)"
+la var any_imp_herd "At least one improved animal in herd"
+*la var share_imp_herd_cows "Share of improved animals in total herd - Cows only"
+lab var animals_lost12months  "Total number of livestock  lost to disease or injury"
+lab var  mean_12months  "Average number of livestock  today and 1  year ago"
+lab var lost_disease "Total number of livestock lost to disease"
+
 restore
 
 collapse (sum) tlu_1yearago tlu_today value_1yearago value_today, by (hhid)
@@ -2521,8 +2555,7 @@ foreach v in $topcropname_area {
 	*lab var hybrid_seed_`v' "1= Household uses improved `v' seed"
 }
 *SAW No information found on hybrid seeds.
-*replace imprv_seed_cassav = . // not sure why?
-*replace imprv_seed_banana = . // This might be due to the need to regroup distinct banana crops into one umbrella term. Righ (need to update this to wave 3)
+replace imprv_seed_banana = . 
 save "${Uganda_NPS_W5_created_data}/Uganda_NPS_W5_improvedseed_use.dta", replace
 
 *Seed adoption by farmers ( a farmer is an individual listed as plot manager)
@@ -2570,6 +2603,7 @@ foreach v in $topcropname_area {
 	*lab var all_hybrid_seed_`v' "1 = Individual farmer (plot manager) uses hybrid seeds - `v'"
 	lab var `v'_farmer "1 = Individual farmer (plot manager) grows `v'"
 }
+**# Bookmark #1
 
 gen farm_manager=1 if indiv!=.
 recode farm_manager (.=0)
@@ -3565,9 +3599,11 @@ ren welfare peraeq_cons
 merge 1:1 hhid using "${Uganda_NPS_W5_created_data}/Uganda_NPS_W5_hhsize.dta", nogen keep(1 3)
 gen percapita_cons = (total_cons / hh_members)
 */
-gen hhid = subinstr(hh, "-", "", .)
+
+*gen hhid = subinstr(hh, "-", "", .)
+gen hhid = subinstr(hh, "-05-", "", .)
 merge 1:1 hh using "${Uganda_NPS_W5_raw_data}/gsec1.dta", nogen keepusing(HHID)
-ren HHID hhid
+*ren HHID hhid
 ren cpexp30  total_cons // using real consumption-adjusted for region price disparities
 ren equiv adulteq
 gen peraeq_cons = (total_cons / adulteq)
@@ -3581,13 +3617,15 @@ lab var percapita_cons "Consumption per capita, in 05/06 prices, spatially and t
 lab var daily_peraeq_cons "Daily consumption per adult equivalent, in 05/06 prices, spatially and temporally adjusted in 13/14"
 lab var daily_percap_cons "Daily consumption per capita, in 05/06 prices, spatially and temporally adjusted in 13/14" 
 keep hhid total_cons peraeq_cons percapita_cons daily_peraeq_cons daily_percap_cons adulteq poor_2015_2016
+order hhid total_cons peraeq_cons percapita_cons daily_peraeq_cons daily_percap_cons adulteq poor_2015_2016
 save "${Uganda_NPS_W5_created_data}/Uganda_NPS_W5_consumption.dta", replace
-*SAW: There no Connsumption document to reference whether consumption measure were spatially and temporally deflated. 
+*There no Connsumption document to reference whether consumption measure were spatially and temporally deflated. 
 
 **We create an adulteq dataset for summary statistics sections
 use "${Uganda_NPS_W5_raw_data}/pov2015_16", clear 
-gen hhid = subinstr(hh, "-", "", .)
-replace hhid = substr(hhid, 1, length(hhid)-2)
+*gen hhid = subinstr(hh, "-", "", .)
+gen hhid = subinstr(hh, "-05-", "", .)
+*replace hhid = substr(hhid, 1, length(hhid)-2)
 duplicates drop hhid, force // 1 observation deletedrename equiv adulteq
 rename equiv adulteq
 keep hhid adulteq
@@ -3873,7 +3911,8 @@ merge 1:1 hhid using "${Uganda_NPS_W5_created_data}/Uganda_NPS_W5_hh_area_plante
 merge 1:1 hhid using "${Uganda_NPS_W5_created_data}/Uganda_NPS_W5_household_diet.dta", nogen keep(1 3)
 
 *consumption 
-merge 1:1 hhid using "${Uganda_NPS_W5_created_data}/Uganda_NPS_W5_consumption.dta", nogen keep(1 3)
+*merge 1:1 hhid using "${Uganda_NPS_W5_created_data}/Uganda_NPS_W5_consumption.dta", nogen keep(1 3)
+merge 1:m hhid using "${Uganda_NPS_W5_created_data}/Uganda_NPS_W5_consumption.dta", nogen keep(1 3)
 
 *Household assets
 merge 1:1 hhid using "${Uganda_NPS_W5_created_data}/Uganda_NPS_W5_hh_assets.dta", nogen keep(1 3)
@@ -4519,33 +4558,33 @@ gen bottom_40_peraeq = 0
 replace bottom_40_peraeq = 1 if r(r1) > w_daily_peraeq_cons & rural==1
 
 ****Currency Conversion Factors***
-gen ccf_loc = (1/$UGA_W5_inflation) 
+gen ccf_loc = (1/$Uganda_NPS_W5_inflation) 
 lab var ccf_loc "currency conversion factor - 2017 $UGX"
-gen ccf_usd = ccf_loc/$UGA_W5_exchange_rate
+gen ccf_usd = ccf_loc/$Uganda_NPS_W5_exchange_rate
 lab var ccf_usd "currency conversion factor - 2017 $USD"
-gen ccf_1ppp = ccf_loc/$UGA_W5_cons_ppp_dollar
+gen ccf_1ppp = ccf_loc/$Uganda_NPS_W5_cons_ppp_dollar
 lab var ccf_1ppp "currency conversion factor - 2017 $Private Consumption PPP"
-gen ccf_2ppp = ccf_loc/$UGA_W5_gdp_ppp_dollar
+gen ccf_2ppp = ccf_loc/$Uganda_NPS_W5_gdp_ppp_dollar
 lab var ccf_2ppp "currency conversion factor - 2017 $GDP PPP"
 
 *Poverty indicators 
-/*gen poverty_under_1_9 = (daily_percap_cons < $UGA_W5_poverty_threshold)
+/*gen poverty_under_1_9 = (daily_percap_cons < $Uganda_NPS_W5_poverty_threshold)
 la var poverty_under_1_9 "Household per-capita conumption is below $1.90 in 2011 $ PPP"
-gen poverty_under_2_15 = (daily_percap_cons < $UGA_W5_poverty_215)
+gen poverty_under_2_15 = (daily_percap_cons < $Uganda_NPS_W5_poverty_215)
 la var poverty_under_2_15 "Household per-capita consumption is below $2.15 in 2017 $ PPP"
 */
 
-* Need to figure out National poverty lines for Uganda wave 4
-*We merge the national poverty line provided by the World bank "${UGS_W3_raw_data}/AGSEC9"
-*merge 1:1 hhid using "${Uganda_NPS_W4_raw_data}/HH/pov2013_14", keep(1 3) nogen
-merge 1:1 hhid using "${Uganda_NPS_W5_created_data}/Uganda_NPS_W5_consumption.dta", keep(1 3) nogen
+* Need to figure out National poverty lines for Uganda wave 5
 
-gen poverty_under_1_9 = (daily_percap_cons < $UGA_W5_poverty_190)
+*merge 1:1 hhid using "${Uganda_NPS_W5_created_data}/Uganda_NPS_W5_consumption.dta", keep(1 3) nogen
+merge 1:m hhid using "${Uganda_NPS_W5_created_data}/Uganda_NPS_W5_consumption.dta", keep(1 3) nogen
+
+gen poverty_under_1_9 = (daily_percap_cons < $Uganda_NPS_W5_poverty_190)
 la var poverty_under_1_9 "Household per-capita conumption is below $1.90 in 2011 $ PPP"
-gen poverty_under_2_15 = (daily_percap_cons < $UGA_W5_poverty_215)
+gen poverty_under_2_15 = (daily_percap_cons < $Uganda_NPS_W5_poverty_215)
 la var poverty_under_2_15 "Household per-capita consumption is below $2.15 in 2015 $ PPP"
 
-gen poverty_under_npl = (daily_percap_cons < $UGA_W5_poverty_npl) 
+gen poverty_under_npl = (daily_percap_cons < $Uganda_NPS_W5_poverty_npl) 
 la var poverty_under_npl "Household daily per-capita consumption is below the national poverty line
 
 *Recode to missing any variables that cannot be created in this instrument
@@ -4594,8 +4633,8 @@ la var survey "Survey type (LSMS or AgDev)"
 gen year = "2015-16"
 la var year "Year survey was carried out"
 gen instrument = 55
-la var instrument "Wave and location of survey"
-capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2" 13 "Tanzania NPS Wave 3" 14 "Tanzania NPS Wave 4" 15 "Tanzania NPS Wave 5" /*
+*la var instrument "Wave and location of survey"
+capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2" 13 "Tanzania NPS Wave 3" 14 "Tanzania NPS Wave 4" 15 "Tanzania NPS SDD" 16 "Tanzania NPS Wave 5" /*
 	*/ 21 "Ethiopia ESS Wave 1" 22 "Ethiopia ESS Wave 2" 23 "Ethiopia ESS Wave 3" 24 "Ethiopia ESS Wave 4" 25 "Ethiopia ESS Wave 5" /*
 	*/ 31 "Nigeria GHS Wave 1" 32 "Nigeria GHS Wave 2" 33 "Nigeria GHS Wave 3" 34 "Nigeria GHS Wave 4"/*
 	*/ 41 "Malawi IHS/IHPS Wave 1" 42 "Malawi IHS/IHPS Wave 2" 43 "Malawi IHS/IHPS Wave 3" 44 "Malawi IHS/IHPS Wave 4" /*
@@ -4603,7 +4642,7 @@ capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2
 */ 61 "Burkina Faso EMC Wave 1" /* 
 */ 71 "Mali EACI Wave 1" 72 "Mali EACI Wave 2" /*
 */ 81 "Niger ECVMA Wave 1" 82 "Niger ECVMA Wave 2"
-*SAW Notes: We need an actual number for Uganda waves. 
+label values instrument instrument	
 saveold "${Uganda_NPS_W5_final_data}/Uganda_NPS_W5_household_variables.dta", replace
 
 ********************************************************************************
@@ -4694,7 +4733,7 @@ gen geography = "Uganda"
 gen survey = "LSMS-ISA"
 gen year = "2015-16"
 gen instrument = 55
-capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2" 13 "Tanzania NPS Wave 3" 14 "Tanzania NPS Wave 4" 15 "Tanzania NPS Wave 5" /*
+capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2" 13 "Tanzania NPS Wave 3" 14 "Tanzania NPS Wave 4" 15 "Tanzania NPS SDD" 16 "Tanzania NPS Wave 5" /*
 	*/ 21 "Ethiopia ESS Wave 1" 22 "Ethiopia ESS Wave 2" 23 "Ethiopia ESS Wave 3" 24 "Ethiopia ESS Wave 4" 25 "Ethiopia ESS Wave 5" /*
 	*/ 31 "Nigeria GHS Wave 1" 32 "Nigeria GHS Wave 2" 33 "Nigeria GHS Wave 3" 34 "Nigeria GHS Wave 4"/*
 	*/ 41 "Malawi IHS/IHPS Wave 1" 42 "Malawi IHS/IHPS Wave 2" 43 "Malawi IHS/IHPS Wave 3" 44 "Malawi IHS/IHPS Wave 4" /*
@@ -4765,13 +4804,13 @@ foreach v of varlist  plot_productivity  plot_labor_prod {
 
 *SAW 4/20/23 Update
 ****Currency Conversion Factors***
-gen ccf_loc = (1/$UGA_W5_inflation) 
+gen ccf_loc = (1/$Uganda_NPS_W5_inflation) 
 lab var ccf_loc "currency conversion factor - 2017 $UGX"
-gen ccf_usd = ccf_loc/$UGA_W5_exchange_rate
+gen ccf_usd = ccf_loc/$Uganda_NPS_W5_exchange_rate
 lab var ccf_usd "currency conversion factor - 2017 $USD"
-gen ccf_1ppp = ccf_loc/$UGA_W5_cons_ppp_dollar
+gen ccf_1ppp = ccf_loc/$Uganda_NPS_W5_cons_ppp_dollar
 lab var ccf_1ppp "currency conversion factor - 2017 $Private Consumption PPP"
-gen ccf_2ppp = ccf_loc/$UGA_W5_gdp_ppp_dollar
+gen ccf_2ppp = ccf_loc/$Uganda_NPS_W5_gdp_ppp_dollar
 lab var ccf_2ppp "currency conversion factor - 2017 $GDP PPP"
 
 global monetary_val plot_value_harvest plot_productivity  plot_labor_prod 
@@ -4934,7 +4973,7 @@ gen geography = "Uganda"
 gen survey = "LSMS-ISA"
 gen year = "2011-12"
 gen instrument = 55
-capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2" 13 "Tanzania NPS Wave 3" 14 "Tanzania NPS Wave 4" 15 "Tanzania NPS Wave 5" /*
+capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2" 13 "Tanzania NPS Wave 3" 14 "Tanzania NPS Wave 4" 15 "Tanzania NPS SDD" 16 "Tanzania NPS Wave 5" /*
 	*/ 21 "Ethiopia ESS Wave 1" 22 "Ethiopia ESS Wave 2" 23 "Ethiopia ESS Wave 3" 24 "Ethiopia ESS Wave 4" 25 "Ethiopia ESS Wave 5" /*
 	*/ 31 "Nigeria GHS Wave 1" 32 "Nigeria GHS Wave 2" 33 "Nigeria GHS Wave 3" 34 "Nigeria GHS Wave 4"/*
 	*/ 41 "Malawi IHS/IHPS Wave 1" 42 "Malawi IHS/IHPS Wave 2" 43 "Malawi IHS/IHPS Wave 3" 44 "Malawi IHS/IHPS Wave 4" /*
@@ -4955,4 +4994,7 @@ The code for outputting the summary statistics is in a separare dofile that is c
 */ 
 *Parameters
 global list_instruments  "Uganda_NPS_W5"
-do "$directory/_Summary_statistics/EPAR_UW_335_SUMMARY_STATISTICS.do"
+do "$summary_stats"
+
+
+************************************ STOP ************************************

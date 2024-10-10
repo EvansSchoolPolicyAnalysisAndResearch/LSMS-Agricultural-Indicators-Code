@@ -176,6 +176,7 @@ global Uganda_NPS_W7_final_data  "$directory/Uganda UNPS/Uganda UNPS Wave 7/Fina
 global summary_stats "$directory/_Summary_statistics/EPAR_UW_335_SUMMARY_STATISTICS.do"
 
 *Some parcel values are missing in the all plots section (since they are the same in the previous waves). We will using wave 5 data in order to fill in those values. 
+global directory "../.."
 global Uganda_NPS_W5_raw_data 	"$directory/Uganda UNPS/Uganda UNPS Wave 5/Raw DTA Files"
 global Uganda_NPS_W5_created_data "$directory/Uganda UNPS/Uganda UNPS Wave 5/Final DTA Files/created_data"
 global Uganda_NPS_W5_final_data  "$directory/Uganda UNPS/Uganda UNPS Wave 5/Final DTA Files/final_data"
