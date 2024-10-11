@@ -128,18 +128,15 @@ set maxvar 10000
 
 
 *Set location of raw data and output
-global directory			"LSMS-Agricultural-Indicators-Code" //update to repo directory 
 
-//set directories
-*Nigeria General HH survey (NG LSMS)  Wave 4
-
+global directory			"../.."
 global Nigeria_GHS_W4_raw_data			"${directory}/Nigeria GHS/Nigeria GHS Wave 4/Raw DTA Files/"
 global Nigeria_GHS_W4_created_data 		"${directory}/Nigeria GHS/Nigeria GHS Wave 4/Final DTA Files/created_data"
 global Nigeria_GHS_W4_final_data  		"${directory}/Nigeria GHS/Nigeria GHS Wave 4/Final DTA Files/final_data"
 
 //WHO iGrowUp file path
 global dofilefold "${directory}/WHO Child Malnutrition Macro/igrowup_update-master"
-*/
+
 *DYA.11.1.2020 Re-scaling survey weights to match population estimates
 *https://databank.worldbank.org/source/world-development-indicators#
 global Nigeria_GHS_W4_pop_tot 198387623

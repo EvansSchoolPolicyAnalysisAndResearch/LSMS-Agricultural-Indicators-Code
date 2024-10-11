@@ -118,8 +118,9 @@ ssc install findname  // need this user-written ado file for some commands to wo
 
 
 *Set location of raw data and output
-global directory			    "LSMS-Agricultural-Indicators-Code"
+
 //set directories: These paths correspond to the folders where the raw data files are located and where the created data and final data will be stored.
+global directory			    "../.."
 global Tanzania_NPS_W5_raw_data 			"$directory/Tanzania NPS/Tanzania NPS Wave 5/Raw DTA Files/"
 global Tanzania_NPS_W5_created_data 		"$directory/Tanzania NPS/Tanzania NPS Wave 5/Final DTA Files/created_data"
 global Tanzania_NPS_W5_final_data  			"$directory/Tanzania NPS/Tanzania NPS Wave 5/Final DTA Files/final_data"

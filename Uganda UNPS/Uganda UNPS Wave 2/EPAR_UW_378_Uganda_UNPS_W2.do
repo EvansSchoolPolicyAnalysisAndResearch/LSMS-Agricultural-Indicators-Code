@@ -150,11 +150,12 @@ set maxvar 8000
 // set directories
 * These paths correspond to the folders where the raw data files are located 
 * and where the created data and final data will be stored.
-global directory "~/LSMS-Agricultural-Indicator-Code" 
 
-global Uganda_NPS_W2_raw_data 	"$directory/Uganda NPS Wave 2/Raw DTA Files"
-global Uganda_NPS_W2_created_data "$directory/Uganda NPS Wave 2/Final DTA Files/created_data"
-global Uganda_NPS_W2_final_data  "$directory/Uganda NPS Wave 2/Final DTA Files/final_data"
+global directory "../.."
+global Uganda_NPS_W2_raw_data 	"$directory/Uganda UNPS/Uganda UNPS Wave 2/Raw DTA Files"
+global Uganda_NPS_W2_created_data "$directory/Uganda UNPS/Uganda UNPS Wave 2/Final DTA Files/created_data"
+global Uganda_NPS_W2_final_data  "$directory/Uganda UNPS/Uganda UNPS Wave 2/Final DTA Files/final_data"
+global summary_stats "$directory/_Summary_statistics/EPAR_UW_335_SUMMARY_STATISTICS.do"
 
 
 *Re-scaling survey weights to match population estimates
@@ -162,8 +163,6 @@ global Uganda_NPS_W2_final_data  "$directory/Uganda NPS Wave 2/Final DTA Files/f
 global Uganda_NPS_W2_pop_tot 34273295
 global Uganda_NPS_W2_pop_rur 27273317
 global Uganda_NPS_W2_pop_urb 6999978
-
-
 
 * Some other useful local variables
 local genders "male female mixed"
@@ -190,14 +189,14 @@ label define species 	1 "Large ruminants (cows, buffalos)"	/*
 
 // SAK 1.22.19 Ask Emma which year to use for exchange rate/inflation rate, etc -- instrument for 2010-2011
 
-global NPS_LSMS_ISA_W2_exchange_rate  3690.85
-global NPS_LSMS_ISA_W2_gdp_ppp_dollar 1270.608398
-global NPS_LSMS_ISA_W2_cons_ppp_dollar 1221.087646
+global Uganda_NPS_W2_exchange_rate  3690.85
+global Uganda_NPS_W2_gdp_ppp_dollar 1270.608398
+global Uganda_NPS_W2_cons_ppp_dollar 1221.087646
 //https://data.worldbank.org/indicator/FP.CPI.TOTL?end=2016&locations=UG&start=2011
-global NPS_LSMS_ISA_W2_inflation .69904077 //(116.6)/166.8, inflation for 2.15 2017 baseline https://data.worldbank.org/indicator/FP.CPI.TOTL?end=2016&locations=UG&start=2011 //
-global NPS_LSMS_ISA_W2_poverty_190 (1.90*944.26)*(116.6/116.6)  //Calculation for WB's previous $1.90 (PPP) poverty threshold. This controls the indicator poverty_under_1_9; change the 1.9 to get results for a different threshold. Note this is based on the 2011 PPP conversion!
-global NPS_LSMS_ISA_W2_poverty_nbs 3880.75 *(1.108) //2009-2010 poverty line from 
-global NPS_LSMS_ISA_W2_poverty_215 2.15 * ($NPS_LSMS_ISA_W2_inflation) * $NPS_LSMS_ISA_W2_cons_ppp_dollar  //New 2017 poverty line - 124.68 UGX
+global Uganda_NPS_W2_inflation .69904077 //(116.6)/166.8, inflation for 2.15 2017 baseline https://data.worldbank.org/indicator/FP.CPI.TOTL?end=2016&locations=UG&start=2011 //
+global Uganda_NPS_W2_poverty_190 ((1.90*944.26)*(116.6/116.6))  //Calculation for WB's previous $1.90 (PPP) poverty threshold. This controls the indicator poverty_under_1_9; change the 1.9 to get results for a different threshold. Note this is based on the 2011 PPP conversion!
+global Uganda_NPS_W2_poverty_nbs (3880.75 *(1.108)) //2009-2010 poverty line from 
+global Uganda_NPS_W2_poverty_215 (2.15 * ($Uganda_NPS_W2_inflation) * $Uganda_NPS_W2_cons_ppp_dollar)  //New 2017 poverty line - 124.68 UGX
 ********************************************************************************
 *THRESHOLDS FOR WINSORIZATION
 ********************************************************************************
@@ -2653,6 +2652,7 @@ replace income_live_sales		= a6cq15 * 4	if missing(income_live_sales)
 gen 	number_sold				= a6aq14
 replace number_sold				= a6bq14 * 2	if missing(number_sold)
 replace number_sold				= a6cq14 * 4	if missing(number_sold)
+
 
 * Calculate  the number of animals lost in the last 12 months and the mean 
 * number between 1 year ago and today (at time of survey)
@@ -5694,7 +5694,7 @@ lab var hrs_off_farm_pc_any  "Per capita (only worker) Total hours Total househo
 *generating total crop production costs per hectare
 gen cost_expli_hh_ha = w_cost_expli_hh / w_ha_planted
 lab var cost_expli_hh_ha "Explicit costs (per ha) of crop production (household level)"
-**# Issue one
+
 
 *land and labor productivity
 gen land_productivity = w_value_crop_production/w_farm_area
@@ -6064,28 +6064,28 @@ replace bottom_40_peraeq = 1 if r(r1) > w_daily_peraeq_cons & rural==1
 
 ****Currency Conversion Factors***
 ****Currency Conversion Factors***
-gen ccf_loc = (1/$NPS_LSMS_ISA_W2_inflation) 
+gen ccf_loc = (1/$Uganda_NPS_W2_inflation) 
 lab var ccf_loc "currency conversion factor - 2017 $UGX"
-gen ccf_usd = ccf_loc/$NPS_LSMS_ISA_W2_exchange_rate
+gen ccf_usd = ccf_loc/$Uganda_NPS_W2_exchange_rate
 lab var ccf_usd "currency conversion factor - 2017 $USD"
-gen ccf_1ppp = ccf_loc/$NPS_LSMS_ISA_W2_cons_ppp_dollar
+gen ccf_1ppp = ccf_loc/$Uganda_NPS_W2_cons_ppp_dollar
 lab var ccf_1ppp "currency conversion factor - 2017 $Private Consumption PPP"
-gen ccf_2ppp = ccf_loc/$NPS_LSMS_ISA_W2_gdp_ppp_dollar
+gen ccf_2ppp = ccf_loc/$Uganda_NPS_W2_gdp_ppp_dollar
 lab var ccf_2ppp "currency conversion factor - 2017 $GDP PPP"
 
 /*gen ccf_loc = 1 
 lab var ccf_loc "currency conversion factor - 2017 $NGN"
-gen ccf_usd = 1/$NPS_LSMS_ISA_W2_exchange_rate
+gen ccf_usd = 1/$Uganda_NPS_W2_exchange_rate
 lab var ccf_usd "currency conversion factor - 2017 $USD"
-gen ccf_1ppp = 1/ $NPS_LSMS_ISA_W2_cons_ppp_dollar
+gen ccf_1ppp = 1/ $Uganda_NPS_W2_cons_ppp_dollar
 lab var ccf_1ppp "currency conversion factor - 2017 $Private Consumption PPP"
-gen ccf_2ppp = 1/ $NPS_LSMS_ISA_W2_gdp_ppp_dollar
+gen ccf_2ppp = 1/ $Uganda_NPS_W2_gdp_ppp_dollar
 lab var ccf_2ppp "currency conversion factor - 2017 $GDP PPP"
 */
 *Poverty indicators 
-gen poverty_under_1_9 = (daily_percap_cons < $NPS_LSMS_ISA_W2_poverty_190)
+gen poverty_under_1_9 = (daily_percap_cons < $Uganda_NPS_W2_poverty_190)
 la var poverty_under_1_9 "Household per-capita conumption is below $1.90 in 2011 $ PPP"
-gen poverty_under_2_15 = (daily_percap_cons < $NPS_LSMS_ISA_W2_poverty_215)
+gen poverty_under_2_15 = (daily_percap_cons < $Uganda_NPS_W2_poverty_215)
 la var poverty_under_2_15 "Household per-capita consumption is below $2.15 in 2017 $ PPP"
 rename hhid HHID
 *We merge the national poverty line provided by the World bank 
@@ -6155,7 +6155,7 @@ gen survey = "LSMS-ISA"
 gen year = "2011-12" 
 gen instrument = 53 
 //Only runs if label isn't already defined.
-capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2" 13 "Tanzania NPS Wave 3" 14 "Tanzania NPS Wave 4" 15 "Tanzania NPS Wave 5" /*
+capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2" 13 "Tanzania NPS Wave 3" 14 "Tanzania NPS Wave 4" 15 "Tanzania NPS SDD" 16 "Tanzania NPS Wave 5" /*
 	*/ 21 "Ethiopia ESS Wave 1" 22 "Ethiopia ESS Wave 2" 23 "Ethiopia ESS Wave 3" 24 "Ethiopia ESS Wave 4" 25 "Ethiopia ESS Wave 5" /*
 	*/ 31 "Nigeria GHS Wave 1" 32 "Nigeria GHS Wave 2" 33 "Nigeria GHS Wave 3" 34 "Nigeria GHS Wave 4"/*
 	*/ 41 "Malawi IHS/IHPS Wave 1" 42 "Malawi IHS/IHPS Wave 2" 43 "Malawi IHS/IHPS Wave 3" 44 "Malawi IHS/IHPS Wave 4" /*
@@ -6270,7 +6270,7 @@ gen survey = "LSMS-ISA"
 gen year = "2011-12" 
 gen instrument = 53 
 //Only runs if label isn't already defined.
-capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2" 13 "Tanzania NPS Wave 3" 14 "Tanzania NPS Wave 4" 15 "Tanzania NPS Wave 5" /*
+capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2" 13 "Tanzania NPS Wave 3" 14 "Tanzania NPS Wave 4" 15 "Tanzania NPS SDD" 16 "Tanzania NPS Wave 5" /*
 	*/ 21 "Ethiopia ESS Wave 1" 22 "Ethiopia ESS Wave 2" 23 "Ethiopia ESS Wave 3" 24 "Ethiopia ESS Wave 4" 25 "Ethiopia ESS Wave 5" /*
 	*/ 31 "Nigeria GHS Wave 1" 32 "Nigeria GHS Wave 2" 33 "Nigeria GHS Wave 3" 34 "Nigeria GHS Wave 4"/*
 	*/ 41 "Malawi IHS/IHPS Wave 1" 42 "Malawi IHS/IHPS Wave 2" 43 "Malawi IHS/IHPS Wave 3" 44 "Malawi IHS/IHPS Wave 4" /*
@@ -6367,13 +6367,13 @@ foreach p of global monetary_val {
 */
 
 ****Currency Conversion Factors***
-gen ccf_loc = (1/$NPS_LSMS_ISA_W2_inflation) 
+gen ccf_loc = (1/$Uganda_NPS_W2_inflation) 
 lab var ccf_loc "currency conversion factor - 2017 $UGX"
-gen ccf_usd = ccf_loc/$NPS_LSMS_ISA_W2_exchange_rate
+gen ccf_usd = ccf_loc/$Uganda_NPS_W2_exchange_rate
 lab var ccf_usd "currency conversion factor - 2017 $USD"
-gen ccf_1ppp = ccf_loc/$NPS_LSMS_ISA_W2_cons_ppp_dollar
+gen ccf_1ppp = ccf_loc/$Uganda_NPS_W2_cons_ppp_dollar
 lab var ccf_1ppp "currency conversion factor - 2017 $Private Consumption PPP"
-gen ccf_2ppp = ccf_loc/$NPS_LSMS_ISA_W2_gdp_ppp_dollar
+gen ccf_2ppp = ccf_loc/$Uganda_NPS_W2_gdp_ppp_dollar
 lab var ccf_2ppp "currency conversion factor - 2017 $GDP PPP"
 
 
@@ -6510,7 +6510,7 @@ label var `v' "`l`v''"
  
 xpose, varname clear
 order _varname v1
-rename v1 UGA_wave3
+rename v1 UGA_wave2
 
 save "${Uganda_NPS_W2_created_data}/Uganda_NPS_W2_gendergap.dta", replace 
 restore
@@ -6538,7 +6538,7 @@ gen survey = "LSMS-ISA"
 gen year = "2011-12" 
 gen instrument = 53
 //Only runs if label isn't already defined.
-capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2" 13 "Tanzania NPS Wave 3" 14 "Tanzania NPS Wave 4" 15 "Tanzania NPS Wave 5" /*
+capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2" 13 "Tanzania NPS Wave 3" 14 "Tanzania NPS Wave 4" 15 "Tanzania NPS SDD" 16 "Tanzania NPS Wave 5" /*
 	*/ 21 "Ethiopia ESS Wave 1" 22 "Ethiopia ESS Wave 2" 23 "Ethiopia ESS Wave 3" 24 "Ethiopia ESS Wave 4" 25 "Ethiopia ESS Wave 5" /*
 	*/ 31 "Nigeria GHS Wave 1" 32 "Nigeria GHS Wave 2" 33 "Nigeria GHS Wave 3" 34 "Nigeria GHS Wave 4"/*
 	*/ 41 "Malawi IHS/IHPS Wave 1" 42 "Malawi IHS/IHPS Wave 2" 43 "Malawi IHS/IHPS Wave 3" 44 "Malawi IHS/IHPS Wave 4" /*
@@ -6560,7 +6560,7 @@ The code for outputting the summary statistics is in a separare dofile that is c
 *Parameters
 
 global list_instruments "Uganda_NPS_W2"
-do "$directory\_Summary_statistics\EPAR_UW_335_SUMMARY_STATISTICS.do"
+do "$summary_stats"
 
 
 

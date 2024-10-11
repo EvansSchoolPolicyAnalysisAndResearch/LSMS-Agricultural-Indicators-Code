@@ -61,7 +61,7 @@ set maxvar 10000
 ssc install findname  // need this user-written ado file for some commands to work	
 
 *Set location of raw data and output
-global directory 				"//netid.washington.edu/wfs/EvansEPAR/Project/EPAR/Working Files/335 - Ag Team Data Support/Waves" //Update this to match your local repo location
+global directory 				"../.." //Update this to match your local repo location
 
 *Set directories
 global Ethiopia_ESS_W4_raw_data			"$directory/Ethiopia ESS/Ethiopia ESS Wave 4/Raw DTA Files"

@@ -60,7 +60,7 @@ set more off
 set maxvar 8000	
 
 *Set location of raw data and output
-global directory			    "335_Agricultural-Indicator-Data-Curation" //Update this to match your github repo path
+global directory			    "../.." //Update this to match your github repo path
 
 *These paths correspond to the folders where the raw data files are located and where the created data and final data will be stored.
 global Tanzania_NPS_W3_raw_data 		"$directory/Tanzania NPS/Tanzania NPS Wave 3/Raw DTA Files" 

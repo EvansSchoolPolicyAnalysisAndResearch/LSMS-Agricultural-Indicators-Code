@@ -123,7 +123,7 @@ set maxvar 10000
 ssc install findname
 
 *Set location of raw data and output
-global directory			"LSMS-Agricultural-Indicators-Code" //Update this to match the path to your local repo
+global directory			"../.." //Update this to match the path to your local repo
 
 //set directories
 *Nigeria General HH survey (NG LSMS)  Wave 2

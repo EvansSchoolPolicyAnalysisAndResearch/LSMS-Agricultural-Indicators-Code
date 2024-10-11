@@ -164,7 +164,7 @@ set more off
 set maxvar 8000
 
 *Set location of raw data and output
-global directory				"LSMS-Agricultural-Indicators-Code" //Update this to match your github repo location
+global directory				"../.." //Update this to match your github repo location
 
 //set directories
 *These paths correspond to the folders where the raw data files are located and where the created data and final data will be stored.

@@ -69,7 +69,7 @@ set maxvar 10000
 
 
 *Set location of raw data and output
-global directory			"LSMS-Agricultural-Indicators-Code" //Update this to match the path to your local repo
+global directory			"../.." //Update this to match the path to your local repo
 global Nigeria_GHS_W3_raw_data 			"$directory/Nigeria GHS/Nigeria GHS Wave 3/Raw DTA files/NGA_2015_GHSP-W3_v02_M_Stata"
 global Nigeria_GHS_W3_created_data 		"$directory/Nigeria GHS/Nigeria GHS Wave 3/Final DTA files/created_data"
 global Nigeria_GHS_W3_final_data  		"$directory/Nigeria GHS/Nigeria GHS Wave 3/Final DTA files/final_data"
