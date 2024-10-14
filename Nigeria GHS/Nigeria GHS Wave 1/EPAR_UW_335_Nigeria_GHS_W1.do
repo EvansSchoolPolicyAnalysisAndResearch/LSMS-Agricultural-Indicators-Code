@@ -124,7 +124,7 @@ set maxvar 10000
 global directory			"../.." //Update this to match your local repo
 //set directories
 *Nigeria General HH survey (NG LSMS)  Wave 1
-global Nigeria_GHS_W1_raw_data 		"$directory/Nigeria GHS/Nigeria GHS Wave 1/Raw DTA Files/NGA_2010_GHSP-W1_v03_M_STATA"  //ALT: IMPORTANT NOTE: We assume this folder contains all the dta files in all the subfolders. You'll need to move the files from the download into a single folder for this do file to work.
+global Nigeria_GHS_W1_raw_data 		"$directory/Nigeria GHS/Nigeria GHS Wave 1/Raw DTA Files/"  //ALT: IMPORTANT NOTE: We assume this folder contains all the dta files in all the subfolders. You'll need to move the files from the download into a single folder for this do file to work.
 global Nigeria_GHS_W1_created_data  	"$directory/Nigeria GHS/Nigeria GHS Wave 1/Final DTA Files/created_data"
 global Nigeria_GHS_W1_final_data  	"$directory/Nigeria GHS/Nigeria GHS Wave 1/Final DTA Files/final_data"
     

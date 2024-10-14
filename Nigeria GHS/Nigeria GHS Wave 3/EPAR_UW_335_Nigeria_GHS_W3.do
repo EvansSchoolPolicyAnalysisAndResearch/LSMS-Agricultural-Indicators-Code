@@ -70,7 +70,7 @@ set maxvar 10000
 
 *Set location of raw data and output
 global directory			"../.." //Update this to match the path to your local repo
-global Nigeria_GHS_W3_raw_data 			"$directory/Nigeria GHS/Nigeria GHS Wave 3/Raw DTA files/NGA_2015_GHSP-W3_v02_M_Stata"
+global Nigeria_GHS_W3_raw_data 			"$directory/Nigeria GHS/Nigeria GHS Wave 3/Raw DTA files/"
 global Nigeria_GHS_W3_created_data 		"$directory/Nigeria GHS/Nigeria GHS Wave 3/Final DTA files/created_data"
 global Nigeria_GHS_W3_final_data  		"$directory/Nigeria GHS/Nigeria GHS Wave 3/Final DTA files/final_data"
 
@@ -1597,7 +1597,6 @@ restore
 ********************************************************************************
 * TLU (Tropical Livestock Units) *
 ********************************************************************************
-//ALT 06.03.21: Moved this down below crops b/c it makes more sense here.
 use "${Nigeria_GHS_W3_raw_data}/sect11i_plantingw3.dta", clear
 gen tlu=0.5 if (animal_cd==101|animal_cd==102|animal_cd==103|animal_cd==104|animal_cd==105|animal_cd==106|animal_cd==107|animal_cd==109)
 replace tlu=0.3 if (animal_cd==108)
@@ -1657,8 +1656,7 @@ lab var nb_ls_stardseas  "Number of livestock owned at the begining of ag season
 lab var nb_ls_today "Number of livestock owned as of today"
 lab var nb_ls_sold "Number of total livestock sold alive this ag season"
 drop tlu_coefficient
-*save "${Nigeria_GHS_W3_created_data}/Nigeria_GHS_W3_TLU_Coefficients.dta", replace
-save "${Nigeria_GHS_W3_created_data}/Nigeria_GHS_W3_TLU_Coefficients_wlargerum_061623.dta", replace // HKS 6.16.23
+save "${Nigeria_GHS_W3_created_data}/Nigeria_GHS_W3_TLU_Coefficients.dta", replace
 
 //ALT Update 10.25.21: For AgQuery
 
@@ -4442,7 +4440,7 @@ merge 1:1 hhid using "${Nigeria_GHS_W3_created_data}/Nigeria_GHS_W3_livestock_pr
 merge 1:1 hhid using "${Nigeria_GHS_W3_created_data}/Nigeria_GHS_W3_TLU.dta", nogen keep(1 3)
 merge 1:1 hhid using "${Nigeria_GHS_W3_created_data}/Nigeria_GHS_W3_herd_characteristics.dta", nogen keep(1 3)
 *merge 1:1 hhid using "${Nigeria_GHS_W3_created_data}/Nigeria_GHS_W3_TLU_Coefficients.dta", nogen keep(1 3)
-merge 1:1 hhid using "${Nigeria_GHS_W3_created_data}/Nigeria_GHS_W3_TLU_Coefficients_wlargerum_061623.dta", nogen keep (1 3) // HKS 6.16.23
+merge 1:1 hhid using "${Nigeria_GHS_W3_created_data}/Nigeria_GHS_W3_TLU_Coefficients.dta", nogen keep (1 3) // HKS 6.16.23
 
 lab var sales_livestock_products "Value of sales of livestock products"
 lab var value_livestock_products "Value of livestock products"
@@ -4630,6 +4628,7 @@ replace value_farm_prod_sold = 0 if value_farm_prod_sold==. & value_farm_product
 *Agricultural households
 recode value_crop_production livestock_income farm_area tlu_today (.=0)
 gen ag_hh = (value_crop_production!=0 | livestock_income!=0 | farm_area!=0 | tlu_today!=0)
+recode nb* tlu* *tlu (.=0) if ag_hh==1 //ALT 10.08.24: Issue causing SSP to be too low; consider other variables if needed
 lab var ag_hh "1= Household has some land cultivated, some livestock, some crop income, or some livestock income"
 
 *household with egg-producing animals  
@@ -4648,6 +4647,7 @@ gen crop_hh = (value_crop_production!=0  | farm_area!=0)
 lab var crop_hh "1= Household has some land cultivated or some crop income"
 gen livestock_hh = (livestock_income!=0 | tlu_today!=0)
 lab  var livestock_hh "1= Household has some livestock or some livestock income"
+recode farm_size_agland (.=0) if crop_hh==0 & livestock_hh==1 //Livestock-only households. 
 recode fishing_income (.=0)
 gen fishing_hh = (fishing_income!=0)
 lab  var fishing_hh "1= Household has some fishing income"
@@ -5261,7 +5261,7 @@ keep hhid fhh clusterid strataid *weight* *wgt* zone state lga ea rural farm_siz
 */ nb_poultry_today nb_largerum_today nb_smallrum_today nb_chickens_t bottom_40_percap bottom_40_peraeq /*
 */ ccf_loc ccf_usd ccf_1ppp ccf_2ppp *sales_livestock_products area_plan* area_harv*  *value_pro* *value_sal* *inter* // SRK 8.8.24 - just to make code run thru end of hh var section
 
-gen ssp = (farm_size_agland <= 2 & farm_size_agland != 0) & (nb_largerum_today <= 10 & nb_smallrum_today <= 10 & nb_chickens_today <= 50) // HKS 6.16.23
+gen ssp = (farm_size_agland <= 2 & farm_size_agland != 0) & (nb_largerum_today <= 10 & nb_smallrum_today <= 10 & nb_chickens_today <= 50) & ag_hh==1 // HKS 6.16.23
 ren weight weight_sample 
 la var weight_sample "Original survey sampling weight"
 ren weight_pop_rururb weight
