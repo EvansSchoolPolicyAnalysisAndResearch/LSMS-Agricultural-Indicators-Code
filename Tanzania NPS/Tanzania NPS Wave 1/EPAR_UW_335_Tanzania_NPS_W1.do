@@ -172,17 +172,20 @@ global Tanzania_NPS_W1_raw_data 	   	 "$directory/Tanzania NPS/Tanzania NPS Wave
 global Tanzania_NPS_W1_created_data  		 "$directory/Tanzania NPS/Tanzania NPS Wave 1/Final DTA Files/created_data"
 global Tanzania_NPS_W1_final_data  		 "$directory/Tanzania NPS/Tanzania NPS Wave 1/Final DTA Files/final_data"
 
+//Tanzania Wave 2 raw data are required for this file to run; we need the labor section to impute weeks worked (question not asked in wave 1)
+global Tanzania_NPS_W2_raw_data 	   	 "$directory/Tanzania NPS/Tanzania NPS Wave 2/Raw DTA Files"
 
 ********************************************************************************
 *EXCHANGE RATE AND INFLATION FOR CONVERSION IN SUD IDS
 ********************************************************************************
-global Tanzania_NPS_W5_exchange_rate 2158			// https://www.bloomberg.com/quote/USDETB:CUR
-global Tanzania_NPS_W5_gdp_ppp_dollar 888.44      // https://data.worldbank.org/indicator/PA.NUS.PPP		// UPDATED 9/18/24: GDP_PPP_DOLLAR for 2021
-global Tanzania_NPS_W5_cons_ppp_dollar 790.48	  // https://data.worldbank.org/indicator/PA.NUS.PRVT.PP	// UPDATED 9/18/24: GDP_PPP_DOLLAR for 2021
-global Tanzania_NPS_W5_infl_adj  (94.2/175)		// inflation rate. Data was collected during 2020-2021.	As of 2023, we want to adjust value to 2017 // I = CPI 2020/CPI 2017 = 193.6/175
-global Tanzania_NPS_W5_poverty_190 (1.9 * 588.8 * (94.2/112.7)) //Previous international extreme poverty line
-global Tanzania_NPS_W5_poverty_npl (1200 * (94.2/112.7)) //Line is set based on assumption of 1200 TSH/day in 2011/2012, deflated to 2009. https://documents1.worldbank.org/curated/en/679851467999966244/pdf/AUS6819-WP-v1-P148501-PUBLIC-Tanzania-summary-15Apr15-Box391437B.pdf
-global Tanzania_NPS_W5_poverty_215 (2.15*$Tanzania_NPS_W1_infl_adj * $Tanzania_NPS_W1_cons_ppp_dollar)
+global Tanzania_NPS_W1_exchange_rate 2228.86			// https://data.worldbank.org/indicator/PA.NUS.FCRF?end=2017&locations=TZ&start=2011
+global Tanzania_NPS_W1_gdp_ppp_dollar 889.45      // https://data.worldbank.org/indicator/PA.NUS.PPP?end=2023&locations=TZ&start=2011		// UPDATED 10/16/24: GDP_PPP_DOLLAR for 2017
+global Tanzania_NPS_W1_cons_ppp_dollar 777.6	  // https://data.worldbank.org/indicator/PA.NUS.PRVT.PP?end=2023&locations=TZ&start=2011	// UPDATED 10/16/2024
+global Tanzania_NPS_W1_infl_adj (94.2/175)		// inflation rate. Data was collected during 2008-09.	As of 2023, we want to adjust value to 2017 // I = CPI 2009/CPI 2017 = 94.2/175 // https://data.worldbank.org/indicator/FP.CPI.TOTL?end=2017&locations=TZ&start=2008
+global Tanzania_NPS_W1_poverty_190 (1.9 * 515.83 * (94.2/175)) //Previous international extreme poverty line
+global Tanzania_NPS_W1_poverty_npl (1200 * (112.7/175)) //Line is set based on assumption of 1200 TSH/day in 2011/2012, deflated to 2017 (CPI 2011 / CPI 2017) https://documents1.worldbank.org/curated/en/679851467999966244/pdf/AUS6819-WP-v1-P148501-PUBLIC-Tanzania-summary-15Apr15-Box391437B.pdf
+global Tanzania_NPS_W1_poverty_215 (2.15*$Tanzania_NPS_W1_infl_adj * $Tanzania_NPS_W1_cons_ppp_dollar)
+
 
 
 ********************************************************************************
@@ -324,6 +327,33 @@ drop if  plot_id==""
 keep hhid plot_id dm_gender cultivated  
 lab var cultivated "1=Plot has been cultivated"
 save "${Tanzania_NPS_W1_created_data}/Tanzania_NPS_W1_plot_decision_makers.dta", replace
+
+
+
+********************************************************************************
+*Formalized Land Rights
+********************************************************************************
+use "${Tanzania_NPS_W1_raw_data}/SEC_3A.dta", clear
+append using "${Tanzania_NPS_W1_raw_data}/SEC_3B.dta", gen(short)
+*formalized land rights
+replace s3aq25 = s3bq25 if s3aq25==.		// replacing with values in short season for short season observations
+gen formal_land_rights = s3aq25==1			// Note: Including anything other than "no documents" as formal
+*Individual level (for women)
+*NOTE: Assuming ANY listed owners are also listed on the document (if they have a document, that is)
+ren s3aq27_1 sbmemno1
+replace sbmemno1 = s3bq27_1 if sbmemno1==.
+ren s3aq27_2 sbmemno2
+replace sbmemno2 = s3bq27_2 if sbmemno2==.
+keep hhid sbmemno* formal_land_rights 
+gen obs = _n
+reshape long sbmemno, i(hhid formal_land_rights obs) j(indivno)
+merge m:1 hhid sbmemno using "${Tanzania_NPS_W1_created_data}/Tanzania_NPS_W1_person_ids.dta", nogen keep(3)		
+gen formal_land_rights_f = formal_land_rights==1 if female==1
+collapse (max) formal_land_rights_f, by(hhid sbmemno)		
+save "${Tanzania_NPS_W1_created_data}/Tanzania_NPS_W1_land_rights_ind.dta", replace
+collapse (max) formal_land_rights_hh=formal_land_rights, by(hhid)		// taking max at household level; equals one if they have official documentation for at least one plot
+save "${Tanzania_NPS_W1_created_data}/Tanzania_NPS_W1_land_rights_hh.dta", replace
+
 
 
 ********************************************************************************
@@ -799,38 +829,10 @@ collapse (sum) wages_paid_short, by (hhid)
 lab var wages_paid_short  "Wages paid for hired labor (crops) in short growing season"
 save "${Tanzania_NPS_W1_created_data}/Tanzania_NPS_W1_wages_shortseason.dta", replace
 
+
 *Expenses: Inputs
 use "${Tanzania_NPS_W1_raw_data}/SEC_3A.dta", clear
 append using "${Tanzania_NPS_W1_raw_data}/SEC_3B.dta", gen(short)
-*formalized land rights
-replace s3aq25 = s3bq25 if s3aq25==.		// replacing with values in short season for short season observations
-gen formal_land_rights = s3aq25==1			// Note: Including anything other than "no documents" as formal
-*Individual level (for women)
-*NOTE: Assuming ANY listed owners are also listed on the document (if they have a document, that is)
-replace s3aq27_1 = s3bq27_1 if s3aq27_1==.
-replace s3aq27_2 = s3bq27_2 if s3aq27_2==.
-*Starting with first owner
-preserve
-ren s3aq27_1 sbmemno
-merge m:1 hhid sbmemno using "${Tanzania_NPS_W1_created_data}/Tanzania_NPS_W1_person_ids.dta", nogen keep(3)		
-keep hhid sbmemno female formal_land_rights
-tempfile p1
-save `p1', replace
-restore
-*Now second owner
-preserve
-ren s3aq27_2 sbmemno		
-merge m:1 hhid sbmemno using "${Tanzania_NPS_W1_created_data}/Tanzania_NPS_W1_person_ids.dta", nogen keep(3)		
-keep hhid sbmemno female
-append using `p1'
-gen formal_land_rights_f = formal_land_rights==1 if female==1
-collapse (max) formal_land_rights_f, by(hhid sbmemno)		
-save "${Tanzania_NPS_W1_created_data}/Tanzania_NPS_W1_land_rights_ind.dta", replace
-restore	
-preserve
-collapse (max) formal_land_rights_hh=formal_land_rights, by(hhid)		// taking max at household level; equals one if they have official documentation for at least one plot
-save "${Tanzania_NPS_W1_created_data}/Tanzania_NPS_W1_land_rights_hh.dta", replace
-restore
 gen value_fertilizer = s3aq41
 replace value_fertilizer = s3bq41 if value_fertilizer ==.
 recode value_fertilizer (.=0)
@@ -1403,17 +1405,9 @@ save "${Tanzania_NPS_W1_created_data}/Tanzania_NPS_W1_agproducts_profits.dta", r
 ********************************************************************************
 *WAGE INCOME
 ********************************************************************************
-/*
-TNPS Wave 1 did not capture number of weeks per month indidivudal worked.
-We impute these using median values by industry and type of residence using TNPS wave 2
-see imputation below. This follows RIGA methods to deal with this issue
-*/
-global TZA_W2_raw_data 	    	"$directory/Tanzania NPS/Tanzania NPS Wave 2/Raw DTA Files/TZA_2010_NPS-R2_v02_M_STATA8"
-global TZA_W2_created_data  	"$directory/Tanzania NPS/Tanzania NPS Wave 2/Final DTA Files/created_data"
-global TZA_W2_final_data  		"$directory/Tanzania NPS/Tanzania NPS Wave 2/Final DTA Files"
-     
-use   "${TZA_W2_raw_data}/HH_SEC_E1.dta", clear
-merge m:1 y2_hhid using  "${TZA_W2_raw_data}/HH_SEC_A.dta"
+
+use   "${Tanzania_NPS_W2_raw_data}/HH_SEC_E1.dta", clear
+merge m:1 y2_hhid using  "${Tanzania_NPS_W2_raw_data}/HH_SEC_A.dta"
 //Classification of Industry to get median wage for imputation, taken from RIGA coding	
 g industry=1 if hh_e17_2<=3
 replace  industry=2  if hh_e17_2>= 5 & hh_e17_2<= 9 & industry==.

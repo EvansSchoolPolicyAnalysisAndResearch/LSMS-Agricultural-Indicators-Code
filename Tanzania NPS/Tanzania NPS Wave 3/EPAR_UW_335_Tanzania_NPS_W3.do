@@ -2923,7 +2923,7 @@ gen liters_per_largeruminant = (liters_day*365*(months_milked/12))	// liters per
 keep if milk_animals!=0 & milk_animals!=.
 drop if liters_per_largeruminant==.
 keep y3_hhid   milk_animals months_milked liters_per_largeruminant 
-lab var milk_animals "Number of large ruminants that was milke (household)"
+lab var milk_animals "Number of large ruminants that were milked (household)"
 lab var months_milked "Average months milked in last year (household)"
 lab var liters_per_largeruminant "average quantity (liters) per day (household)"
 save "${Tanzania_NPS_W3_created_data}/Tanzania_NPS_W3_milk_animals.dta", replace
@@ -3471,6 +3471,7 @@ save "${Tanzania_NPS_W3_created_data}/Tanzania_NPS_W3_hh_crop_area_plan_LRS_SRS.
 *ENDS *** ARP 11.1.20 - Compute improved seed by crop area *** ENDS
 ********************************************************************************
 
+/*
 ********************************************************************************
 *ARP 11.1.20 - Finalize household level vars for improved seed by crop area (abbreviated version of final steps in 399 code)
 ********************************************************************************
@@ -3528,7 +3529,7 @@ saveold "${Tanzania_NPS_W3_final_data}/Tanzania_NPS_W3_household_variables_limit
 
 *ENDS *** ARP 11.1.20 - Finalize household level vars for improved seed by crop area *** ENDS
 **********************************************************************************************
-
+*/
 
 ********************************************************************************
 *Now input costs*
@@ -3979,7 +3980,7 @@ lab var value_fam_labor "Value of family labor (household)"
 lab var value_fam_labor_male "Value of family labor (male-managed crops)"
 lab var value_fam_labor_female "Value of family labor (female-managed crops)"
 lab var value_fam_labor_mixed "Value of family labor (mixed-managed crops)"
-lab var value_ag_rentals "Value of rented equipment (household level"
+lab var value_ag_rentals "Value of rented equipment (household level)"
 recode ha_planted* (0=.)
 *Explicit and implicit costs at the plot level
 egen cost_total=rowtotal(value_owned_land value_rented_land value_inorg_fert value_herb_pest value_org_purchased ///
@@ -6595,8 +6596,8 @@ foreach p of global monetary_val {
 	lab var `p'_loc "`l`p'' (2017 TSH)"  
 	lab var `p' "`l`p'' (TSH)" 
 	gen w_`p'_usd= w_`p' * ccf_usd
-	gen w_`p'_1ppp= w_`p' * cons_1ppp
-	gen w_`p'_2ppp= w_`p' * cons_2ppp 
+	gen w_`p'_1ppp= w_`p' * ccf_1ppp
+	gen w_`p'_2ppp= w_`p' * ccf_2ppp 
 	gen w_`p'_loc=w_`p'  * ccf_loc
 	local lw_`p' : var lab w_`p' 
 	lab var w_`p'_1ppp "`lw_`p'' (2017 $ Private Consumption  PPP)"
