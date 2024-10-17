@@ -60,13 +60,13 @@ ssc install findname  // need this user-written ado file for some commands to wo
 
 *Set location of raw data and output
 global directory 					"../.."
-*global directory					"/Volumes/wfs/Project/EPAR/Working Files/335 - Ag Team Data Support/Waves"
 
 *Set directories
 global Ethiopia_ESS_W5_raw_data			"$directory/Ethiopia ESS/Ethiopia ESS Wave 5/Raw DTA Files"
 global Ethiopia_ESS_W5_temp_data		"$directory/Ethiopia ESS/Ethiopia ESS Wave 5/Final DTA Files/temp_data" // You should be pulling from this data rather than raw data because these have uniquely identified geographic variables!
 global Ethiopia_ESS_W5_created_data		"$directory/Ethiopia ESS/Ethiopia ESS Wave 5/Final DTA Files/created_data"
 global Ethiopia_ESS_W5_final_data		"$directory/Ethiopia ESS/Ethiopia ESS Wave 5/Final DTA Files/final_data" 
+global summary_stats 					"$directory/_Summary_statistics/EPAR_UW_335_SUMMARY_STATISTICS.do"
 
 
 ********************************************************************************
@@ -6395,8 +6395,4 @@ The code for outputting the summary statistics is in a separare dofile that is c
 global list_instruments  "Ethiopia_ESS_W5"
 
 * Directory for third-party user
-// do "$directory\_Summary_statistics\EPAR_UW_335_SUMMARY_STATISTICS.do"
-
-
-* Micah's Directory
-do "\\netid.washington.edu\wfs\EvansEPAR\Project\EPAR\Working Files\RA Working Folders\Micah\335_LSMS_dev_Shrek\Donkey\_Summary_statistics\EPAR_UW_335_SUMMARY_STATISTICS.do"
+do "$summary_stats"
