@@ -167,8 +167,8 @@ global summary_stats "$directory/_Summary_statistics/EPAR_UW_335_SUMMARY_STATIST
 **************************** 
 
 global Uganda_NPS_W3_exchange_rate 3690.85     
-global Uganda_NPS_W3_gdp_ppp_dollar 1270.608398 
-global Uganda_NPS_W3_cons_ppp_dollar 1221.087646 // updated to 2017 values from https://data.worldbank.org/indicator/PA.NUS.PRVT.PP?locations=UG // for 2014 
+global Uganda_NPS_W3_gdp_ppp_dollar 1251.63  // 1270.608398 
+global Uganda_NPS_W3_cons_ppp_dollar  1219.19 // 1221.087646 // updated to 2017 values from https://data.worldbank.org/indicator/PA.NUS.PRVT.PP?locations=UG // for 2014 
 global Uganda_NPS_W3_inflation .78753179 //CPI_SURVEY_YEAR/CPI_2017 - > CPI_2012/CPI_2017 ->  131.3435875/166.7787747 from https://data.worldbank.org/indicator/FP.CPI.TOTL?locations=UG  //The data were collected over the period 2011 to 2012 (therefore we use 2012 the latest year)
 global Uganda_NPS_W3_poverty_threshold ((1.90*944.255*131.3)/116.6)
 
@@ -3645,7 +3645,9 @@ save "${Uganda_NPS_W3_created_data}/Uganda_NPS_W3_shannon_diversity_index.dta", 
                           * CONSUMPTION *
 ********************************************************************************
 use "${Uganda_NPS_W3_raw_data}/UNPS 2011-12 Consumption Aggregate", clear
-ren cpexp30 total_cons // 
+gen nrrexp = cpexp30 * (131.3435875 / 71.55362795) // (CPI 2011&12rate / CPI 2005&06)
+ren nrrexp  total_cons 
+*ren cpexp30  total_cons 
 ren equiv adulteq
 ren welfare peraeq_cons
 merge 1:1 HHID using "${Uganda_NPS_W3_created_data}/Uganda_NPS_W3_hhsize.dta", nogen keep(1 3)

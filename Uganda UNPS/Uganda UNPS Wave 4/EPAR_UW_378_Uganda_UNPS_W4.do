@@ -173,8 +173,8 @@ global summary_stats "$directory/_Summary_statistics/EPAR_UW_335_SUMMARY_STATIST
 *           EXCHANGE RATE AND INFLATION FOR CONVERSION IN SUD IDS              *
 ********************************************************************************
 global Uganda_NPS_W4_exchange_rate 3689.75      // https://www.bloomberg.com/quote/USDUGX:CUR 										// NKF 12.30.19 - What year? Present?
-global Uganda_NPS_W4_gdp_ppp_dollar 1270.608398 // updated 4.6.23 to 2017 values from https://data.worldbank.org/indicator/PA.NUS.PPP?locations=UG 
-global Uganda_NPS_W4_cons_ppp_dollar 1221.087646 // updated 4.6.23 to 2017 values from https://data.worldbank.org/indicator/PA.NUS.PRVT.PP?locations=UG // for 2014 
+global Uganda_NPS_W4_gdp_ppp_dollar 1251.63  // 1270.608398 // updated 4.6.23 to 2017 values from https://data.worldbank.org/indicator/PA.NUS.PPP?locations=UG 
+global Uganda_NPS_W4_cons_ppp_dollar  1219.19 // 1221.087646 // updated 4.6.23 to 2017 values from https://data.worldbank.org/indicator/PA.NUS.PRVT.PP?locations=UG // for 2014 
 global Uganda_NPS_W4_inflation 0.8515721875 //CPI_SURVEY_YEAR/CPI_2017 -> CPI_2014/CPI_2017 ->  142.024166/166.7787747 from https://data.worldbank.org/indicator/FP.CPI.TOTL?locations=UG  //The data were collected over the period November 2013 - October 2014
 global Uganda_NPS_W4_poverty_threshold ((1.90*944.255*142.024166)/116.6)
 
@@ -3815,10 +3815,11 @@ save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_shannon_diversity_index.dta", 
 ********************************************************************************
                           * CONSUMPTION *
 ********************************************************************************
-*SW 9.27.23 This section is written using Uganda Wave 3  as reference. 
+* This section is written using Uganda Wave 3  as reference. 
 use "${Uganda_NPS_W4_raw_data}/pov2013_14", clear 
 duplicates drop HHID, force // 1 observation deleted
-ren cpexp30 total_cons // 
+ren nrrexp  total_cons 
+*ren cpexp30  total_cons 
 ren equiv adulteq
 ren welfare peraeq_cons
 merge 1:1 HHID using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_hhsize.dta", nogen keep(1 3)

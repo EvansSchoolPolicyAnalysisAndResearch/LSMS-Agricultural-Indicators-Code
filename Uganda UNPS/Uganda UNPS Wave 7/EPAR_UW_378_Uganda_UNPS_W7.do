@@ -202,8 +202,8 @@ label define species 	1 "Large ruminants (cows, buffalos)"	/*
 *EXCHANGE RATE AND INFLATION FOR CONVERSION IN SUD IDS
 ********************************************************************************
 global UGA_W7_exchange_rate 3727.069		// Rate for 2018 from https://data.worldbank.org/indicator/PA.NUS.FCRF?end=2020&locations=UG&start=1960 (replaced this> https://www.exchangerates.org.uk/USD-UGX-spot-exchange-rates-history-2015.html). instead of using a spot rate, think its better to use the annual average rate from WB.
-global UGA_W7_gdp_ppp_dollar 1270.608398 // updated 4.6.23 to 2017 values from https://data.worldbank.org/indicator/PA.NUS.PPP?locations=UG
-global UGA_W7_cons_ppp_dollar 1221.087646 // updated 4.6.23 to 2017 values from https://data.worldbank.org/indicator/PA.NUS.PRVT.PP?locations=UG
+global UGA_W7_gdp_ppp_dollar 1251.63  // 1270.608398 // updated 4.6.23 to 2017 values from https://data.worldbank.org/indicator/PA.NUS.PPP?locations=UG
+global UGA_W7_cons_ppp_dollar 1219.19 // 1221.087646 // updated 4.6.23 to 2017 values from https://data.worldbank.org/indicator/PA.NUS.PRVT.PP?locations=UG
 global UGA_W7_inflation 1.05558616387 //CPI_SURVEY_YEAR/CPI_2017 -> CPI_2019/CPI_2017 -> 176.049367/166.7787747 from https://data.worldbank.org/indicator/FP.CPI.TOTL. The data were collected over the period February 2018 - February 2019.
 
 global UGA_W7_poverty_190 ((1.90*944.255*142.024166)/116.6)
@@ -3825,7 +3825,8 @@ save "${Uganda_NPS_W7_created_data}/Uganda_NPS_W7_shannon_diversity_index.dta", 
 *CONSUMPTION
 ******************************************************************************** 
 use "${Uganda_NPS_W7_raw_data}/pov2018_19.dta", clear
-ren cpexp30  total_cons // using real consumption-adjusted for region price disparities
+ren nrrexp  total_cons 
+*ren cpexp30  total_cons 
 ren equiv adulteq
 gen peraeq_cons = (total_cons / adulteq)
 gen percapita_cons = (total_cons / hsize)
@@ -3836,7 +3837,7 @@ lab var peraeq_cons "Consumption per adult equivalent"
 lab var percapita_cons "Consumption per capita"
 lab var daily_peraeq_cons "Daily consumption per adult equivalent"
 lab var daily_percap_cons "Daily consumption per capita" 
-keep hhid total_cons peraeq_cons percapita_cons daily_peraeq_cons daily_percap_cons adulteq
+keep hhid total_cons peraeq_cons percapita_cons daily_peraeq_cons daily_percap_cons adulteq poor_2019
 save "${Uganda_NPS_W7_created_data}/Uganda_NPS_W7_consumption.dta", replace
 
 use "${Uganda_NPS_W7_raw_data}/pov2018_19.dta", clear
@@ -4747,6 +4748,9 @@ gen poverty_under_2_15 = (daily_percap_cons < $UGA_W7_poverty_215)
 la var poverty_under_2_15 "Household per-capita consumption is below $2.15 in 2017 $ PPP"
 
 merge 1:1 hhid using "${Uganda_NPS_W7_created_data}/Uganda_NPS_W7_consumption.dta", keep(1 3) nogen 
+
+ren poor_2019 poverty_under_npl 
+la var poverty_under_npl "Household daily per-capita consumption is below the national poverty line"
 
 *generating clusterid and strataid
 gen clusterid=subcounty

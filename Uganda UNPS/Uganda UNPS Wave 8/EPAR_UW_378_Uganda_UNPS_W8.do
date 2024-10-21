@@ -184,12 +184,12 @@ global summary_stats "$directory/_Summary_statistics/EPAR_UW_335_SUMMARY_STATIST
 
 //global Uganda_NPS_W8_exchange_rate 3376.4246		// Rate of Jan 1, 2015 from https://www.exchangerates.org.uk/USD-UGX-spot-exchange-rates-history-2016.html (Can we get historical rate from bloomberg?) // RH: average exchrt for 2019 was 3704.5036 UGX. Use that instead of Jan 1,2015?
 global Uganda_NPS_W8_exchange_rate 3704.5036		// Average rate of 2019 from https://www.exchangerates.org.uk/USD-UGX-spot-exchange-rates-history-2019.html
-global Uganda_NPS_W8_gdp_ppp_dollar 1270.608398 // updated 4.6.23 to 2017 values from https://data.worldbank.org/indicator/PA.NUS.PPP
-global Uganda_NPS_W8_cons_ppp_dollar 1221.087646 // updated 4.6.23 to 2017 values from https://data.worldbank.org/indicator/PA.NUS.PRVT.PP
+global Uganda_NPS_W8_gdp_ppp_dollar 1251.63  //1270.608398 // updated 4.6.23 to 2017 values from https://data.worldbank.org/indicator/PA.NUS.PPP
+global Uganda_NPS_W8_cons_ppp_dollar 1219.19 //1221.087646 // updated 4.6.23 to 2017 values from https://data.worldbank.org/indicator/PA.NUS.PRVT.PP
 global Uganda_NPS_W8_inflation 1.09056114201 //CPI_SURVEY_YEAR/CPI_2017 -> CPI_2020/CPI_2017 -> 181.882451/166.7787747 The data were collected over the period February 2019 - February 2020.
 global Uganda_NPS_W8_poverty_190 ((1.90*944.255)*(181.882451/116.6))
 global Uganda_NPS_W8_poverty_215 (2.15 * ($Uganda_NPS_W8_inflation) * $Uganda_NPS_W8_cons_ppp_dollar) 
-global Uganda_NPS_W8_poverty_npl (361*183.9/267.5) 
+*global Uganda_NPS_W8_poverty_npl (361*183.9/267.5) 
 //Updated 11.15.23 - Re-scaling survey weights to match population estimates
 *https://databank.worldbank.org/source/world-development-indicators#
 *Using 2020 numbers
@@ -4330,7 +4330,8 @@ save "${Uganda_NPS_W8_created_data}/Uganda_NPS_W8_shannon_diversity_index.dta", 
 *                                   CONSUMPTION                                *
 ******************************************************************************** 
 use "${Uganda_NPS_W8_raw_data}/pov2019_20.dta", clear
-ren cpexp30  total_cons // using real consumption-adjusted for region price disparities
+ren nrrexp  total_cons 
+*ren cpexp30  total_cons 
 ren equiv adulteq
 gen peraeq_cons = (total_cons / adulteq)
 gen percapita_cons = (total_cons / hsize)
@@ -4341,7 +4342,7 @@ lab var peraeq_cons "Consumption per adult equivalent"
 lab var percapita_cons "Consumption per capita"
 lab var daily_peraeq_cons "Daily consumption per adult equivalent"
 lab var daily_percap_cons "Daily consumption per capita" 
-keep hhid total_cons peraeq_cons percapita_cons daily_peraeq_cons daily_percap_cons adulteq
+keep hhid total_cons peraeq_cons percapita_cons daily_peraeq_cons daily_percap_cons adulteq poor_2020
 save "${Uganda_NPS_W8_created_data}/Uganda_NPS_W8_consumption.dta", replace
 
 **We create an adulteq dataset for summary statistics sections
@@ -4666,7 +4667,7 @@ replace value_farm_prod_sold = 0 if value_farm_prod_sold==. & value_farm_product
 
 *Agricultural households
 recode value_crop_production livestock_income farm_area tlu_today (.=0)
-gen ag_hh = (value_crop_production!=0 | crop_income!=0 | livestock_income!=0 | farm_area!=0 | tlu_today!=0)
+gen ag_hh = (value_crop_production!=0 | crop_income!=0 /*| livestock_income!=0*/ | farm_area!=0 | tlu_today!=0)
 lab var ag_hh "1= Household has some land cultivated, some livestock, some crop income, or some livestock income"
 
 *household with egg-producing animals  
@@ -5273,8 +5274,11 @@ gen poverty_under_1_9 = (daily_percap_cons < $Uganda_NPS_W8_poverty_190)
 la var poverty_under_1_9 "Household per-capita conumption is below $1.90 in 2011 $ PPP"
 gen poverty_under_2_15 = (daily_percap_cons < $Uganda_NPS_W8_poverty_215)
 la var poverty_under_2_15 "Household per-capita consumption is below $2.15 in 2017 $ PPP"
-gen poverty_under_npl = (daily_percap_cons < $Uganda_NPS_W8_poverty_npl) 
+
+*gen poverty_under_npl = (daily_percap_cons < $Uganda_NPS_W8_poverty_npl)
+ren poor_2020 poverty_under_npl 
 la var poverty_under_npl "Household daily per-capita consumption is below the national poverty line"
+
 
 gen clusterid=subcounty_code
 

@@ -155,9 +155,9 @@ global Uganda_NPS_W2_final_data  "$directory/Uganda UNPS/Uganda UNPS Wave 2/Fina
 *EXCHANGE RATE AND INFLATION
 ****************************
 global Uganda_NPS_W1_exchange_rate 2248.58 //https://archive.bou.or.ug/bou/collateral/interbank_forms/2010/Aug/Major_27Aug10.html
-global Uganda_NPS_W1_gdp_ppp_dollar 1270.608398
+global Uganda_NPS_W1_gdp_ppp_dollar 1251.63 // 1270.608398
     // https://data.worldbank.org/indicator/PA.NUS.PPP 
-global Uganda_NPS_W1_cons_ppp_dollar 1221.087646
+global Uganda_NPS_W1_cons_ppp_dollar 1219.19	// 1221.087646
 	 // https://data.worldbank.org/indicator/PA.NUS.PRVT.PP value
 global Uganda_NPS_W1_inflation  0.59959668237 // CPI_Survey_Year/CPI_2017 -> CPI_2010/CPI_2017 ->  (100/166.7787747)
 //https://data.worldbank.org/indicator/FP.CPI.TOTL?end=2016&locations=UG&start=2010 // The data were collected over the period 2009 - 2010
@@ -4083,7 +4083,8 @@ save "${Uganda_NPS_W1_created_data}/Uganda_NPS_W1_shannon_diversity_index.dta", 
                           * CONSUMPTION *
 ********************************************************************************
 use "${Uganda_NPS_W1_raw_data}/pov2009_10", clear
-ren cpexp30 total_cons
+ren nrrexp  total_cons 
+*ren cpexp30  total_cons 
 ren equiv_m adulteq
 ren welfare peraeq_cons
 ren hhid HHID

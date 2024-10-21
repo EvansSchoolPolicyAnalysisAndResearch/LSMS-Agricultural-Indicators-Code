@@ -188,8 +188,8 @@ label define species 	1 "Large ruminants (cows, buffalos)"	/*
 // SAK 1.22.19 Ask Emma which year to use for exchange rate/inflation rate, etc -- instrument for 2010-2011
 
 global Uganda_NPS_W2_exchange_rate  3690.85
-global Uganda_NPS_W2_gdp_ppp_dollar 1270.608398
-global Uganda_NPS_W2_cons_ppp_dollar 1221.087646
+global Uganda_NPS_W2_gdp_ppp_dollar 1251.63  // 1270.608398
+global Uganda_NPS_W2_cons_ppp_dollar 1219.19 // 1221.087646
 //https://data.worldbank.org/indicator/FP.CPI.TOTL?end=2016&locations=UG&start=2011
 global Uganda_NPS_W2_inflation .69904077 //(116.6)/166.8, inflation for 2.15 2017 baseline https://data.worldbank.org/indicator/FP.CPI.TOTL?end=2016&locations=UG&start=2011 //
 global Uganda_NPS_W2_poverty_190 ((1.90*944.26)*(116.6/116.6))  //Calculation for WB's previous $1.90 (PPP) poverty threshold. This controls the indicator poverty_under_1_9; change the 1.9 to get results for a different threshold. Note this is based on the 2011 PPP conversion!
@@ -5093,7 +5093,9 @@ save "${Uganda_NPS_W2_created_data}/Uganda_NPS_W2_shannon_diversity_index.dta", 
                           * CONSUMPTION *
 ********************************************************************************
 use "${Uganda_NPS_W2_raw_data}/UNPS 2011-12 Consumption Aggregate.dta", clear
-ren cpexp30 total_cons
+gen nrrexp = cpexp30 * (116.5643496 / 71.55362795) // (CPI 2010&11 / CPI 2005&06)
+ren nrrexp  total_cons 
+*ren cpexp30  total_cons 
 ren equiv adulteq
 ren welfare peraeq_cons
 ren HHID hhid

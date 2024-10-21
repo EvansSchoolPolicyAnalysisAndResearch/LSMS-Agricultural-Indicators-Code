@@ -180,13 +180,13 @@ global Uganda_NPS_W5_pop_urb 8267505
 *EXCHANGE RATE AND INFLATION FOR CONVERSION IN SUD IDS
 ********************************************************************************
 global Uganda_NPS_W5_exchange_rate 3346.0703		// Rate of Dec 1, 2015 from https://www.exchangerates.org.uk/USD-UGX-spot-exchange-rates-history-2015.html
-global Uganda_NPS_W5_gdp_ppp_dollar 1125.471   		// Rate for 2015 from https://data.worldbank.org/indicator/PA.NUS.PPP?locations=UG
-global Uganda_NPS_W5_cons_ppp_dollar 1127.687		// Rate for 2015 from https://data.worldbank.org/indicator/PA.NUS.PRVT.PP?locations=UG
-global Uganda_NPS_W5_inflation 1.05558616387 //CPI_SURVEY_YEAR/CPI_2017 -> CPI_2019/CPI_2017 -> 176.049367/166.7787747 from https://data.worldbank.org/indicator/FP.CPI.TOTL. The data were collected over the period February 2018 - February 2019.
+global Uganda_NPS_W5_gdp_ppp_dollar 1251.63    		// Rate for 2015 from https://data.worldbank.org/indicator/PA.NUS.PPP?locations=UG
+global Uganda_NPS_W5_cons_ppp_dollar 1219.19		// Rate for 2015 from https://data.worldbank.org/indicator/PA.NUS.PRVT.PP?locations=UG
+global Uganda_NPS_W5_inflation 0.950482548424       //CPI_SURVEY_YEAR/CPI_2017 -> CPI_2016/CPI_2017 -> 158.5203148/166.7787747 from https://data.worldbank.org/indicator/FP.CPI.TOTL. The data were collected over the period February 2018 - February 2019.
 
 global Uganda_NPS_W5_poverty_190 ((1.90*944.255)*(142.024166/116.6))
 global Uganda_NPS_W5_poverty_215 (2.15*($Uganda_NPS_W5_inflation)*$Uganda_NPS_W5_cons_ppp_dollar)
-global Uganda_NPS_W5_poverty_npl (361*183.9/267.5) 
+*global Uganda_NPS_W5_poverty_npl (361*183.9/267.5) 
 
 *Notes:  Calculation for WB' previous $1.90 (PPP) poverty threshold, 2185.2775 Uganda Shilling UGX. This is calculated as the following: PovertyLine x PPP conversion factor (private consumption)t=2011 (reference year of PL, therefore 2011. This is fixed across waves so no need to change it) x Inflation(from t=2011 to t+1=last year survey was implemented). Inflation is calculated as the following: CPI Uganda inflation from 2011 (baseline year) to 2014 (last survey year) Inflation = Inflation (t=last survey year =2014)/Inflation (t= baseline year of PL =2011) https://data.worldbank.org/indicator/PA.NUS.PRVT.PP?locations=UG&name_desc=false and https://data.worldbank.org/indicator/FP.CPI.TOTL?locations=UG
 
@@ -3585,26 +3585,15 @@ save "${Uganda_NPS_W5_created_data}/Uganda_NPS_W5_shannon_diversity_index.dta", 
 ********************************************************************************
                           * CONSUMPTION *
 ********************************************************************************
-*SW 9.27.23 This section is written using Uganda Wave 3  as reference. 
+* This section is written using Uganda Wave 3  as reference. 
 use "${Uganda_NPS_W5_raw_data}/pov2015_16", clear 
-/*
-gen hhid = subinstr(hh, "-", "", .)
-replace hhid = substr(hhid, 1, length(hhid)-2)
-duplicates drop hhid, force // 1 observation deleted
-
-ren cpexp30 total_cons // 
-ren equiv adulteq
-ren welfare peraeq_cons
-*CPK: come back to this -- this isn't working merging on HHID
-merge 1:1 hhid using "${Uganda_NPS_W5_created_data}/Uganda_NPS_W5_hhsize.dta", nogen keep(1 3)
-gen percapita_cons = (total_cons / hh_members)
-*/
 
 *gen hhid = subinstr(hh, "-", "", .)
 gen hhid = subinstr(hh, "-05-", "", .)
 merge 1:1 hh using "${Uganda_NPS_W5_raw_data}/gsec1.dta", nogen keepusing(HHID)
 *ren HHID hhid
-ren cpexp30  total_cons // using real consumption-adjusted for region price disparities
+ren nrrexp  total_cons 
+*ren cpexp30  total_cons 
 ren equiv adulteq
 gen peraeq_cons = (total_cons / adulteq)
 gen percapita_cons = (total_cons / hsize)
@@ -4584,8 +4573,9 @@ la var poverty_under_1_9 "Household per-capita conumption is below $1.90 in 2011
 gen poverty_under_2_15 = (daily_percap_cons < $Uganda_NPS_W5_poverty_215)
 la var poverty_under_2_15 "Household per-capita consumption is below $2.15 in 2015 $ PPP"
 
-gen poverty_under_npl = (daily_percap_cons < $Uganda_NPS_W5_poverty_npl) 
-la var poverty_under_npl "Household daily per-capita consumption is below the national poverty line
+*gen poverty_under_npl = (daily_percap_cons < $Uganda_NPS_W5_poverty_npl) 
+ren poor_2015_2016 poverty_under_npl 
+la var poverty_under_npl "Household daily per-capita consumption is below the national poverty line"
 
 *Recode to missing any variables that cannot be created in this instrument
 *replace empty vars with missing
@@ -4971,7 +4961,7 @@ gen hhid_panel = hhid
 lab var hhid_panel "panel hh identifier" 
 gen geography = "Uganda"
 gen survey = "LSMS-ISA"
-gen year = "2011-12"
+gen year = "2015-16"
 gen instrument = 55
 capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2" 13 "Tanzania NPS Wave 3" 14 "Tanzania NPS Wave 4" 15 "Tanzania NPS SDD" 16 "Tanzania NPS Wave 5" /*
 	*/ 21 "Ethiopia ESS Wave 1" 22 "Ethiopia ESS Wave 2" 23 "Ethiopia ESS Wave 3" 24 "Ethiopia ESS Wave 4" 25 "Ethiopia ESS Wave 5" /*
