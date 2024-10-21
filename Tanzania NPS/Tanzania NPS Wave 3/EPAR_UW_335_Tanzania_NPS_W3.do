@@ -72,8 +72,8 @@ global Tanzania_NPS_W3_final_data  		"$directory/Tanzania NPS/Tanzania NPS Wave 
 *EXCHANGE RATE AND INFLATION FOR CONVERSION IN SUD IDS
 ********************************************************************************
 global Tanzania_NPS_W3_exchange_rate 2158			// https://www.bloomberg.com/quote/USDETB:CUR
-global Tanzania_NPS_W3_gdp_ppp_dollar 888.44      // https://data.worldbank.org/indicator/PA.NUS.PPP		// UPDATED 9/18/24: GDP_PPP_DOLLAR for 2021
-global Tanzania_NPS_W3_cons_ppp_dollar 790.48	  // https://data.worldbank.org/indicator/PA.NUS.PRVT.PP	// UPDATED 9/18/24: GDP_PPP_DOLLAR for 2021
+global Tanzania_NPS_W3_gdp_ppp_dollar 889.45      // https://data.worldbank.org/indicator/PA.NUS.PPP		// UPDATED 9/18/24: GDP_PPP_DOLLAR for 2017
+global Tanzania_NPS_W3_cons_ppp_dollar 777.60	  // https://data.worldbank.org/indicator/PA.NUS.PRVT.PP	// UPDATED 9/18/24: GDP_PPP_DOLLAR for 2017
 global Tanzania_NPS_W3_infl_adj  (141/175)		// inflation rate: CPI_2013/CPI_2017. 2017 is base year.
 global Tanzania_NPS_W3_poverty_190 (1.9 * 588.8 * 141/112.7) //Previous international extreme poverty line. 2011 is base year.
 global Tanzania_NPS_W3_poverty_npl 1199 //National poverty line from https://onlinelibrary.wiley.com/doi/full/10.1111/rode.12829 stating a monthly line of 36,482 in 2011/12 

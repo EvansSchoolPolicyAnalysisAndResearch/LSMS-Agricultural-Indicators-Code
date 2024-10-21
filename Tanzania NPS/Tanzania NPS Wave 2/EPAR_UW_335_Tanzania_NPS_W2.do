@@ -185,7 +185,7 @@ global Tanzania_NPS_W2_final_data  		"$directory/Tanzania NPS/Tanzania NPS Wave 
 global Tanzania_NPS_W2_exchange_rate 2158			// https://www.bloomberg.com/quote/USDETB:CUR
 global Tanzania_NPS_W2_gdp_ppp_dollar 889.45      // https://data.worldbank.org/indicator/PA.NUS.PPP		// UPDATED 9/18/24: GDP_PPP_DOLLAR for 2017
 global Tanzania_NPS_W2_cons_ppp_dollar 777.6	  // https://data.worldbank.org/indicator/PA.NUS.PRVT.PP	// UPDATED 9/18/24: GDP_PPP_DOLLAR for 2017
-global Tanzania_NPS_W2_infl_adj  100/175		// inflation rate. Data was collected during 2010-2011.	As of 2023, we want to adjust value to 2017 // I = CPI 2010/CPI 2017 = 100/175
+global Tanzania_NPS_W2_infl_adj  112.69/175.04		// inflation rate. Data was collected during 2010-2011.	As of 2023, we want to adjust value to 2017 // I = CPI 2011/CPI 2017 = 112.69/175.04
 global Tanzania_NPS_W2_poverty_190 1.9 * 588.8  //Previous international extreme poverty line //2011 is base year, so no inflation adjustment 
 global Tanzania_NPS_W2_poverty_npl (1200 * (112.7/175)) //Line is set based on assumption of 1200 TSH/day in 2011/2012, deflated to 2017. https://documents1.worldbank.org/curated/en/679851467999966244/pdf/AUS6819-WP-v1-P148501-PUBLIC-Tanzania-summary-15Apr15-Box391437B.pdf
 global Tanzania_NPS_W2_poverty_215 2.15*$Tanzania_NPS_W2_infl_adj * $Tanzania_NPS_W2_cons_ppp_dollar
