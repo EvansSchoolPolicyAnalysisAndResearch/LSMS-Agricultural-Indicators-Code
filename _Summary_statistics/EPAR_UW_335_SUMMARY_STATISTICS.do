@@ -1913,7 +1913,7 @@ foreach instrument of global list_instruments {
   if "`instrument'"=="Uganda_NPS_W1" {
 		gen Geography="Uganda"
 		gen Survey="LSMS-ISA"
-		gen Instrument="Uganda UNPS Wave 3"
+		gen Instrument="Uganda UNPS Wave 1"
 		gen Year="2009-10"
 	}
   
