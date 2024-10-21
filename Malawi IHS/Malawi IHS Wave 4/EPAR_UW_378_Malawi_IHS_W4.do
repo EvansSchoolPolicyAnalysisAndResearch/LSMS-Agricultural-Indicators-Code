@@ -186,7 +186,7 @@ global summary_stats 						"$directory/_Summary_statistics\EPAR_UW_335_SUMMARY_S
 global MWI_IHS_IHPS_W4_exchange_rate 730.27 //https://data.worldbank.org/indicator/PA.NUS.FCRF?end=2017&locations=MW&start=2017 
 global MWI_IHS_IHPS_W4_gdp_ppp_dollar 251.074234   // https://data.worldbank.org/indicator/PA.NUS.PPP -2017. using 2017 because it's the 2nd year of the survey
 global MWI_IHS_IHPS_W4_cons_ppp_dollar 241.9305267  // https://data.worldbank.org/indicator/PA.NUS.PRVT.PP - using 2017 data 
-global MWI_IHS_IHPS_W4_infl_adj 1.22957084 // CPI2019(survey year)/CPI2017 = 418.3/340.2 = 1.22957084
+global MWI_IHS_IHPS_W4_infl_adj 1.3356160357 // CPI2020(last year of survey)/CPI2017 = 454.43/340.2 = 1.33566160357
 // https://data.worldbank.org/indicator/FP.CPI.TOTL?end=2019&locations=MW&start=2009
 global MWI_IHS_IHPS_W4_poverty_thres ((1.90*78.7*340.2)/107.6) //see calculation below
 * WB's previous (PPP) poverty threshold is $1.90. (established in 2011)

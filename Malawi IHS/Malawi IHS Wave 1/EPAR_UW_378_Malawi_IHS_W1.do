@@ -168,8 +168,8 @@ global Malawi_IHS_W1_pop_urb 2287832
 global Malawi_IHS_W1_exchange_rate 730.27	  //https://data.worldbank.org/indicator/PA.NUS.FCRF?end=2017&locations=MW&start=2011
 global Malawi_IHS_W1_gdp_ppp_dollar 262.31    //https://data.worldbank.org/indicator/PA.NUS.PPP?end=2017&locations=MW&start=2011
 global Malawi_IHS_W1_cons_ppp_dollar 249.1	  //https://data.worldbank.org/indicator/PA.NUS.PRVT.PP?end=2017&locations=MW&start=2011
-global Malawi_IHS_W1_inflation 0.29394474 // CPI Survey Year 2010/CPI of Poverty Line Baseline Year 2017=100/340.2 //https://data.worldbank.org/indicator/FP.CPI.TOTL?end=2017&locations=MW&start=2009
-global Malawi_IHS_W1_2013_10_infl_adj 0.60204696 // CPI survey year 2010=100/CPI survey year 2013=166.1 https://data.worldbank.org/indicator/FP.CPI.TOTL?end=2017&locations=MW&start=2009
+global Malawi_IHS_W1_inflation 0.31630613 // CPI Survey Year 2010/CPI of Poverty Line Baseline Year 2017=107.62/340.24 //https://data.worldbank.org/indicator/FP.CPI.TOTL?end=2017&locations=MW&start=2009
+global Malawi_IHS_W1_2013_10_infl_adj 0.647922938 // CPI survey year 2011=107.62/CPI survey year 2013=166.1 https://data.worldbank.org/indicator/FP.CPI.TOTL?end=2017&locations=MW&start=2009
 
 global Malawi_IHS_W1_poverty_threshold (1.90*78.77*100/107.6) //see calculation and sources below
 //WB's previous (PPP) poverty threshold is $1.90. 
