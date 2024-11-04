@@ -2566,7 +2566,7 @@ recode  value_harvest value_crop_sales  (.=0)
 //replace value_harvest = value_crop_sales if value_crop_sales>value_harvest & value_crop_sales !=. /* In a few cases, sales value reported exceeds the estimated value of crop harvest */
 
 preserve
-collapse (sum) value_harvest value_crop_sales, by (hhid crop_code_long)
+collapse (sum) value_harvest value_crop_sales, by (hhid crop_code crop_code_long)
 drop if crop_code ==.
 ren value_harvest value_crop_production
 lab var value_crop_production "Gross value of crop production, summed over main and short season"
@@ -2574,8 +2574,8 @@ lab var value_crop_sales "Value of crops sold so far, summed over main and short
 tempfile crop_values_production
 save `crop_values_production'
 restore
-collapse (sum) value_harvest value_crop_sales, by (hhid crop_code_long)
-drop if crop_code_long ==.
+collapse (sum) value_harvest value_crop_sales, by (hhid crop_code crop_code_long)
+drop if crop_code ==.
 ren value_harvest value_crop_production
 lab var value_crop_production "Gross value of crop production, summed over main and short season"
 lab var value_crop_sales "Value of crops sold so far, summed over main and short season"
@@ -2598,7 +2598,7 @@ drop if crop_code==.
 rename ag_i36d percent_lost
 replace percent_lost = ag_o36d if percent_lost==. & ag_o36d!=.
 replace percent_lost = 100 if percent_lost > 100 & percent_lost!=. 
-//ren crop_code_long crop_code
+
 merge m:1 hhid crop_code_long using "${MWI_IHPS_W2_created_data}/Malawi_IHPS_W2_hh_crop_values_production.dta", nogen keep(1 3)
 gen value_lost = value_crop_production * (percent_lost/100)
 recode value_lost (.=0)
@@ -4684,8 +4684,15 @@ save "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_crop_harvest_area_yield.dta", r
 
 **Yield at the household level
 *Value of crop production
+preserve
+use "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_hh_crop_values_production.dta", clear
+collapse (sum) value*, by(hhid crop_code)
+tempfile cropvalues
+save `cropvalues' 
+restore
+
 merge m:1 crop_code using "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_cropname_table.dta", nogen keep(1 3)
-merge 1:1 hhid crop_code using "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_crop_values_production.dta", nogen keep(1 3)
+merge 1:1 hhid crop_code using `cropvalues', nogen keep(1 3)
 ren value_crop_production value_harv_
 ren value_crop_sales value_sold_
 foreach i in harvest area {
