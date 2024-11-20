@@ -427,19 +427,30 @@ ren shunsh_ratio shunsh_ratio2
 merge m:1 crop_code using `ratios', nogen
 ren shunsh_ratio shunsh_ratio3
 
+gen shell_unshelled = shunsh_ratio1 
+replace shell_unshelled = shunsh_ratio2 if shell_unshelled==.
+replace shell_unshelled = shunsh_ratio3 if shell_unshelled==.
+preserve 
+keep crop_code unit_code shell_unshelled 
+duplicates drop
+drop if shell_unshelled==.
+//These ratios are similar but not identical, so we'll average them
+collapse (mean) shell_unshelled, by(crop_code)
+replace shell_unshelled = 1/shell_unshelled //kludge, more intuitive this way: how much shelled crop does the unshelled weight represent?
+save "MWI_IHS_shell_unshelled.dta", replace
+restore
+
+
+
 forvalues k=1/3 { 
 bys region crop_code unit_code : egen mean_conv`k' = mean(conversion`k')
 bys crop_code unit_code : egen nat_conv`k' = mean(conversion`k')
 gen miss_conv`k' = conversion`k'==.
 }
-replace conversion2 = conversion1/shunsh_ratio1 if conversion2==.
-replace conversion2 = conversion1/shunsh_ratio2 if conversion2==.
-replace conversion2 = conversion1/shunsh_ratio3 if conversion2==.
+replace conversion2 = conversion1/shell_unshelled if conversion2==.
 replace source2 = "Shelled/unshelled ratio" if conversion2!=. & miss_conv2==1
 
-replace conversion1 = conversion2*shunsh_ratio1 if conversion1==.
-replace conversion1 = conversion2*shunsh_ratio2 if conversion1==.
-replace conversion1 = conversion2*shunsh_ratio3 if conversion1==.
+replace conversion1 = conversion2*shell_unshelled if conversion1==.
 replace source1 = "Shelled/unshelled ratio" if conversion1!=. & miss_conv1==1
 
 replace miss_conv1 = conversion1==.
@@ -460,14 +471,11 @@ replace conversion3=nat_conv3 if conversion3==.
 forvalues k=1/3 {
 replace source`k' = "National mean" if (conversion`k'!=. & miss_conv`k'==1)
 }
-replace conversion2 = conversion1/shunsh_ratio1 if conversion2==.
-replace conversion2 = conversion1/shunsh_ratio2 if conversion2==.
-replace conversion2 = conversion1/shunsh_ratio3 if conversion2==.
+replace conversion2 = conversion1/shell_unshelled if conversion2==.
+
 replace source2 = "Shelled/unshelled ratio" if conversion2!=. & miss_conv2==1
 
-replace conversion1 = conversion2*shunsh_ratio1 if conversion1==.
-replace conversion1 = conversion2*shunsh_ratio2 if conversion1==.
-replace conversion1 = conversion2*shunsh_ratio3 if conversion1==.
+replace conversion1 = conversion2*shell_unshelled if conversion1==.
 replace source1 = "Shelled/unshelled ratio" if conversion1!=. & miss_conv1==1
 
 
@@ -481,8 +489,8 @@ reshape long conversion source original, i(region crop_code crop_code_long unit_
 	
 	//replace shunsh_na = 0 if inlist(crop_code, 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,30,31,32,33,34,35,36,37,38,105,301,302,308)
 	//replace shunsh_na = 1 if inlist(crop_code, 28,29,39,40,41,42,43,44,45,46,47,49,50,52,53,54,55,56,57,58,59,60,61,62,63,203,204,207,208,405,409,410)
-	drop if shunsh_na == 1 & condition != 3 & conversion==.
-	drop if shunsh_na == 0 & condition == 3 & conversion==.
+	drop if shunsh_na == 1 & condition != 3
+	drop if shunsh_na == 0 & condition == 3 
 
 	bys crop_code unit_code condition : egen conversion_mean = mean(conversion)
 	label define shunsh_na_lab 0 "shell_unshelled is applicable" 1 "shell_unshelled not applicable" 2 "shell_unshelled and NA both present"
