@@ -111,7 +111,7 @@ Below are the list of the main files created by running this Master do.file
 									Uganda_NPS_W4_livestock_feed_water_house.dta		//NEW//
 
 *USE OF INORGANIC FERTILIZER		Uganda_NPS_W4_fert_use.dta
-									Uganda_NPS_W4_farmer_fert_use.dta							//NEW//
+									Uganda_NPS_W4_farmer_fert_use.dta					//NEW//
 
 *USE OF IMPROVED SEED				Uganda_NPS_W4_improvedseed_use.dta
 									Uganda_NPS_W4_farmer_improvedseed_use.dta			//NEW//
@@ -122,13 +122,13 @@ Below are the list of the main files created by running this Master do.file
 *MILK PRODUCTIVITY					Uganda_NPS_W4_milk_animals.dta
 *EGG PRODUCTIVITY					Uganda_NPS_W4_eggs_animals.dta
 
-*CROP PRODUCTION COSTS PER HECTARE	Uganda_NPS_W4_hh_rental_rate.dta 			//NEW//
+*CROP PRODUCTION COSTS PER HECTARE	Uganda_NPS_W4_hh_rental_rate.dta 					//NEW//
 									Uganda_NPS_W4_hh_cost_land.dta
 									Uganda_NPS_W4_hh_cost_inputs_fcs.dta
 									Uganda_NPS_W4_hh_cost_inputs_scs.dta
 									Uganda_NPS_W4_hh_cost_seed_fcs.dta
 									Uganda_NPS_W4_hh_cost_seed_scs.dta	
-									Uganda_NPS_W4_asset_rental_costs.dta 			//NEW//
+									Uganda_NPS_W4_asset_rental_costs.dta 				//NEW//
 									Uganda_NPS_W4_cropcosts_total.dta
 
 *RATE OF FERTILIZER APPLICATION		Uganda_NPS_W4_fertilizer_application.dta
@@ -136,7 +136,7 @@ Below are the list of the main files created by running this Master do.file
 *WOMEN'S CONTROL OVER INCOME		Uganda_NPS_W4_control_income.dta
 *WOMEN'S AG DECISION-MAKING			Uganda_NPS_W4_make_ag_decision.dta
 *WOMEN'S ASSET OWNERSHIP			Uganda_NPS_W4_ownasset.dta
-*AGRICULTURAL WAGES					Uganda_NPS_W4_ag_wage.dta					// DOES THIS STILL EXIST?? NOT IN NEWER TZ FILE
+*AGRICULTURAL WAGES					Uganda_NPS_W4_ag_wage.dta					
 *CROP YIELDS						Uganda_NPS_W4_yield_hh_crop_level.dta
 *SHANNON DIVERSITY INDEX			Uganda_NPS_W4_shannon_diversity_index.dta
 *CONSUMPTION						Uganda_NPS_W4_consumption.dta
@@ -2246,7 +2246,6 @@ gen crop_grown = 1
 collapse (max) crop_grown, by(HHID parcel_id)
 save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_crops_grown.dta", replace
 
-**
 use "${Uganda_NPS_W4_raw_data}/AGSEC2A.dta", clear
 gen season=1
 append using "${Uganda_NPS_W4_raw_data}/AGSEC2B.dta"
@@ -2256,11 +2255,10 @@ ren hh HHID
 ren parcelID parcel_id
 gen cultivated = (a2aq11a==1 | a2aq11a==2 | a2aq11b==1 | a2aq11b==2)
 replace cultivated= (a2bq12a==1 | a2bq12a==2 | a2bq12b==1 | a2bq12b==2) if cultivated==.
-*??replace cultivated=. if cultivated==0 & (a2aq11a==. & a2aq11b==. & a2bq12a==. & a2bq12b==.)
+replace cultivated=. if cultivated==0 & (a2aq11a==. & a2aq11b==. & a2bq12a==. & a2bq12b==.)
 collapse (max) cultivated, by (HHID parcel_id)
 lab var cultivated "1= Parcel was cultivated in this data set"
 save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_parcels_cultivated.dta", replace
-
 
 use "${Uganda_NPS_W4_raw_data}/AGSEC2A.dta", clear
 gen season=1
@@ -2270,7 +2268,8 @@ ren HHID hhid
 ren hh HHID 
 ren parcelID parcel_id
 gen cultivated = (a2aq11a==1 | a2aq11a==2 | a2aq11b==1 | a2aq11b==2)
-replace cultivated= (a2bq12a==1 | a2bq12a==2 | a2bq12b==1 | a2bq12b==2) if cultivated==.
+replace cultivated = (a2bq12a==1 | a2bq12a==2 | a2bq12b==1 | a2bq12b==2) if (a2aq11a==. & a2aq11b==.)
+*replace cultivated= (a2bq12a==1 | a2bq12a==2 | a2bq12b==1 | a2bq12b==2) if cultivated==.
 replace cultivated=. if cultivated==0 & (a2aq11a==. & a2aq11b==. & a2bq12a==. & a2bq12b==.)
 keep if cultivated==1
 *Get parcel acres size, I prioritize GPS measurement than farmer estimate (cases when we had both measures) contrary to wave 7 which does the opposite.
@@ -2287,12 +2286,15 @@ save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_land_size.dta", replace
 
 *All agricultural land
 use "${Uganda_NPS_W4_raw_data}/AGSEC2A.dta", clear
+gen season=1
 append using "${Uganda_NPS_W4_raw_data}/AGSEC2B.dta"
 ren HHID hhid
 ren hh HHID
+replace season = 2 if season == .
 ren parcelID parcel_id
 drop if parcel_id==.
 merge 1:1 HHID parcel_id using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_crops_grown.dta", nogen
+/*
 gen rented_out = (a2aq11a==3 | a2bq12a==3) 
 gen cultivated_short = (a2aq11b==1 | a2aq11b==2 | a2bq12b==1 | a2bq12b==2) //own cultivated annual and perennial crops
 bys HHID parcel_id: egen parcel_cult_short = max(cultivated_short)
@@ -2300,13 +2302,21 @@ replace rented_out = 0 if parcel_cult_short==1 // If cultivated in short season,
 drop if rented_out==1 & crop_grown!=1
 gen agland = a2aq11a==1 | a2aq11a==2 | a2aq11a==5 | a2aq11a==6| a2bq12a==1 | a2bq12a==2 | a2bq12a==5 | a2bq12a==6 // includes cultivated, fallow, pasture
 drop if agland!=1 & crop_grown==.
+*/
+gen rented_out = (a2aq11a==3 | a2aq11b==3 | a2bq12a==3 | a2bq12b==3)
+replace rented_out=. if rented_out==0 & (a2aq11a==. | a2aq11b==. | a2bq12a==. | a2bq12b==.)
+gen other_land_use= (a2aq11a==7 | a2aq11a==96 | a2aq11b==7 | a2aq11b==96 | a2bq12a==6 | a2bq12a==96 | a2bq12b==6 | a2bq12b==96)
+replace other_land_use=. if other_land_use==0 & (a2aq11a==. & a2aq11b==. & a2bq12a==. & a2bq12b==.)
+drop if rented_out==1 | other_land_use==1 | crop_grown==.
+gen agland = a2aq11a==1 | a2aq11a==2 | a2aq11a==5 | a2aq11a==6| a2bq12a==1 | a2bq12a==2 | a2bq12a==5 | a2bq12a==6 // includes cultivated, fallow, pasture
+drop if agland!=1
 gen area_acres_meas = a2aq4
 replace area_acres_meas = a2bq4 if area_acres_meas==. & (a2bq4!=. | a2bq4!=0)
 replace area_acres_meas = a2aq5 if area_acres_meas==. & (a2aq5!=. | a2aq5!=0)
 replace area_acres_meas =  a2bq5 if area_acres_meas==. & (a2bq5!=. | a2bq5!=0)
 ren area_acres_meas farm_area
 replace farm_area = farm_area * (1/2.47105) /* Convert to hectares */
-collapse (max) agland (sum) farm_area , by (HHID parcel_id)
+collapse (max) agland (sum) farm_area, by (HHID parcel_id)
 lab var agland "1= Parcel was used for crop cultivation or pasture or left fallow in this past year (forestland and other uses excluded)"
 save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_parcels_agland.dta", replace
 
@@ -2317,17 +2327,23 @@ lab var farm_size_agland "Land size in hectares, including all plots cultivated 
 save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_farmsize_all_agland.dta", replace
 
 use "${Uganda_NPS_W4_raw_data}/AGSEC2A.dta", clear
+gen season=1
 append using "${Uganda_NPS_W4_raw_data}/AGSEC2B.dta"
 ren HHID hhid
 ren hh HHID
 ren parcelID parcel_id
 drop if parcel_id==.
+replace season = 2 if season == .
+/*
 gen rented_out = (a2aq11a==3 | a2bq12a==3) 
 gen cultivated_short = (a2aq11b==1 | a2aq11b==2 | a2bq12b==1 | a2bq12b==2) 
 bys HHID parcel_id: egen parcel_cult_short = max(cultivated_short)
 replace rented_out = 0 if parcel_cult_short==1
-drop if rented_out==1
-gen parcel_held = 1
+*/
+gen rented_out = (a2aq11a==3 | a2aq11b==3 | a2bq12a==3 | a2bq12b==3)
+replace rented_out=. if rented_out==0 & (a2aq11a==. | a2aq11b==. | a2bq12a==. | a2bq12b==.)
+drop if rented_out==1 
+gen parcel_held = 1  
 collapse (max) parcel_held, by (HHID parcel_id)
 lab var parcel_held "1= Parcel was NOT rented out in the main season"
 save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_parcels_held.dta", replace
@@ -2342,7 +2358,7 @@ ren parcelID parcel_id
 gen rented_out = (a2aq11a==3 | a2aq11b==3 | a2bq12a==3 | a2bq12b==3)
 replace rented_out=. if rented_out==0 & (a2aq11a==. | a2aq11b==. | a2bq12a==. | a2bq12b==.)
 drop if rented_out==1 
-gen area_acres_meas = a2aq4
+gen area_acres_meas = a2aq4 if (a2aq4!=. & a2aq4!=0)
 replace area_acres_meas = a2bq4 if area_acres_meas==. & (a2bq4!=. | a2bq4!=0)
 replace area_acres_meas = a2aq5 if area_acres_meas==. & (a2aq5!=. | a2aq5!=0)
 replace area_acres_meas =  a2bq5 if area_acres_meas==. & (a2bq5!=. | a2bq5!=0)
@@ -2354,12 +2370,17 @@ save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_land_size_all.dta", replace
 
 *Total land holding including cultivated and rented out
 use "${Uganda_NPS_W4_raw_data}/AGSEC2A.dta", clear
+gen season=1
 append using "${Uganda_NPS_W4_raw_data}/AGSEC2B.dta"
 ren HHID hhid
 ren hh HHID
 ren parcelID parcel_id
+/*
 drop if parcel_id==.
 gen area_acres_meas = a2aq4
+*/
+replace season = 2 if season == .
+gen area_acres_meas = a2aq4 if (a2aq4!=. & a2aq4!=0)
 replace area_acres_meas = a2bq4 if area_acres_meas==. & (a2bq4!=. | a2bq4!=0)
 replace area_acres_meas = a2aq5 if area_acres_meas==. & (a2aq5!=. | a2aq5!=0)
 replace area_acres_meas =  a2bq5 if area_acres_meas==. & (a2bq5!=. | a2bq5!=0)
@@ -2369,7 +2390,7 @@ replace land_size_total = land_size_total * (1/2.47105) /* Convert to hectares *
 lab var land_size_total "Total land size in hectares, including rented in and rented out plots"
 save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_land_size_total.dta", replace
 
-**
+/*
 use "${Uganda_NPS_W4_raw_data}/AGSEC2A.dta", clear
 gen season=1
 append using "${Uganda_NPS_W4_raw_data}/AGSEC2B.dta"
@@ -2435,6 +2456,7 @@ collapse (max) parcel_held, by (HHID parcel_id)
 lab var parcel_held "1= Parcel was NOT rented out in the main season"
 save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_parcels_held.dta", replace
 
+/*
 use "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_parcels_held.dta", clear
 merge 1:1 HHID parcel_id using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_parcel_areas.dta", nogen keep(1 3)
 replace area_acres_meas=. if area_acres_meas<0
@@ -2443,11 +2465,29 @@ collapse (sum) area_acres_meas, by (HHID)
 ren area_acres_meas land_size
 replace land_size = land_size * (1/2.47105) /* Convert to hectares */
 lab var land_size "Land size in hectares, including all parcels listed by the household except those rented out" 
+*/
 save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_land_size_all.dta", replace
 
 *Total land holding including cultivated and rented out
 use "${Uganda_NPS_W4_raw_data}/AGSEC2A.dta", clear
+gen season =1 
 append using "${Uganda_NPS_W4_raw_data}/AGSEC2B.dta"
+replace season = 2 if season == .
+ren parcelID parcel_id
+duplicates drop HHID parcel_id, force // just 2 repeats
+ren HHID hhid
+replace season = 2 if season == .
+gen area_acres_meas = a2aq4 if (a2aq4!=. & a2aq4!=0)
+replace area_acres_meas = a2bq4 if area_acres_meas==. & (a2bq4!=. | a2bq4!=0)
+replace area_acres_meas = a2aq5 if area_acres_meas==. & (a2aq5!=. | a2aq5!=0)
+replace area_acres_meas =  a2bq5 if area_acres_meas==. & (a2bq5!=. | a2bq5!=0)
+collapse (sum) area_acres_meas, by (hhid)
+ren area_acres_meas land_size_total
+replace land_size_total = land_size_total * (1/2.47105) /* Convert to hectares */
+lab var land_size_total "Total land size in hectares, including rented in and rented out plots"
+tostring hhid, format(%18.0f) replace
+ren hhid HHID
+/*
 ren HHID hhid
 ren hh HHID
 ren parcelID parcel_id
@@ -2460,9 +2500,10 @@ collapse (max) area_acres_meas, by(HHID parcel_id)
 ren area_acres_meas land_size_total
 collapse (sum) land_size_total, by(HHID)
 replace land_size_total = land_size_total * (1/2.47105) /* Convert to hectares */
-lab var land_size_total "Total land size in hectares, including rented in and rented out plots"
+lab var land_size_total "Total land size in hectares, including rented in and rented out plots" 
+*/
 save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_land_size_total.dta", replace
-
+*/
 ********************************************************************************
 *									FARM LABOR								   *
 ********************************************************************************
