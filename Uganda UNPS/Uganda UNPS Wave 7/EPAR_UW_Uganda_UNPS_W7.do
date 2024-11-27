@@ -173,6 +173,7 @@ global directory "../.."
 global Uganda_NPS_W7_raw_data 	"$directory/Uganda UNPS/Uganda UNPS Wave 7/Raw DTA Files"
 global Uganda_NPS_W7_created_data "$directory/Uganda UNPS/Uganda UNPS Wave 7/Final DTA Files/created_data"
 global Uganda_NPS_W7_final_data  "$directory/Uganda UNPS/Uganda UNPS Wave 7/Final DTA Files/final_data"
+global Uganda_NPS_conv_factors "$directory/Uganda UNPS/Nonstandard Unit Conversion Factors"
 global summary_stats "$directory/_Summary_statistics/EPAR_UW_335_SUMMARY_STATISTICS.do"
 
 *Some parcel values are missing in the all plots section (since they are the same in the previous waves). We will using wave 5 data in order to fill in those values. 
@@ -603,11 +604,11 @@ gen quant_sold_kg = sold_qty*conv_factor_sold
 
 ***We merge Crop Sold Conversion Factor at the crop-unit-regional level***
 *Region is not present
-merge m:1 crop_code sold_unit_code region using  "${Uganda_NPS_W7_created_data}\UG_Conv_fact_sold_table.dta", keep(1 3) nogen 
+merge m:1 crop_code sold_unit_code region using  "${Uganda_NPS_conv_factors}\UG_Conv_fact_sold_table.dta", keep(1 3) nogen 
 
 ***We merge Crop Sold Conversion Factor at the crop-unit-national level***
 *This is for HHID with missiong regional information. 
-merge m:1 crop_code sold_unit_code  using "${Uganda_NPS_W7_created_data}\UG_Conv_fact_sold_table_national.dta", keep(1 3) nogen 
+merge m:1 crop_code sold_unit_code  using "${Uganda_NPS_conv_factors}\UG_Conv_fact_sold_table_national.dta", keep(1 3) nogen 
  *We create Quantity Sold (kg using standard  conversion factor table for each crop- unit and region). 
 replace s_conv_factor_sold = sn_conv_factor_sold if region!=. // We merge the national standard conversion factor for those HHID with missing regional info. 
 gen s_quant_sold_kg = sold_qty*s_conv_factor_sold
@@ -633,10 +634,10 @@ foreach i in region district county subcounty /* ea*/ parish  HHID {
 
 ***We merge Crop Harvested Conversion Factor at the crop-unit-regional ***
 clonevar  unit_code= unit_code_harv
-merge m:1 crop_code unit_code region using "${Uganda_NPS_W7_created_data}\UG_Conv_fact_harvest_table.dta", keep(1 3) nogen 
+merge m:1 crop_code unit_code region using "${Uganda_NPS_conv_factors}\UG_Conv_fact_harvest_table.dta", keep(1 3) nogen 
 
 ***We merge Crop Harvested Conversion Factor at the crop-unit-national ***
-merge m:1 crop_code unit_code using "${Uganda_NPS_W7_created_data}\UG_Conv_fact_harvest_table_national.dta", keep(1 3) nogen 
+merge m:1 crop_code unit_code using "${Uganda_NPS_conv_factors}\UG_Conv_fact_harvest_table_national.dta", keep(1 3) nogen 
 *This is for HHID that are missing regional information
 
 
@@ -863,11 +864,11 @@ replace sold_unit_code=s5bq07c_1 if sold_unit_code==.
 * harvest (2nd season in 2017 & 1st season in 2018)
 merge m:1 hhid using "${Uganda_NPS_W7_created_data}/Uganda_NPS_W7_hhids.dta", nogen keep(1 3)
 ***We merge Crop Sold Conversion Factor at the crop-unit-regional level***
-merge m:1 crop_code sold_unit_code region using  "${Uganda_NPS_W7_created_data}/UG_Conv_fact_sold_table.dta", keep(1 3) nogen //4926 matched and 9268 not matched 
+merge m:1 crop_code sold_unit_code region using  "${Uganda_NPS_conv_factors}/UG_Conv_fact_sold_table.dta", keep(1 3) nogen //4926 matched and 9268 not matched 
 
 ***We merge Crop Sold Conversion Factor at the crop-unit-national level***
 *This is for HHID with missiong regional information. 
-merge m:1 crop_code sold_unit_code  using "${Uganda_NPS_W7_created_data}/UG_Conv_fact_sold_table_national.dta", keep(1 3) nogen 
+merge m:1 crop_code sold_unit_code  using "${Uganda_NPS_conv_factors}/UG_Conv_fact_sold_table_national.dta", keep(1 3) nogen 
  
 *We create Quantity Sold (kg using standard  conversion factor table for each crop- unit and region). 
 replace s_conv_factor_sold = sn_conv_factor_sold if region==. //  We merge the national standard conversion factor for those HHID with missing regional info. 
