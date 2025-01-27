@@ -124,6 +124,13 @@ global Tanzania_NPS_SDD_raw_data 			"$directory/Tanzania NPS/Tanzania NPS SDD/Ra
 global Tanzania_NPS_SDD_created_data 		"$directory/Tanzania NPS/Tanzania NPS SDD/Final DTA Files/created_data"
 global Tanzania_NPS_SDD_final_data  			"$directory/Tanzania NPS/Tanzania NPS SDD/Final DTA Files/final_data"
 
+// The number of family labor days on the agricultural holdings was not recorded in this wave; because family labor
+// is such a significant portion of overall labor, it's difficult to compare labor input to the other waves.
+// The code will attempt to estimate the value based on hired labor days in wave 4, but these results are imprecise.
+// The W4 code must have been executed in the do file directory in order to get these estimates.
+global Tanzania_NPS_W4_raw_data 			"$directory/Tanzania NPS/Tanzania NPS Wave 4/Raw DTA files/"
+global Tanzania_NPS_W4_created_data 		"$directory/Tanzania NPS/Tanzania NPS Wave 4/Final DTA files/created_data"
+global Tanzania_NPS_W4_final_data  			"$directory/Tanzania NPS/Tanzania NPS Wave 4/Final DTA files/final_data"
 
 ********************************************************************************
 *EXCHANGE RATE AND INFLATION FOR CONVERSION IN SUD IDS
@@ -2111,24 +2118,16 @@ save "${Tanzania_NPS_SDD_created_data}/Tanzania_NPS_SDD_off_farm_hours.dta", rep
 ********************************************************************************
 /*ALT 07.31.21: We can't construct family labor because they dropped (or forgot) the questions related to days worked.
 As mentioned above, this removed the bulk of the farm labor and will make comparing among waves difficult. As an alternative, 
-we can try to interpolate based on the W4 data. I ran *a ton* of regressions to see how well we could predict whether and to what 
+we can try to interpolate based on the W4 data. I ran several regressions to see how well we could predict whether and to what 
 extent a household uses family labor, but the results wouldn't replicate in W3. The measures of central tendency were similar, but 
 the residuals were clearly biased, and the range in predictive accuracy for each household was substantial. So for now we'll use a quasi-regression tree to get 
 median per-person days and merge those in. 
 */
-global Tanzania_NPS_W4_raw_data 			"$directory/Tanzania NPS/Tanzania NPS Wave 4/Raw DTA files/TZA_2014_NPS-R4_v03_M_STATA11"
-global Tanzania_NPS_W4_created_data 		"$directory/Tanzania NPS/Tanzania NPS Wave 4/Final DTA files_ALT/created_data"
-global Tanzania_NPS_W4_final_data  			"$directory/Tanzania NPS/Tanzania NPS Wave 4/Final DTA files_ALT/final_data"
+
 capture confirm file "${Tanzania_NPS_W4_created_data}/Tanzania_NPS_W4_plot_family_hired_labor.dta"
 if !_rc {
-//ALT: Note my initials in the file paths! Some of the data I use comes from a rewritten version of the W4 code to produce the all_plots file as seen in this version of the W5 code.
 use "${Tanzania_NPS_W4_created_data}/Tanzania_NPS_W4_plot_family_hired_labor.dta", clear
-//ren days_hired_mainseason days_hired0
-//ren days_hired_shortseason days_hired1
-//ren days_famlabor_shortseason days_famlabor1
-//ren days_famlabor_mainseason days_famlabor0
-//keep days*1 days*0 y4_hhid plot_id
-//reshape long days_hired days_famlabor, i(y4_hhid plot_id) j(short)
+
 collapse (sum) days_famlabor_shortseason days_famlabor_mainseason, by(y4_hhid)
 ren days_famlabor_shortseason days_famlabor1
 ren days_famlabor_mainseason days_famlabor0
@@ -2171,61 +2170,69 @@ gen days_famlabor_shortseason = median_days_famlabor * hh_members if short==1
 gen days_famlabor_mainseason = median_days_famlabor * hh_members if short==0
 collapse (sum) days_famlabor_shortseason days_famlabor_mainseason, by(sdd_hhid) //Doing this at plot level is going to be less reliable, so keeping things at hh level for now.
 save "${Tanzania_NPS_SDD_created_data}/Tanzania_NPS_SDD_days_famlabor.dta", replace
-}
+} 
 *Hired Labor
 //ALT 07.22.21: Largely redundant given the new crop expenses section - I'd find a way to omit from a future version.
 use "${Tanzania_NPS_SDD_raw_data}/ag_sec_3a.dta", clear
-merge 1:1 sdd_hhid plotnum using "${Tanzania_NPS_SDD_raw_data}/ag_sec_3b.dta", nogen
-ren sdd_hhid sdd_hhid
- *ren plotnum plot_id 
-ren ag3b_74_*a dayshiredwomenshort*
-ren ag3b_74_*b dayshiredmenshort*
-ren ag3b_74_*c dayshiredchildshort*
+gen short = 0
+ren ag3a* ag3b* 
+append using "${Tanzania_NPS_SDD_raw_data}/ag_sec_3b.dta"
+recode short (.=1)
 
-ren ag3a_74_*a dayshiredwomenmain*
-ren ag3a_74_*b dayshiredmenmain*
-ren ag3a_74_*c dayshiredchildmain*
-
+ren ag3b_74_1a landprep_women 
+ren ag3b_74_1b landprep_men 
+ren ag3b_74_1c landprep_child 
+ren ag3b_74_2a weeding_men 
+ren ag3b_74_2b weeding_women 
+ren ag3b_74_2c weeding_child 
+ren ag3b_74_3a harvest_men 
+ren ag3b_74_3b harvest_women 
+ren ag3b_74_3c harvest_child
+ren ag3b_74_1d landprep_wage 
+ren ag3b_74_2d weeding_wage 
+ren ag3b_74_3d harvest_wage 
 //This hh has a strange conflation of wage and labor days here.
-replace dayshiredchildshort2=. if strmatch(sdd_hhid, "0720-001-011")
-replace dayshiredmenshort2=. if strmatch(sdd_hhid, "0720-001-011")
-replace dayshiredwomenshort2=. if strmatch(sdd_hhid, "0720-001-011")
+unab vars : *men *women *child
+foreach var in `vars' {
+replace `var'=. if strmatch(sdd_hhid, "0720-001-011") & short==1
+}
+
 ren plotnum plot_id
-keep sdd_hhid plot_id days* 
-recode days*  (.=0)
+egen tot_aglabor_wage = rowtotal(*wage)
 
-unab vars1 : *1 //just get stubs from one
-local stubs1 : subinstr local vars1 "1" "", all
-reshape long `stubs1', i(sdd_hhid plot_id) j(num)
-collapse (sum) `stubs1', by(sdd_hhid plot_id)
+recode landprep_women landprep_men landprep_child weeding_men weeding_women weeding_child harvest_men harvest_women harvest_child (.=0)
+egen labor_hired = rowtotal(landprep_women landprep_men landprep_child weeding_men weeding_women weeding_child harvest_men harvest_women harvest_child)
+recode ag3b_72* (.=0)
+gen labor_total=labor_hired 
+gen labor_family=. 
+lab var labor_hired "Total labor days (hired) allocated to the plot"
+lab var labor_family "Total family labor (cannot be constructed)"
+lab var labor_total "Total labor days allocated to the plot"
 
-reshape long dayshiredwomen dayshiredmen dayshiredchild, i(sdd_hhid plot_id) j(season) string
-reshape long dayshired, i(sdd_hhid plot_id season) j(gender) string
-reshape long days, i(sdd_hhid plot_id season gender) j(type) string
-//ALT: If we wanted to, at this point we could save the file and have something that could be sliced in different ways; omitting now because I don't think we need it.
-collapse (sum) days, by(sdd_hhid plot_id season) //What we actually need to continue this section.
-ren days days_hired_
-reshape wide days_hired_, i(sdd_hhid plot_id) j(season) string
-ren days* days*season
-egen labor_hired =rowtotal(days_hired_mainseason days_hired_shortseason)
-//Cannot construct
-// egen labor_family=rowtotal(days_famlabor_mainseason  days_famlabor_shortseason)
-gen labor_total = labor_hired //See below //rowtotal(days_hired_mainseason days_famlabor_mainseason days_hired_shortseason days_famlabor_shortseason)
-//lab var labor_total "Total labor days (family, hired, or other) allocated to the farm"
-lab var labor_hired "Total labor days (hired) allocated to the farm"
-//lab var labor_family "Total labor days (family) allocated to the farm"
-//lab var labor_total "Total labor days allocated to the farm"
 save "${Tanzania_NPS_SDD_created_data}/Tanzania_NPS_SDD_plot_family_hired_labor.dta", replace
-collapse (sum) labor_hired, by(sdd_hhid)
+gen days_hired_shortseason = labor_hired if short==1
+gen days_hired_mainseason = labor_hired if short==0
+collapse (sum) labor_* days* tot_aglabor_wage, by(sdd_hhid)
+lab var days_hired_shortseason  "Workdays for hired labor (crops) in short growing season"
+lab var days_hired_mainseason  "Workdays for hired labor (crops) in short growing season"
+lab var labor_hired "Total labor days (hired) allocated to the farm"
+
+gen wage_paid_aglabor = tot_aglabor_wage/labor_hired 
+la var wage_paid_aglabor "Average daily agricultural labor wage paid, main and short seasons"
+drop labor_total labor_family 
+
 capture confirm file "${Tanzania_NPS_SDD_created_data}/Tanzania_NPS_SDD_days_famlabor.dta" 
 if !_rc {
 merge 1:1 sdd_hhid using "${Tanzania_NPS_SDD_created_data}/Tanzania_NPS_SDD_days_famlabor.dta", nogen keep(1 3) //Zeroes here are zeroes for all labor
-lab var labor_hired "Total labor days (hired) allocated to the farm"
+recode days* (.=0)
 gen labor_family = days_famlabor_mainseason + days_famlabor_shortseason
+gen labor_total = labor_hired+labor_family
 } 
-else gen labor_family=.
-recode labor* (.=0)
-gen labor_total = labor_hired + labor_family
+else {
+gen labor_family=.
+gen labor_total = labor_hired
+}
+
 lab var labor_family "Total labor days (family), estimated based on W4 medians"
 lab var labor_total "Total labor days, hired and family"
 save "${Tanzania_NPS_SDD_created_data}/Tanzania_NPS_SDD_family_hired_labor.dta", replace
@@ -5093,14 +5100,14 @@ merge m:1 sdd_hhid using "${Tanzania_NPS_SDD_created_data}/Tanzania_NPS_SDD_hhid
 merge 1:1 sdd_hhid plot_id using "${Tanzania_NPS_SDD_created_data}/Tanzania_NPS_SDD_plot_family_hired_labor.dta", keep (1 3) nogen*/
 //ALT 07.26.21: Updated to match new file structure
 use "${Tanzania_NPS_SDD_created_data}/Tanzania_NPS_SDD_all_plots.dta", clear
-collapse (sum) plot_value_harvest=value_harvest, by(dm_gender sdd_hhid plot_id field_size)
-merge m:1 sdd_hhid plot_id using "${Tanzania_NPS_SDD_created_data}/Tanzania_NPS_SDD_plot_family_hired_labor.dta", keep (1 3) nogen
+collapse (sum) plot_value_harvest=value_harvest, by(dm_gender sdd_hhid plot_id field_size short)
+merge m:1 sdd_hhid plot_id  short using "${Tanzania_NPS_SDD_created_data}/Tanzania_NPS_SDD_plot_family_hired_labor.dta", keep (1 3) nogen
 merge m:1 sdd_hhid using "${Tanzania_NPS_SDD_created_data}/Tanzania_NPS_SDD_hhids.dta", keep (1 3) nogen //ALT 07.26.21: Note to include this in the all_plots file.
 /*DYA.12.2.2020*/ gen hhid=sdd_hhid
 /*DYA.12.2.2020*/ merge m:1 hhid using "${Tanzania_NPS_SDD_final_data}/Tanzania_NPS_SDD_household_variables.dta", nogen keep (1 3) keepusing(ag_hh fhh farm_size_agland)
 /*DYA.12.2.2020*/ recode farm_size_agland (.=0) 
 /*DYA.12.2.2020*/ gen rural_ssp=(farm_size_agland<=4 & farm_size_agland!=0) & rural==1 
-/*ALT.07.26.2021 gen labor_total=.*/ //We don't have this because family labor is missing.
+/*ALT.07.26.2021 gen labor_total=.*/ //We don't have this because family labor is missing. Equivalent to hired labor here.
 //replace area_meas_hectares=area_est_hectares if area_meas_hectares==.
 ren field_size area_meas_hectares
 //keep if cultivated==1
