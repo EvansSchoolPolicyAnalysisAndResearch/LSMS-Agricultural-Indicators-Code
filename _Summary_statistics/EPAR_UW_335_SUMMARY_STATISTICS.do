@@ -158,6 +158,7 @@ foreach instrument of global list_instruments {
 		if _rc {
 			qui gen grew_`v'=0
 		}
+		qui gen grew_`v'00Ha=grew_`v' if farm_size_0_0==1
 		qui gen grew_`v'01Ha=grew_`v' if farm_size_0_1==1
 		qui gen grew_`v'12Ha=grew_`v' if farm_size_1_2==1
 		qui gen grew_`v'24Ha=grew_`v' if farm_size_2_4==1
