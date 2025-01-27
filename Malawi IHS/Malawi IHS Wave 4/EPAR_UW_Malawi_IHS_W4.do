@@ -172,7 +172,7 @@ global MWI_IHS_W4_raw_data 					"$directory\Malawi IHS\Malawi IHS Wave 4\Raw DTA
 global MWI_IHPS_W4_raw_data 				"$directory\Malawi IHS\Malawi IHS Wave 4\Raw DTA Files\IHPS" 
 global MWI_IHS_IHPS_W4_appended_data 		"$directory\Malawi IHS\Malawi IHS Wave 4\Final DTA Files\temp_data" 
 global MWI_IHS_IHPS_W4_created_data 		"$directory\Malawi IHS\Malawi IHS Wave 4\Final DTA Files\created_data"
-global MWI_IHS_IHPS_W4_final_data  			"$directory\Malawi IHS\Malawi IHS Wave 4\Final DTA Files" 
+global MWI_IHS_IHPS_W4_final_data  			"$directory\Malawi IHS\Malawi IHS Wave 4\Final DTA Files\final_data" 
 global summary_stats 						"$directory\_Summary_statistics\EPAR_UW_335_SUMMARY_STATISTICS.do" //Path to the summary statistics file. This can take a long time to run, so the user should comment out this line the summary statistics output is not needed; if this line is commented out, the file will end with an error.
 
 

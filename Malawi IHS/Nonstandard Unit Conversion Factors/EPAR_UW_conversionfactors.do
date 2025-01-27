@@ -19,62 +19,13 @@ clear matrix
 clear mata	
 set maxvar 8000		
 
-//set directories
-*These paths correspond to the folders where the raw data files are located and where the created data and final data will be stored.
-//global Malawi_IHS_W1_raw_data "\\netid.washington.edu\wfs\EvansEPAR\Project\EPAR\Working Files\378 - LSMS Burkina Faso, Malawi, Uganda\malawi-wave1-2010-11\raw_data"
-//global Malawi_IHS_W1_created_data "\\netid.washington.edu\wfs\EvansEPAR\Project\EPAR\Working Files\378 - LSMS Burkina Faso, Malawi, Uganda\malawi-wave1-2010-11\created_data"
-
-********************************************************************************
-* PROCESS AND DOCUMENTATION - READ THESE
-********************************************************************************
-	*********************************
-	* 		   DATA SOURCES         *
-	*********************************
-*The IHS Agricultural Conversion Factor Database.dta files originates from the Malawi Fifth Integrated Household Survey 2019-2020 available at https://microdata.worldbank.org/index.php/catalog/3818 where the version 04 data release included the supplementation of TWO (for temporary and permanent/tree crops respectively) raw data files that convert non-standard units (Pails, Ox Carts, etc.) to kilograms of unshelled crop. We borrow this survey's conversion factor files for the remaining Waves in the absence of having similar files for earlier versions of the survey.
-*We scrape additional conversion factor data from a Food Unit Conversion factor pdf for the Malawi Third Integrated Household Survey 2010-2011 available at https://microdata.worldbank.org/index.php/catalog/1003/download/40802
-*The raw conversion factor files disaggregate conversions by crop condition where applicable or available (e.g. the conversion to kgs of shelled groundnuts is different than unshelled groundnuts).
-	
-	*********************************
-	*   PROCESS AND INTERPOLATION   *
-	*********************************
-*We start by creating unique crop codes across permanent and temporary crop conversion factor datasets (where there is overlap between the two) and appending temporary and permament/tree conversion factors together to form a single conversion factor file for use.
-*We interpolate missing conversion factors using shell_unshelled ratios where we have a conversion factor for shelled but not unshelled and vice versa for a specific region/crop/unit. Next, we interpolate more missing conversion facotrs with with available conversion factors for the same crop/condition from other regions.
-*We "build-out" this conversion factor file to assist with matching harvest observations to conversion factors later in the code. These additions include:
-	*1. Creating additional observations where condition equals "N/A", borrowing the corresponding unshelled conversion factor for that crop
-	*2. Creating additonal observations where condition equals "Not applicable", borrowing the corresponding unshelled conversion factor for that crop 
-	*3. Many more - see documentation below
-
-	*********************************
-	*         HOW TO USE            *
-	*********************************
-* FOLLOW THESE THREE STEPS EVERY TIME YOU MERGE IN THE CONVERSION FACTOR FILE THROUGHOUT THE MAIN DO-FILE
-* 1. PREPARE RAW DATA
-	* Use tree/perm crop file and align crop_code so that it is consistent to what is in the conversion factor file and across all other waves:
-		*Waves 1 and 2: recode crop_code (1=49)(2=50)(3=51)(4=52)(5=53)(6=54)(7=55)(8=56)(9=57)(10=58)(11=59)(12=60)(13=61)(14=62)(15=63)(16=64)(17=65)(18=48)
-		*Waves 3 and 4: recode crop_code (1=49)(2=50)(3=51)(4=52)(5=53)(6=54)(7=55)(8=56)(9=57)(10=58)(11=59)(12=60)(13=61)(14=62)(15=63)(16=64)(17=65)(18=1800)(19=1900)(20=2000)(21=48)
-	* There is a chance that your unit variable in the tree/permanent crop file is in string format because some farmers report small bunches (8A) or large bunches (8C), etc. Check to see what is in here. If any units are numbers and letters together (e.g. 8A), recode to a numeric unit code (see unit_labels for codes). Then, convert the variable to numeric.
-	* Append tree/perm crop file to rainy and dry files, if applicable
-	* If crop_code is o/s for any crop (code is 48), try to sort into existing crop codes - see value labels L0C
-	* If unit is o/s (code is 13), try to sort into existing unit codes
-	* Drop if crop_code==. | unit==. //cannot impute yield or calories without either of these
-	* Rename crop_code crop_code_long
-	* Create a new variable called crop_code which is the condensed version of the crop_code_long (1 2 3 4=1)(5 6 7 8 9 10=5)(11 12 13 14 15 16=11)(17 18 19 20 21 22 23 24 25 26=17) - keep crop_code_long
-	* Replace condition==3 if condition==. & crop_code_long!=. & unit!=. //or should we make a fourth category called not specified?
-
-*2. MERGE IN CONVERSION FACTOR FILE
-	*merge m:1 region crop_code_long unit condition using "${Malawi_IHS_W#_created_data}\Malawi_IHS_W#_cf.dta" //NOTE THAT WE MERGE ON CROP_CODE_LONG INTENTIONALLY
-
-*3. POST-MERGE
-	* replace conversion=1 if conversion==. & unit==1 & condition==1 (shelled)
-	* Multiply quantity by conversion factor
-	
 ********************************************************************************
 * CROP UNIT CONVERSION FACTORS *
 ********************************************************************************
 	*********************************
 	* FOOD UNIT CONVERSION FACTORS  *
 	*********************************
-//file:///C:/Users/micahmcf/Downloads/Malawi_IHS3_Food_Item_Conversion_Factors.pdf
+//Malawi_IHS3_Food_Item_Conversion_Factors.pdf
 //These are food unit measurement so assuming shelled is the default unless a crop where shell_unshelled not applicable (e.g. cabbage))
 clear
 input crop_code str40 item_name unit str20 unit_name condition cf1 cf2 cf3  
@@ -497,79 +448,7 @@ reshape long conversion source original, i(region crop_code crop_code_long unit_
 	label values shunsh_na shunsh_na_lab
 	label var shunsh_na "Shell_unshelled not applicable"
 	
-//Organize a little so we can see what we're missing. 
 
-**BACKFILL MISSING CONVERSION FACTORS**
-
-
-/*
-label define L0C /*these exist already*/ 1 "MAIZE LOCAL" 2 "MAIZE COMPOSITE/OPV" 3 "MAIZE HYBRID" 4 "MAIZE HYBRID RECYCLED" 5 "TOBACCO BURLEY" 6 "TOBACCO FLUE CURED" 7 "TOBACCO NNDF" 8 "TOBACCOSDF" 9 "TOBACCO ORIENTAL" 10 "OTHER TOBACCO (SPECIFY)" 11 "GROUNDNUT CHALIMBANA" 12 "GROUNDNUT CG7" 13 "GROUNDNUT MANIPINTA" 14 "GROUNDNUT MAWANGA" 15 "GROUNDNUT JL24" 16 "OTHER GROUNDNUT(SPECIFY)" 17 "RISE LOCAL" 18 "RISE FAYA" 19 "RISE PUSSA" 20 "RISE TCG10" 21 "RISE IET4094 (SENGA)" 22 "RISE WAMBONE" 23 "RISE KILOMBERO" 24 "RISE ITA" 25 "RISE MTUPATUPA" 26 "OTHER RICE(SPECIFY)"  28 "SWEET POTATO" 29 "IRISH [MALAWI] POTATO" 30 "WHEAT" 34 "BEANS" 35 "SOYABEAN" 36 "PIGEONPEA(NANDOLO" 37 "COTTON" 38 "SUNFLOWER" 39 "SUGAR CANE" 40 "CABBAGE" 41 "TANAPOSI" 42 "NKHWANI" 43 "THERERE/OKRA" 44 "TOMATO" 45 "ONION" 46 "PEA" 47 "PAPRIKA" 48 "OTHER (SPECIFY)" /*cleaning up these existing labels*/ 27 "GROUND BEAN (NZAMA)" 31 "FINGER MILLET (MAWERE)" 32 "SORGHUM" 33 "PEARL MILLET (MCHEWERE)" /*now creating unique codes for tree crops*/ 49 "CASSAVA" 50 "TEA" 51 "COFFEE" 52 "MANGO" 53 "ORANGE" 54 "PAWPAW/PAPAYA" 55 "BANANA" 56 "AVOCADO" 57 "GUAVA" 58 "LEMON" 59 "NAARTJE (TANGERINE)" 60 "PEACH" 61 "POZA (CUSTADE APPLE)" 62 "MASUKU (MEXICAN APPLE)" 63 "MASAU" 64 "PINEAPPLE" 65 "MACADEMIA" /*adding other specified crop codes*/ 105 "MAIZE GREEN" 203 "SWEET POTATO WHITE" 204 "SWEET POTATO ORANGE" 207 "PLANTAIN" 208 "COCOYAM (MASIMBI)" 301 "BEAN, WHITE" 302 "BEAN, BROWN" 308 "COWPEA (KHOBWE)" 405 "CHINESE CABBAGE" 409 "CUCUMBER" 410 "PUMPKIN" 1800 "FODDER TREES" 1900 "FERTILIZER TREES" 2000 "FUEL WOOD TREES", modify
-label val crop_code L0C
-
-	* Create Generic Crop Code - we do this to help backfill missing data with cfs from other varieties of the same crop
-		ren crop_code crop_code_long
-		gen crop_code=crop_code_long
-		recode crop_code (1 2 3 4=1)(5 6 7 8 9 10=5)(11 12 13 14 15 16=11)(17 18 19 20 21 22 23 24 25 26=17)
-		la var crop_code "Generic level crop code"
-		label copy L0C L0C_mod //copies the crop_code_long labels for use with crop_code
-		label define L0C_mod 1 "MAIZE" 5 "TOBACCO" 11 "GROUNDNUT" 17 "RICE", modify //just need to modify these ones, the others hold
-		label val crop_code L0C_mod
-	*/	
-	* Start with backfilling shell_unshelled - this ratio should be the same regardless of unit, hence the average across crop_code_long
-		//bysort crop_code_long: egen shell_unshelled_backfill = mean(shell_unshelled)
-		//replace shell_unshelled=shell_unshelled_backfill if shell_unshelled==. & shunsh_na==0
-		//4,437 changes
-		//drop shell_unshelled_backfill
-		/*
-	* Next, we use what we have for shelled to replace unshelled if missing and vice versa
-		preserve
-		keep if condition==1 & conversion!=. & shunsh_na==0
-		replace conversion=conversion*shell_unshelled
-		replace condition=2
-		ren conversion conversion_shunsh_1
-		drop flag original shunsh_na
-		tempfile condition_shunsh_1
-		save `condition_shunsh_1'
-		restore
-		
-		merge 1:1 region crop_code_long crop_code unit condition shell_unshelled using `condition_shunsh_1', nogen keep(1 3)
-		replace conversion=conversion_shunsh_1 if condition==2 & conversion==. & conversion_shunsh_1!=. //114 real changes
-		// replace original=0 if condition==2 & conversion==. & conversion_shunsh_1!=. // 0 changes - all are already 0
-		drop conversion_shunsh_1
-		
-		preserve
-		keep if condition==2 & conversion!=. & shunsh_na==0
-		replace conversion=conversion/shell_unshelled
-		replace condition=1
-		ren conversion conversion_shunsh_2
-		drop flag original shunsh_na
-		tempfile condition_shunsh_2
-		save `condition_shunsh_2'
-		restore
-		
-		merge 1:1 region crop_code_long crop_code unit condition shell_unshelled using `condition_shunsh_2', nogen keep(1 3)
-		replace conversion=conversion_shunsh_2 if condition==1 & conversion==. & conversion_shunsh_2!=. //41 real changes
-		//replace original=0 if condition==1 & conversion==. & conversion_shunsh_2!=. // 0 changes - all are already 0
-		drop conversion_shunsh_2
-		*/
-		/*
-	*Regions - borrowing conversion factors from other regions
-		bysort crop_code_long unit condition: egen region_avg = mean(conversion) 
-		replace conversion=region_avg if conversion==. //creates 149 additional observations to merge on
-		drop region_avg
-		
-	*Condition - replaces missing N/A values with unshelled values
-		bysort region crop_code_long unit: egen conv_min = min(conversion)
-		replace conversion=conv_min if conversion==. & condition==3 //1,026 real changes
-		
-	*Kilograms
-		replace conversion=1 if conversion==. & unit==1 & condition==1 //108 real changes
-		replace conversion=1 if conversion==. & unit==1 & condition==3 & shunsh_na==1  //0 real changes
-
-	*Other varieties - borrowing conversion factors from other varieties
-		bysort region crop_code unit condition: egen conv_avg_oth_variety = mean(conversion) //note that generic crop code is intentionally used here rather than crop_code_long - looking to take the average cf across varities within the same region unit condition
-		replace conversion=conv_avg_oth_variety if conversion==. //135 real changes
-		*/
 	*Similar crops - borrowing conversion factors from similar crops
 	*Tubers
 	gen tuber = crop_code_long==28 | crop_code_long==29 | crop_code_long==49
@@ -606,131 +485,9 @@ label val crop_code L0C
 	replace conversion = conversion_cowpea if miss_conv & conversion_cowpea!=.
 	replace source = "cowpea conversions" if miss_conv & conversion_cowpea!=.
 	
-/*
-	*Shelled wheat should have a similar bulk density as shelled corn (can also apply to N/A)
-	preserve
-	keep if crop_code==1 & condition==1 & conversion!=. //intentionally crop_code short to get an average across all maize varieties
-		collapse (mean) conversion, by(region crop_code condition unit)
-		replace crop_code=30
-		gen crop_code_long=30
-		gen original=0
-		tempfile shelled_wheat
-		save `shelled_wheat'
-	restore
-	
-	drop if crop_code_long==30
-	append using `shelled_wheat'
-	
-	* Using the ratio between large pails of tomatos and baskets of tomatos to impute the conversion factor of other crops where we have a conversion factor for large pail in the same region but not baskets.
-	preserve
-	gen tom_lg_pail=21.65 if region==1
-	replace tom_lg_pail=16.41667 if region==2
-	replace tom_lg_pail=14.95625 if region==3
 
-	gen tom_basket=11.44333 if region==1
-	replace tom_basket=7.831 if region==2
-	replace tom_basket=10.552 if region==3
-
-	keep if condition==3 & unit==5 & conversion!=. & original==1 & inlist(crop_code_long, 52, 53, 52, 56, 57, 59, 61, 62) //mango* orange papaya* avocado guava* tangerine custard apple mexican apple
-	replace conversion=conversion*tom_basket/tom_lg_pail
-	recode unit (5=11)
-	recode original (1=0)
-	tempfile tom_cf_ratios
-	save `tom_cf_ratios'
-	restore
-
-	drop if condition==3 & unit==11 & original==0 & conversion==. & inlist(crop_code_long, 52, 53, 52, 56, 57, 59, 61, 62)
-	append using `tom_cf_ratios'
-*/
-/*
-	label val region region_label
-
-	lab define original_lab 0 "Imputed Conversion Factor Using Assumptions" 1 "Original Conversion Factor from the World Bank"
-	lab val original original_lab
-	lab var original "Meta-deta on conversion factor origin"
-	replace original=0 if original==.
-	drop if conversion==.
-	drop shell_unshelled shunsh_na conv_* dummy count min_tuber_cf tom_*
-	order region crop_code_long crop_code unit condition conversion flag original */
 	ren unit_code unit
 	keep region crop_code_long unit condition conversion source
 	drop if conversion==.
 	la var source "Source of nonstandard unit conversion factor"
 	save "Malawi_IHS_cf.dta", replace
-	
-	
-
-/* OUTSTANDING NOTES:
-- ALT recommended looking at this paper: https://onlinelibrary.wiley.com/doi/10.1002/jid.3054 . After looking, it seems like the author did not do anything to build out conversion factors but rather employed an error components two-stage least squares (EC2SLS) to account for measurment error in their estimation of poverty's effect on maize prices. Not sure this application is relevant here.
-- ALT said that "Not Specified" verbiage is preferred and to change this verbiage in the raw conversion factor file. Instead, I would opt for creating a fourth condition to differentiate crops where shell_unshelled is truly not applicable versus not reported.
-- Do we want to do something about the fact that conversion factors might be diff for caloric conversion vs. seeds - e.g. conversion factors are only relevent to crops planted-as-harvested. Maybe make an additional variable for this?
-- Not sure that I agree that we can use shelled maize conversion factor for na wheat - so I didn't include this.
-- Can replace shelled millet cf with what we have for n/a millet?
-*/
-
-//Checking existing units 
-
-use "\\netid.washington.edu\wfs\EvansEPAR\Project\EPAR\Working Files\00 - LSMS for MPACT\335_LSMS_dev/Malawi IHS/Malawi IHS Wave 1/Final DTA Files/temp_data/Agriculture/ag_mod_b.dta", clear
-merge m:1 hhid using "\\netid.washington.edu\wfs\EvansEPAR\Project\EPAR\Working Files\00 - LSMS for MPACT\335_LSMS_dev/Malawi IHS/Malawi IHS Wave 1/Final DTA Files/created_data/Malawi_IHS_W1_hhids.dta", nogen keep(1 3) keepusing(region)
-ren ag_b0c crop_code_long
-gen crop_code=.
-replace crop_code = crop_code_long if crop_code==.
-recode crop_code (1 2 3 4=1)(5 6 7 8 9 10=5)(11 12 13 14 15 16=11)(17 18 19 20 21 22 23 24 25 26=17)
-ren ag_b04a qty_harvest
-//ren ag_b04b unit_code
-tostring ag_b04b, g(unit_code)
-ren ag_b04c condition 
-merge m:1 crop_code_long unit_code condition region using "Malawi_IHS_cf.dta"
-/* W1 W2
-           1   Kilogram
-           2   50 kg bag
-           3   90 kg bag
-           4   Pail (small)
-           5   Pail (large)
-           6   No 10 plate
-           7   No 12 plate
-           8   Bunch
-           9   Piece
-          10   Bale
-          11   Basket (dengu)
-          12   Ox-cart
-          13   Other (specify)
-		  
-W3 W4
-
-           1   KILOGRAM
-           2   50 KG BAG
-           4   PAIL (SMALL)
-           5   PAIL (LARGE)
-           6   NO 10 PLATE
-           7   NO 12 PLATE
-           8   BUNCH
-           9   PIECE
-          10   BALE
-          12   OX-CART
-          13   OTHER (SPECIFY)
-Tree crops
-		   2  50 KG bag
-		   8C large bunch
-		   8B medium bunch
-		   8A large bunch
-		   12 oxcart
-		   5 large pail
-		   4 small pail
-		   14 medium pail 
-		   9 piece
-*/
-
-use "\\netid.washington.edu\wfs\EvansEPAR\Project\EPAR\Working Files\00 - LSMS for MPACT\335_LSMS_dev\Malawi IHS\Malawi IHS Wave 2\Final DTA files\temp_data\ag_mod_ba_13.dta", clear
-ren ag_b0c cropcode
-ren ag_b04a qty_harvest
-ren ag_b04b unit 
-ren ag_b04c condition
-
-use "\\netid.washington.edu\wfs\EvansEPAR\Project\EPAR\Working Files\00 - LSMS for MPACT\335_LSMS_dev\Malawi IHS\Malawi IHS Wave 3\Final DTA files\temp_data/ag_mod_g.dta", clear
-ren ag_g13a qty_harvest 
-ren ag_g13b unit 
-ren ag_g13c condition
-
-
-
