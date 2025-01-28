@@ -126,11 +126,6 @@ save "${Ethiopia_ESS_W1_created_data}/Ethiopia_ESS_W1_cropname_table.dta", repla
 ********************************************************************************
 * UNIQUELY IDENTIFIABLE GEOGRAPHIES AND PLOTS - note that without this code, collapsing by [zone, woreda, kebele, ea] using raw data (as we do to get median prices) will result in inaccurate medians. We need to create unique identifiers to collapse on!
 * UNIQUELY IDENTIFIABLE PARCELS AND FIELDS AT THE HOUSEHOLD LEVEL (for AqQuery+)
-
-* STEPS:
-* Create a "temp_data" folder in the "Final DTA Files" folder, similar to "created_data" and "final_data"
-* Create a Global for temp_data (e.g. global Ethiopia_ESS_W5_temp_data		"$directory/Ethiopia ESS/Ethiopia ESS Wave 1/Final DTA Files/temp_data")
-* Insert hhid_panel_key.dta in the "temp_data" folder
 ********************************************************************************
 capture confirm file "$Ethiopia_ESS_W1_temp_data/sect_cover_hh_w1.dta" //Simple check for an output file; this block only needed one time, so code will only run the code if it's missing from the temp_data folder. Delete it to make the code re-run.
 if(_rc){
@@ -217,7 +212,7 @@ foreach file of local raw_files {
 		// HHID - using household_id2 from W2 - note that these are more data rich as they contain city and subcity codes and this allows us to track panel households over the first three waves
 		capture confirm variable household_id
 		if(!_rc) {
-		merge m:1 household_id using "`directory_temp'/hhid_panel_key.dta", keep(1 3) nogen // Note that this file does not exist in the WB W1 download. EPAR created it to track panel households in the first three waves. After downloading from GitHub, add to the temp folder.(see directory globals above)
+		merge m:1 household_id using "$directory/Ethiopia ESS/Panel Key/hhid_panel_key.dta", keep(1 3) nogen // Note that this file does not exist in the WB W1 download. EPAR created it to track panel households in the first three waves. After downloading from GitHub, add to the temp folder.(see directory globals above)
 		ren household_id2 hhid
 		replace hhid = household_id if hhid == "" // These would have been households that did not carry over to W2 due to panel attrition
         }
@@ -331,7 +326,7 @@ foreach file of local raw_files {
 		// HHID - using household_id2 from W2 - note that these are more data rich as they contain city and subcity codes and this allows us to track panel households over the first three waves
 		capture confirm variable household_id
 		if(!_rc) {
-		merge m:1 household_id using "`directory_temp'/hhid_panel_key.dta", keep(1 3) nogen // Note that this file does not exist in the WB W1 download. EPAR created it to track panel households in the first three waves. After downloading from GitHub, add to the temp folder.(see directory globals above)
+		merge m:1 household_id using "$directory/Ethiopia ESS/Panel Key/hhid_panel_key.dta", keep(1 3) nogen // Note that this file does not exist in the WB W1 download. EPAR created it to track panel households in the first three waves. After downloading from GitHub, add to the temp folder.(see directory globals above)
 		ren household_id2 hhid
 		replace hhid = household_id if hhid == "" // These would have been households that did not carry over to W2 due to panel attrition
         }
@@ -445,7 +440,7 @@ foreach file of local raw_files {
 		// HHID - using household_id2 from W2 - note that these are more data rich as they contain city and subcity codes and this allows us to track panel households over the first three waves
 		capture confirm variable household_id
 		if(!_rc) {
-		merge m:1 household_id using "`directory_temp'/hhid_panel_key.dta", keep(1 3) nogen // Note that this file does not exist in the WB W1 download. EPAR created it to track panel households in the first three waves. After downloading from GitHub, add to the temp folder.(see directory globals above)
+		merge m:1 household_id using "$directory/Ethiopia ESS/Panel Key/hhid_panel_key.dta", keep(1 3) nogen // Note that this file does not exist in the WB W1 download. EPAR created it to track panel households in the first three waves. After downloading from GitHub, add to the temp folder.(see directory globals above)
 		ren household_id2 hhid
 		replace hhid = household_id if hhid == "" // These would have been households that did not carry over to W2 due to panel attrition
         }
@@ -498,7 +493,7 @@ use "`directory_raw'/`file'", clear
 		// HHID - using household_id2 from W2 - note that these are more data rich as they contain city and subcity codes and this allows us to track panel households over the first three waves
 		capture confirm variable household_id
 		if(!_rc) {
-		merge m:1 household_id using "`directory_temp'/hhid_panel_key.dta", keep(1 3) nogen // Note that this file does not exist in the WB W1 download. EPAR created it to track panel households in the first three waves. After downloading from GitHub, add to the temp folder.(see directory globals above)
+		merge m:1 household_id using "$directory/Ethiopia ESS/Panel Key/hhid_panel_key.dta", keep(1 3) nogen // Note that this file does not exist in the WB W1 download. EPAR created it to track panel households in the first three waves. After downloading from GitHub, add to the temp folder.(see directory globals above)
 		ren household_id2 hhid
 		replace hhid = household_id if hhid == "" // These would have been households that did not carry over to W2 due to panel attrition
         }

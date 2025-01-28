@@ -480,7 +480,7 @@ foreach file of local raw_files {
 }
 
 * LOCAL AREA UNIT CONVERSION
-use "${Ethiopia_ESS_W3_temp_data}\ET_local_area_unit_conversion.dta", clear		
+use "${Ethiopia_ESS_W3_raw_data}\ET_local_area_unit_conversion.dta", clear		
 		 // ZONE
 		capture confirm variable zone 
 		if(!_rc) {
