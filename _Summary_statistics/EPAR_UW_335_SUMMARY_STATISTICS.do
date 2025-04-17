@@ -1805,6 +1805,19 @@ foreach instrument of global list_instruments {
 		gen Year="2016"
 	}
 	
+	  if "`instrument'"=="Nigeria_GHS_W4" { 
+		gen Geography="Nigeria" 
+		gen Survey="LSMS-ISA"
+		gen Instrument="Nigeria GHS Wave 4"	
+		gen Year="2018-19"
+	}
+	  if "`instrument'"=="Nigeria_GHS_W5" { 
+		gen Geography="Nigeria" 
+		gen Survey="LSMS-ISA"
+		gen Instrument="Nigeria GHS Wave 5"	
+		gen Year="2022-23"
+	}
+	
   if "`instrument'"=="Nigeria_GHS_W4" { 
 		gen Geography="Nigeria" 
 		gen Survey="LSMS-ISA"
