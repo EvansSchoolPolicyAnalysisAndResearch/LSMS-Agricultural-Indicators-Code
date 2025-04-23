@@ -620,88 +620,101 @@ foreach instrument of global list_instruments {
 	
 	
 	di "---------------- Summary statistics group 6 ----------------"
-	* Group 6  - inorg_fert_rate_all
-	foreach v in w_inorg_fert_rate ha_planted   {
-		capture confirm variable `v'
-		if _rc {
-			qui gen `v'=.
-		}
-	}
-	ren w_inorg_fert_rate w_inorg_fert_rate_all
-	capture confirm variable w_ha_planted_all
-	if _rc {
-		ren ha_planted w_ha_planted_all
-	}
-	qui recode w_inorg_fert_rate* (.=0) if crop_hh==1
-	global final_indicator6 ""
-	global fert_vars all female male  mixed
-
-	foreach  v of global fert_vars {
-		capture confirm variable w_inorg_fert_rate_`v' 
-		if _rc {
-			qui gen w_inorg_fert_rate_`v' =.	
-		}
-		local l`v' : var lab w_inorg_fert_rate_`v' 
-		qui gen w_inorg_fert_rate_`v'use_fert=w_inorg_fert_rate_`v'  if  w_inorg_fert_rate_`v'!=0
-		qui lab var w_inorg_fert_rate_`v'use_fert "`l`v'' - only household using ferttilizer"
-	}
-	*all hh engaged in crop production
+	* Group 6  - agrochemical applications
+	local chem_inputs herb pest pestherb n p k urea npk inorg_fert org_fert
 	global final_indicator6 all female male mixed
 	matrix final_indicator6=(.,.,.,.,.,.,.,.,.)
-	
-	foreach v of global final_indicator6 {
-		capture confirm variable area_weight_`v'
+	capture confirm var ha_planted
+	if _rc {
+		qui gen ha_planted=.
+	}
+	capture confirm variable w_ha_planted_all
 		if _rc {
-			qui gen area_weight_`v'=1
-		}	
-		local missing_var ""
-		qui findname area_weight_`v',  all(@==.) local (missing_var)
-		if "`missing_var'"!="" { 
-			qui replace area_weight_`v'=1
+			ren ha_planted w_ha_planted_all
 		}
-		qui tabstat w_inorg_fert_rate_`v' [aw=area_weight_`v'] if rural==1,  stat(mean sd p25 p50 p75  min max N) col(stat) save
-		matrix temp6=r(StatTotal)'
-		qui svyset clusterid [pweight=area_weight_`v'], strata(strataid) singleunit(centered) // get standard errors of the mean	
-		local missing_var ""
-		qui findname w_inorg_fert_rate_`v',  all(@==.) local (missing_var)
-		if "`missing_var'"!="" { 
-			qui replace w_inorg_fert_rate_`v'=0
-		}	
-		qui svy, subpop(if rural==1): mean w_inorg_fert_rate_`v'
-		matrix final_indicator6=final_indicator6\(temp6,el(r(table),2,1))
-	}
+	foreach chem in `chem_inputs' {
+		foreach v in w_`chem'_rate   {
+			capture confirm variable `v'
+			if _rc {
+				qui gen `v'=.
+			}
+		}
+		capture confirm var w_`chem'_rate_all 
+		if _rc {
+			gen w_`chem'_rate_all = w_`chem'_rate
+		}
 
-	*only hh engaged in crop production and using fertilizer
-	foreach v of global final_indicator6 {
-		local missing_var ""
-		qui findname area_weight_`v',  all(@==.) local (missing_var)
-		if "`missing_var'"!="" { 
-			qui replace area_weight_`v'=1
-		}
-		local missing_var ""
-		qui findname w_inorg_fert_rate_`v'use_fert,  all(@==.) local (missing_var)
-		if "`missing_var'"!="" { 
-			qui replace w_inorg_fert_rate_`v'use_fert=0
-			qui replace w_inorg_fert_rate_`v'=0.000001
-			di "w_inorg_fert_rate_`v'use_fert"
-			ta w_inorg_fert_rate_`v'use_fert
-		}
-	
-		qui tabstat  w_inorg_fert_rate_`v'use_fert [aw=area_weight_`v'] if rural==1  & ag_hh==1  & w_inorg_fert_rate_`v'!=. & w_inorg_fert_rate_`v'!=0,  stat(mean sd p25 p50 p75  min max N) col(stat) save
-		matrix temp6=r(StatTotal)'
-		qui svyset clusterid [pweight=area_weight_`v'], strata(strataid) singleunit(centered) // get standard errors of the mean
-		local missing_var ""
-		qui findname w_inorg_fert_rate_`v'use_fert,  all(@==.) local (missing_var)
-		if "`missing_var'"!="" { 
-			qui replace w_inorg_fert_rate_`v'use_fert=0
-		}	
-		qui svy, subpop(if rural==1): mean  w_inorg_fert_rate_`v'use_fert
-		matrix final_indicator6=final_indicator6\(temp6,el(r(table),2,1))
-	}
+		qui recode w_`chem'_rate* (.=0) if crop_hh==1
 
+		foreach  v of global final_indicator6 {
+			capture confirm variable w_`chem'_rate_`v' 
+			if _rc {
+				qui gen w_`chem'_rate_`v' = .
+			}
+			local l`v' : var lab w_`chem'_rate_`v' 
+			qui gen w_`chem'_rate_`v'users=w_`chem'_rate_`v'  if  (w_`chem'_rate_`v'!=0 & w_`chem'_rate_`v'!=.)
+			qui lab var w_`chem'_rate_`v'users "`l`v'' - only household using `chem'"
+
+			di "`chem'_`v'"
+			capture confirm variable area_weight_`v'
+			if _rc {
+				qui gen area_weight_`v'=1
+			}	
+			local missing_var ""
+			qui findname area_weight_`v',  all(@==.) local (missing_var)
+			if "`missing_var'"!="" { 
+				qui replace area_weight_`v'=1
+			}
+			
+			local missing_var ""
+			qui findname w_`chem'_rate_`v',  all(@==.) local (missing_var)
+			if "`missing_var'"!="" { 
+				qui replace w_`chem'_rate_`v'=0
+			} 
+			capture qui tabstat w_`chem'_rate_`v' [aw=area_weight_`v'] if rural==1,  stat(mean sd p25 p50 p75  min max N) col(stat) save
+			matrix temp6=r(StatTotal)'
+			if el(temp6,1,1)!=. {
+			*Standard error 
+			qui svyset clusterid [pweight=area_weight_`v'], strata(strataid) singleunit(centered) 
+			qui svy, subpop(if rural==1): mean w_`chem'_rate_`v'
+			matrix final_indicator6=final_indicator6\(temp6,el(r(table),2,1))
+			}
+			else {
+				matrix final_indicator6=final_indicator6\(.,.,.,.,.,.,.,.,.)
+			}
+			
+			local missing_var ""
+			qui findname area_weight_`v',  all(@==.) local (missing_var)
+			if "`missing_var'"!="" { 
+				qui replace area_weight_`v'=1
+			}
+			di "`chem'_rate`v'users"
+			local missing_var ""
+			qui findname w_`chem'_rate_`v'users,  all(@==.) local (missing_var)
+			if "`missing_var'"!="" { 
+				qui replace w_`chem'_rate_`v'users=0
+				qui replace w_`chem'_rate_`v'=0.000001
+				di "w_`chem'_rate_`v'users"
+				ta w_`chem'_rate_`v'users
+			} 
+		
+			capture qui tabstat  w_`chem'_rate_`v'users [aw=area_weight_`v'] if rural==1  & ag_hh==1  & w_`chem'_rate_`v'!=. & w_`chem'_rate_`v'!=0,  stat(mean sd p25 p50 p75  min max N) col(stat) save
+			matrix temp6=r(StatTotal)'
+			if el(temp6,1,1)!=. {
+			*Standard error
+			qui svyset clusterid [pweight=area_weight_`v'], strata(strataid) singleunit(centered) 
+			local missing_var ""
+			qui svy, subpop(if rural==1): mean  w_`chem'_rate_`v'users
+			matrix final_indicator6=final_indicator6\(temp6,el(r(table),2,1))
+			}
+			else {
+				matrix final_indicator6=final_indicator6\(.,.,.,.,.,.,.,.,.)
+			}
+		}
+	}
 	matrix final_indicator6 =final_indicator6[2..rowsof(final_indicator6), .]
 	matrix list final_indicator6 
-
+	
 
 	di "---------------- Summary statistics group 7 ----------------"
 	* Group 7  - total explicit cost at the household level, also by farm type and gender of HoH
@@ -1116,13 +1129,13 @@ foreach instrument of global list_instruments {
 	global final_indicator10e ""
 	local missing_var ""			
 	//ALT 03.21.23
-	capture confirm variable poverty_under_1_9
+	capture confirm variable poverty_under_190
 	if _rc {
-		qui gen  poverty_under_1_9=. 
+		qui gen  poverty_under_190=. 
 	}
-	capture confirm var poverty_under_2_15 
+	capture confirm var poverty_under_215 
 	if _rc {
-		qui gen poverty_under_2_15 = .
+		qui gen poverty_under_215 = .
 	}
 	capture confirm var poverty_under_npl 
 	if _rc {
@@ -1131,7 +1144,7 @@ foreach instrument of global list_instruments {
 	/* DMC - not sure about this - we want them to be missing if it's not there, right?
 	i DYA - I think we need these because in the code below, the condition 'if bottom_40_peraeq==1" is used
 	in the spreadhseet we will remove all rows with 0 for for all summary stats*/
-	qui findname poverty_under_1_9 poverty_under_2_15 poverty_under_npl,  all(@==.) local (missing_var)
+	qui findname poverty_under_190 poverty_under_215 poverty_under_npl,  all(@==.) local (missing_var)
 	if "`missing_var'"!="" { 
 		foreach var in `missing_var' {
 			qui replace `var'=0
@@ -1150,7 +1163,7 @@ foreach instrument of global list_instruments {
 		qui replace bottom_40_percap=1
 	}		
 	
-	foreach v in poverty_under_1_9 /*ALT 03.21.23*/ poverty_under_npl poverty_under_2_15 {
+	foreach v in poverty_under_190 /*ALT 03.21.23*/ poverty_under_npl poverty_under_215 {
 	
 		local l`v' : var lab `v' 
 		qui gen `v'_fhh=`v' if fhh==1	
@@ -1300,10 +1313,10 @@ foreach instrument of global list_instruments {
 	*POVERTY ESTIMATE ALL
 	global final_indicator10e_all ""
 	//ALT 03.23.23
-	gen  poverty_under_1_9_all= poverty_under_1_9
-	gen poverty_under_2_15_all = poverty_under_2_15
+	gen  poverty_under_190_all= poverty_under_190
+	gen poverty_under_215_all = poverty_under_215
 	gen poverty_under_npl_all = poverty_under_npl
-	foreach v in poverty_under_1_9_all poverty_under_2_15_all poverty_under_npl_all {	
+	foreach v in poverty_under_190_all poverty_under_215_all poverty_under_npl_all {	
 		local l`v' : var lab `v' 
 		qui gen `v'_fhh=`v' if fhh==1	
 		qui lab var `v'_fhh "`l`v'' -ds FHH"
@@ -1798,19 +1811,6 @@ foreach instrument of global list_instruments {
 		gen Year="2011-12"
 	}
 	
-  if "`instrument'"=="Ethiopia_ACC" { 
-		gen Geography="Ethiopia" 
-		gen Survey="AgDev Baseline"
-		gen Instrument="Ethiopia ACC Baseline"	
-		gen Year="2016"
-	}
-	
-	  if "`instrument'"=="Nigeria_GHS_W4" { 
-		gen Geography="Nigeria" 
-		gen Survey="LSMS-ISA"
-		gen Instrument="Nigeria GHS Wave 4"	
-		gen Year="2018-19"
-	}
 	  if "`instrument'"=="Nigeria_GHS_W5" { 
 		gen Geography="Nigeria" 
 		gen Survey="LSMS-ISA"
@@ -1967,3 +1967,4 @@ if "`instrument'"=="MWI_IHS_W1" {
 	drop all_zero_2_missing
 	save "$`instrument'_final_data/`instrument'_summary_stats_with_labels.dta", replace
 }
+
