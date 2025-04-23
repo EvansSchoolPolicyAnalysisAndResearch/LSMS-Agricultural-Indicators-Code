@@ -1,14 +1,12 @@
 /*
 -----------------------------------------------------------------------------------------------------------------------------------------------------
-*Title/Purpose 	: This do.file was developed by the Evans School Policy Analysis & Research Group (EPAR) 
-				  for the construction of a set of agricultural development indicators 
-				  using the Malawi National Panel Survey (IHS) LSMS-ISA Wave 2 (2013)
+*Title/Purpose	 	: Agricultural Development Indicators for the LSMS-ISA, Malawi National Panel Survey (IHS) LSMS-ISA Wave 2 (2013)
 				  
-*Author(s)		: Didier Alia & C. Leigh Anderson
+*Author(s)			: Didier Alia & C. Leigh Anderson; uw.epar@uw.edu 
 
-*Date			: 09 October 2024
+*Date				: March 31st, 2025
 
-*Dataset Version: MWI_2010-2013_IHPS_v01_M_Stata
+*Dataset Version	: MWI_2010-2019_IHPS_v06_M_Stata
 ----------------------------------------------------------------------------------------------------------------------------------------------------*/
 
 
@@ -131,8 +129,7 @@ Below are the list of the main files created by running this Master do.file
 									
 *AGRICULTURAL WAGES					Malawi_IHPS_W2_ag_wage.dta   
 
-*RATE OF FERTILIZER APPLICATION		Malawi_IHPS_W2_fertilizer_application.dta 
-/// 
+*RATE OF FERTILIZER APPLICATION		Malawi_IHPS_W2_fertilizer_application.dta  
 
 *HOUSEHOLD'S DIET DIVERSITY SCORE	Malawi_IHPS_W2_household_diet.dta
 
@@ -164,7 +161,9 @@ clear mata
 set maxvar 8000	
 ssc install findname // need this user-written ado file for some commands to work
 
-*Set location of raw data and output 
+*****************************
+***** SET DIRECTOREIS *******
+*****************************
 global directory "../.."
 
 global MWI_IHPS_W2_raw_data "$directory\Malawi IHS\Malawi IHS Wave 2\Raw DTA Files"
@@ -176,31 +175,30 @@ global summary_stats "$directory\_Summary_statistics\EPAR_UW_335_SUMMARY_STATIST
 ************************
 *EXCHANGE RATE AND INFLATION FOR CONVERSION IN USD IDS
 ************************
-global Malawi_IHPS_W2_exchange_rate 730.27		 // https://data.worldbank.org/indicator/PA.NUS.FCRF?end=2017&locations=MW&start=2011
-global Malawi_IHPS_W2_gdp_ppp_dollar 262.31     // https://data.worldbank.org/indicator/PA.NUS.PPP?end=2017&locations=MW&start=2011
-global Malawi_IHPS_W2_cons_ppp_dollar 249.1	 // https://data.worldbank.org/indicator/PA.NUS.PRVT.PP?end=2017&locations=MW&start=2011
-global Malawi_IHPS_W2_inflation .48825393  //CPI_SURVEY_YEAR/CPI_2017 - > CPI_2013/CPI_2017 ->  166.1245533/340.2421245 from https://data.worldbank.org/indicator/FP.CPI.TOTL?end=2017&locations=MW&start=2009 //The data were collected over the period 2011 to 2012 (therefore we use 2012 the latest year)
+global MWI_IHPS_W2_exchange_rate 730.27		 // https://data.worldbank.org/indicator/PA.NUS.FCRF?end=2017&locations=MW&start=2011
+global MWI_IHPS_W2_gdp_ppp_dollar 262.31     // https://data.worldbank.org/indicator/PA.NUS.PPP?end=2017&locations=MW&start=2011
+global MWI_IHPS_W2_cons_ppp_dollar 249.1	 // https://data.worldbank.org/indicator/PA.NUS.PRVT.PP?end=2017&locations=MW&start=2011
+global MWI_IHPS_W2_inflation .48825393  //CPI_SURVEY_YEAR/CPI_2017 - > CPI_2013/CPI_2017 ->  166.1245533/340.2421245 from https://data.worldbank.org/indicator/FP.CPI.TOTL?end=2017&locations=MW&start=2009 //The data were collected over the period 2011 to 2012 (therefore we use 2012 the latest year)
 
-global Malawi_IHPS_W2_poverty_190 (1.90*78.77*166.1/107.6) //see calculation and sources below
+global MWI_IHPS_W2_poverty_under_190 (1.90*78.77*166.1/107.6) //see calculation and sources below
 //WB's previous (PPP) poverty threshold is $1.90. 
 //Multiplied by 2011 PPP conversion factor of 78.77 //https://data.worldbank.org/indicator/PA.NUS.PRVT.PP?end=2017&locations=MW&start=2009
 //Multiplied by CPI in 2013 of 166.1 //https://data.worldbank.org/indicator/FP.CPI.TOTL?end=2017&locations=MW&start=2009
 //Divided by CPI in 2011 of 107.6 //https://data.worldbank.org/indicator/FP.CPI.TOTL?end=2017&locations=MW&start=2009
-global Malawi_IHPS_W2_poverty_npl (109797*166.12/340.2/365) //see calculation and sources below
+global MWI_IHPS_W2_poverty_under_npl (109797*166.12/340.2/365) //see calculation and sources below
 //MWI government set national poverty line to MWK109,797 in January 2017 values //https://massp.ifpri.info/files/2019/05/IFPRI_KeyFacts_Poverty_Final.pdf
 //Multiplied by CPI in 2013 of 166.12 //https://data.worldbank.org/indicator/FP.CPI.TOTL?end=2017&locations=MW&start=2009
 //Divided by CPI in 2017 of 340.2 //https://data.worldbank.org/indicator/FP.CPI.TOTL?end=2017&locations=MW&start=2009
 //Divide  by # of days in year (365) to get daily amount
-global Malawi_IHPS_W2_poverty_215 (2.15* $Malawi_IHPS_W2_inflation * $Malawi_IHPS_W2_cons_ppp_dollar)  //WB's new (PPP) poverty threshold of $2.15 multiplied by globals
+global MWI_IHPS_W2_poverty_under_215 (2.15* $MWI_IHPS_W2_inflation * $MWI_IHPS_W2_cons_ppp_dollar)  //WB's new (PPP) poverty threshold of $2.15 multiplied by globals
  
 
-************************
+********************************************************************************
 *POPULATION
-************************
-
-global Malawi_IHPS_W2_pop_tot 16024775
-global Malawi_IHPS_W2_pop_rur 13466259
-global Malawi_IHPS_W2_pop_urb 2558516
+********************************************************************************
+global MWI_IHPS_W2_pop_tot 16024775
+global MWI_IHPS_W2_pop_rur 13466259
+global MWI_IHPS_W2_pop_urb 2558516
 
 ********************************************************************************
 *THRESHOLDS FOR WINSORIZATION
@@ -267,8 +265,9 @@ gen crop_name = ""
  
  
 ********************************************************************************
-* Fixing raw data files for cross-wave compatibility
+* Appended Data
 ********************************************************************************
+* Fixing raw data files for cross-wave compatibility
 // run once for dev purposes
 // modify raw files and save in new modified_data folder
 capture confirm file "${MWI_IHPS_W2_appended_data}/ag_meta_13.dta" //Checks for the first file in the temp_files directory to see if this code needs to execute. You can force this section to re run by deleting ag_meta or skip it entirely by changing the appended_data global to your raw_data directory. Run the commented block below in order to have the variable names match up.
@@ -330,9 +329,9 @@ save "$MWI_IHPS_W2_appended_data/ConsAggW2.dta", replace
 }
 
 
-************************
+********************************************************************************
 *HOUSEHOLD IDS
-************************
+********************************************************************************
 use "${MWI_IHPS_W2_appended_data}/hh_mod_a_filt_13.dta", clear
 rename hh_a10a ta
 rename hh_wgt weight
@@ -346,7 +345,7 @@ save "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_hhids.dta", replace
 ********************************************************************************
 * WEIGHTS *
 ********************************************************************************
-use "${MWI_IHPS_W2_appended_data}/hh_mod_a_filt_13.dta", clear
+/*use "${MWI_IHPS_W2_appended_data}/hh_mod_a_filt_13.dta", clear
 rename ea_id ea
 rename hh_a10a ta
 rename hh_wgt weight
@@ -356,32 +355,28 @@ gen rural = (reside==2)
 lab var rural "1=Household lives in a rural area"
 keep occ hhid region stratum district ta ea rural weight 
 save "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_weights.dta", replace
-
-
-************************
+*/
+********************************************************************************
 *INDIVIDUAL IDS
-************************
+********************************************************************************
 use "${MWI_IHPS_W2_appended_data}/hh_mod_b_13.dta", clear
-ren PID indiv 
+ren hh_b01 indiv 
 destring indiv, replace 
-replace indiv= mod(indiv, 100) 
-keep indiv hhid hh_b01 hh_b03 hh_b04 hh_b05a
-sort hhid indiv
-quietly by hhid indiv:  gen dup = cond(_N==1,0,_n)
-drop if dup==2 
-drop dup
+keep indiv hhid PID hh_b03 hh_b04 hh_b05a
 gen female=hh_b03==2 
 lab var female "1= individual is female"
 gen age=hh_b05a
 lab var age "Indivdual age"
 gen hh_head=hh_b04==1 
+replace hh_head=0 if hh_head !=1
 lab var hh_head "1= individual is household head"
 drop hh_b03 hh_b04 hh_b05a
+duplicates drop  hhid indiv hh_head female, force //0 duplicates
 save "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_person_ids.dta", replace
 
-************************
+********************************************************************************
 *HOUSEHOLD SIZE 
-************************
+********************************************************************************
 use "${MWI_IHPS_W2_appended_data}/hh_mod_b_13.dta", clear
 gen hh_members = 1
 rename hh_b04 relhead 
@@ -390,24 +385,23 @@ gen fhh = (relhead==1 & gender==2)
 collapse (sum) hh_members (max) fhh, by (hhid)
 lab var hh_members "Number of household members"
 lab var fhh "1= Female-headed household"
-
 //Rescaling the weights to match the population better
 merge 1:1 hhid using "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_hhids.dta", nogen keep(2 3)
+*Adjust to match total population
 total hh_members [pweight=weight]
 matrix temp =e(b)
-gen weight_pop_tot=weight*${Malawi_IHPS_W2_pop_tot}/el(temp,1,1)
+gen weight_pop_tot=weight*${MWI_IHPS_W2_pop_tot}/el(temp,1,1)
 total hh_members [pweight=weight_pop_tot]
 lab var weight_pop_tot "Survey weight - adjusted to match total population"
-
 *Adjust to match total population but also rural and urban
 total hh_members [pweight=weight] if rural==1
 matrix temp =e(b)
-gen weight_pop_rur=weight*${Malawi_IHPS_W2_pop_rur}/el(temp,1,1) if rural==1
+gen weight_pop_rur=weight*${MWI_IHPS_W2_pop_rur}/el(temp,1,1) if rural==1
 total hh_members [pweight=weight_pop_tot]  if rural==1
 
 total hh_members [pweight=weight] if rural==0
 matrix temp =e(b)
-gen weight_pop_urb=weight*${Malawi_IHPS_W2_pop_urb}/el(temp,1,1) if rural==0
+gen weight_pop_urb=weight*${MWI_IHPS_W2_pop_urb}/el(temp,1,1) if rural==0
 total hh_members [pweight=weight_pop_urb]  if rural==0
 
 egen weight_pop_rururb=rowtotal(weight_pop_rur weight_pop_urb)
@@ -415,13 +409,12 @@ total hh_members [pweight=weight_pop_rururb]
 lab var weight_pop_rururb "Survey weight - adjusted to match rural and urban population"
 drop weight_pop_rur weight_pop_urb
 save "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_hhsize.dta", replace
-merge 1:1 hhid using "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_weights.dta", nogen
+keep hhid region district ta ea stratum weight* rural
 save "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_weights.dta", replace
 
-************************
+********************************************************************************
 *PLOT AREAS
-************************
-
+********************************************************************************
 use "${MWI_IHPS_W2_appended_data}/AG_MOD_P_13.dta", clear
 gen season=2 //perm
 ren ag_p00 plot_id
@@ -481,9 +474,7 @@ gen area_est_hectares=area_acres_est* (1/2.47105)
 gen area_meas_hectares= area_acres_meas* (1/2.47105)
 lab var area_meas_hectares "Plot are in hectares (GPSd)"
 lab var area_est_hectares "Plot area in hectares (estimated)"
-
 save "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_plot_areas.dta", replace
-
 
 ********************************************************************************
 *GPS COORDINATES *
@@ -496,32 +487,24 @@ keep hhid latitude longitude
 gen GPS_level = "hhid"
 save "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_hh_coords.dta", replace
 
-************************
+********************************************************************************
 *PLOT DECISION MAKERS 
-************************
-use "${MWI_IHPS_W2_appended_data}/hh_mod_b_13.dta", clear
-ren hh_b01 indiv			// indiv is the roster number, combination of hhid and indiv are unique id for this wave
-drop if indiv==.
-gen female=hh_b03==2 
-gen age=hh_b05a
-gen head = hh_b04==1
-keep indiv female age hhid head
-lab var female "1=Individual is a female"
-lab var age "Individual age"
-lab var head "1=Individual is the head of household"
-save "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_gender_merge.dta", replace
+********************************************************************************
+use "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_person_ids.dta", clear
+drop if hh_head==0
+tempfile pids 
+save `pids'
 
-
-use "${MWI_IHPS_W2_appended_data}/ag_mod_p_13.dta", clear
+use "${MWI_IHPS_W2_appended_data}/ag_mod_p_13.dta", clear //tree/perm
 ren ag_p00 plot_id
-keep if strpos(plot_id, "T") //Drops a lot of missing plot information
 gen season=2
 ren ag_p0c crop_code_perm
-
-keep hhid plot_id crop_code_perm season
-duplicates tag hhid crop_code_perm, gen(dups)
+drop if crop_code_perm ==. //928 deleted
+//duplicates drop hhid crop_code_perm garden_id plot_id, force //hhid appears to uniquely identify all households here 
+keep hhid plot_id crop_code_perm season // 1285 season 
+duplicates tag hhid plot_id, gen(dups) //1285
 preserve
-keep if dups > 0
+keep if dups > 0 //750 deleted
 keep hhid plot_id season
 duplicates drop
 tempfile dm_p_hoh
@@ -530,79 +513,80 @@ restore
 drop if dups>0 //restricting observations to those where a unique crop is grown on only one plot
 drop dups
 tempfile one_plot_per_crop
-save `one_plot_per_crop'
+gen source_file="mod_p"
+save `one_plot_per_crop' //750
 
-use "${MWI_IHPS_W2_appended_data}/ag_mod_q_13.dta", clear
+use "${MWI_IHPS_W2_appended_data}/ag_mod_q_13.dta", clear 
 drop if ag_q01==2 //drop if no crop was sold.
 ren ag_q14a indiv1 
 ren ag_q14b indiv2 
 ren ag_q0b crop_code_perm
-duplicates drop hhid crop_code_perm indiv1 indiv2, force
-merge 1:1 hhid crop_code_perm using `one_plot_per_crop'
-reshape long indiv, i(hhid plot_id crop_code_perm) j(individ)
-keep hhid plot_id indiv
+duplicates drop hhid crop_code_perm indiv1 indiv2, force //0 duplicates 
+merge 1:m hhid crop_code_perm  using `one_plot_per_crop', keep(2 3)
+//The 2's will eventually get the same treatment as "dm_p_hoh"
+keep hhid plot_id indiv* 
+reshape long indiv, i(hhid plot_id) j(id_no)
 gen season=2
 tempfile dm_p
 save `dm_p'
 
-
-use "${MWI_IHPS_W2_appended_data}/ag_mod_d_13.dta", clear
+use "${MWI_IHPS_W2_appended_data}/ag_mod_d_13.dta", clear //No point in attempting to understand ownership because it isn't included in the instrument and all plots have at least one manager listed.
 rename ag_d00 plot_id
-drop if plot_id==""
-
-gen indiv1 = ag_d01 
-gen indiv2 = ag_d01_2a 
-gen indiv3 = ag_d01_2b
-gen owner_manage = indiv1==. & indiv2==. & indiv3==.
-replace indiv1 = ag_d04a if owner_manage == 1
-replace indiv2 = ag_d04b if owner_manage == 1
-keep hhid plot_id indiv*
-gen season =0
-duplicates drop
+gen season=0
+ren ag_d01 indiv1 //manager
+ren ag_d01_2a indiv2 //manager
+ren ag_d01_2b indiv3 //manager
+//gen no_manager = indiv1==. & indiv2==. & indiv3==. //0 plots with no managers
+//replace indiv1= ag_b204_2__0 if  no_manager==1 // owners, if no managers
+//replace indiv2 = ag_b204_2__1 if no_manager==1
+//replace indiv3 = ag_b204_2__2 if no_manager==1
+recode indiv* (0=.)
+keep hhid plot_id indiv* season
+//duplicates drop //0 duplicates
 tempfile dm_r
 save `dm_r'
 
-use "${MWI_IHPS_W2_appended_data}/ag_mod_k_13.dta", clear
-rename ag_k00 plot_id
+use "${MWI_IHPS_W2_appended_data}/ag_mod_k_13.dta", clear //dry
+
+ren ag_k00 plot_id
 drop if plot_id==""
-gen indiv1 = ag_k02 
-gen indiv2 = ag_k02_2a 
-gen indiv3 = ag_k02_2b
-gen owner_manage = indiv1==. & indiv2==. & indiv3==.
-replace indiv1 = ag_k05a if owner_manage == 1
-replace indiv2 = ag_k05b if owner_manage == 1
-keep hhid plot_id indiv*
 gen season=1
+gen indiv1=ag_k02 //manager
+gen indiv2=ag_k02_2a //manager
+gen indiv3=ag_k02_2b //manager
+//gen no_manager = indiv1==. & indiv2==. & indiv3==. //0 plots with no managers
+recode indiv* (0=.)
+keep hhid plot_id indiv* season 
+//collapse (firstnm) indiv*, by(hhid plot_id garden_id season)
 append using `dm_r'
-reshape long indiv, i(hhid plot_id season) j(individ)
+reshape long indiv, i(hhid plot_id season) j(id_no)
 append using `dm_p'
 
+
 preserve
-drop individ
-bys hhid plot_id : egen mindiv = min(indiv)
-keep if mindiv==.
+bys hhid plot_id season : egen mindiv = min(indiv)
+keep if mindiv==. 
 duplicates drop
 append using `dm_p_hoh'
-merge m:m hhid using  "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_gender_merge.dta",  keep(1 3) nogen		
-keep if head==1
+merge m:1 hhid using `pids', nogen keep(3)
+gen dm1_gender=female+1
 tempfile hoh_plots
 save `hoh_plots'
 restore
-drop if indiv==.
-merge m:1 hhid indiv using "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_gender_merge.dta", keep (1 3) nogen
-append using `hoh_plots'
-collapse (mean) female, by(hhid plot_id season)
-gen dm_gender = 1 if female==0
-replace dm_gender=2 if female==1 
-replace dm_gender=3 if dm_gender==. & female!=.
 
-drop if plot_id == ""
-save "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_plot_decision_makers.dta", replace
+drop if indiv==.
+merge m:1 hhid indiv using "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_person_ids.dta", keep (1 3) // 5,937 matched, 5 unmatched
+gen dm1_gender=female+1 if id_no==1
+append using `hoh_plots'
+collapse (mean) female (firstnm) dm1_gender, by(hhid plot_id season)
+gen dm_gender =3 if female !=.
+replace dm_gender = 1 if female==0
+replace dm_gender = 2 if female==1
+save  "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_plot_decision_makers.dta", replace 
 
 ********************************************************************************
 * FORMALIZED LAND RIGHTS *
 ********************************************************************************
-
 use "${MWI_IHPS_W2_appended_data}/ag_mod_d_13.dta", clear
 gen season=0
 append using "${MWI_IHPS_W2_appended_data}/ag_mod_k_13.dta"
@@ -744,7 +728,8 @@ use "${directory}\Malawi IHS\Nonstandard Unit Conversion Factors\caloric_convers
 	ren ag_i03 sold_value
 	replace sold_value=ag_o03 if sold_value==. & ag_o03!=.
 	replace sold_value=ag_q03 if sold_value==. & ag_q03!=.
-	
+		gen condition=ag_i02c 
+	replace condition=ag_o02c if condition==.
 	ren ag_i0b crop_code_long
 	replace crop_code_long =ag_o0b if crop_code_long ==. & ag_o0b!=.
 	
@@ -755,29 +740,46 @@ use "${directory}\Malawi IHS\Nonstandard Unit Conversion Factors\caloric_convers
 	replace crop_code_long=crop_code_perm if crop_code_long==. & crop_code_perm!=.
 	label define relabel 1 "MAIZE LOCAL" 2 "MAIZE COMPOSITE/OPV" 3 "MAIZE HYBRID" 4 "MAIZE HYBRID RECYCLED" 5 "TOBACCO BURLEY" 6 "TOBACCO FLUE CURED" 7 "TOBACCO NNDF" 8 "TOBACCOSDF" 9 "TOBACCO ORIENTAL" 10 "OTHER TOBACCO (SPECIFY)" 11 "GROUNDNUT CHALIMBANA" 12 "GROUNDNUT CG7" 13 "GROUNDNUT MANIPINTA" 14 "GROUNDNUT MAWANGA" 15 "GROUNDNUT JL24" 16 "OTHER GROUNDNUT(SPECIFY)" 17 "RISE LOCAL" 18 "RISE FAYA" 19 "RISE PUSSA" 20 "RISE TCG10" 21 "RISE IET4094 (SENGA)" 22 "RISE WAMBONE" 23 "RISE KILOMBERO" 24 "RISE ITA" 25 "RISE MTUPATUPA" 26 "OTHER RICE(SPECIFY)"  28 "SWEET POTATO" 29 "IRISH [MALAWI] POTATO" 30 "WHEAT" 34 "BEANS" 35 "SOYABEAN" 36 "PIGEONPEA(NANDOLO" 37 "COTTON" 38 "SUNFLOWER" 39 "SUGAR CANE" 40 "CABBAGE" 41 "TANAPOSI" 42 "NKHWANI" 43 "THERERE/OKRA" 44 "TOMATO" 45 "ONION" 46 "PEA" 47 "PAPRIKA" 48 "OTHER (SPECIFY)" /*cleaning up these existing labels*/ 27 "GROUND BEAN (NZAMA)" 31 "FINGER MILLET (MAWERE)" 32 "SORGHUM" 33 "PEARL MILLET (MCHEWERE)" /*now creating unique codes for tree crops*/ 49 "CASSAVA" 50 "TEA" 51 "COFFEE" 52 "MANGO" 53 "ORANGE" 54 "PAWPAW/PAPAYA" 55 "BANANA" 56 "AVOCADO" 57 "GUAVA" 58 "LEMON" 59 "NAARTJE (TANGERINE)" 60 "PEACH" 61 "POZA (CUSTADE APPLE)" 62 "MASUKU (MEXICAN APPLE)" 63 "MASAU" 64 "PINEAPPLE" 65 "MACADEMIA" /*adding other specified crop codes*/ 105 "MAIZE GREEN" 203 "SWEET POTATO WHITE" 204 "SWEET POTATO ORANGE" 207 "PLANTAIN" 208 "COCOYAM (MASIMBI)" 301 "BEAN, WHITE" 302 "BEAN, BROWN" 308 "COWPEA (KHOBWE)" 405 "CHINESE CABBAGE" 409 "CUCUMBER" 410 "PUMPKIN" 1800 "FODDER TREES" 1900 "FERTILIZER TREES" 2000 "FUEL WOOD TREES", modify
 	label val crop_code_long relabel 
-		
 	
-	keep occ hhid qx_type interview_status sold_qty unit sold_value crop_code_long
+	//keep occ hhid qx_type interview_status sold_qty unit sold_value crop_code_long
 		
+
 	merge m:1 hhid using "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_weights.dta", nogen keepusing(region stratum district ta ea rural weight)
-	gen price_unit = sold_value/sold_qty
+	ren unit unit_code 
+	tostring unit_code, g(unit)
+		merge m:1 region crop_code_long unit condition using "${directory}\Malawi IHS\Nonstandard Unit Conversion Factors\Malawi_IHS_cf.dta", nogen keep(1 3)
+		drop unit
+		ren unit_code unit
+	replace conversion=1 if conversion==. & unit==1 & inlist(condition, 1, 3)
+	gen sold_qty_kg=conversion*sold_qty 
+	gen price_unit = sold_value/sold_qty 
+	gen price_kg = sold_value/sold_qty_kg
 	lab var price_unit "Average sold value per crop unit"
+	recode price* (0=.)
 	gen obs=price_unit!=.
+	gen obs_kg=price_kg!=.
 	
 	*create a value for the price of each crop at different levels
-	foreach i in region district ta ea hhid{
+	foreach i in region district ta ea hhid  {
 	preserve
-	bys `i' crop_code_long unit : egen obs_`i'_price = sum(obs) 
-	collapse (median) price_unit_`i'=price_unit [aw=weight], by (`i' unit crop_code_long obs_`i'_price) 
+	collapse (median) price_unit_`i'=price_unit (rawsum) obs_`i'_price=obs [aw=weight], by (`i' unit crop_code_long condition) 
 	tempfile price_unit_`i'_median
 	save `price_unit_`i'_median'
 	restore
+	preserve 
+	collapse (median) price_kg_`i'=price_unit (rawsum) obs_`i'_kg=obs_kg [aw=weight], by (`i' crop_code_long ) 
+	tempfile price_kg_`i'_median
+	save `price_kg_`i'_median'
+	restore 
 	}
-	collapse (median) price_unit_country = price_unit (sum) obs_country_price=obs [aw=weight], by(crop_code_long unit)
+	preserve
+	collapse (median) price_unit_country = price_unit (rawsum) obs_country_price=obs [aw=weight], by(crop_code_long unit condition)
 	tempfile price_unit_country_median
 	save `price_unit_country_median'
-	
-	
+	restore
+	collapse (median) price_kg_country = price_kg (rawsum) obs_country_kg=obs_kg [aw=weight], by(crop_code_long)
+	tempfile price_kg_country_median
+	save `price_kg_country_median'
 		
 	***************************
 	*Plot variables
@@ -798,6 +800,8 @@ use "${directory}\Malawi IHS\Nonstandard Unit Conversion Factors\caloric_convers
 	lab var season "season: 0=rainy, 1=dry, 2=tree crop"
 	label define season 0 "rainy" 1 "dry" 2 "tree or permanent crop"
 	label values season season
+**# Bookmark #1
+	
 	gen crop_code_perm=ag_p0c //tree crop codes overlap with crop crop codes, recoded  here to have unique numbers
 	recode crop_code_perm (1=49)(2=50)(3=51)(4=52)(5=53)(6=54)(7=55)(8=56)(9=57)(10=58)(11=59)(12=60)(13=61)(14=62)(15=63)(16=64)(17=65)(18=48)
 	la var crop_code_perm "Unique crop codes for trees/ permanent crops"
@@ -845,7 +849,7 @@ la val crop_code relabel2
 	replace lost_flood = inlist(ag_p08a,12) | inlist(ag_p08b,12) if ag_p07!=.
 	
 	drop crop_area_share
-	gen ha_harvested=ha_planted 
+	gen ha_harvest=ha_planted 
 	
 	*Create time variables (month planted, harvest, and length of time grown)
 	
@@ -985,24 +989,33 @@ save "${MWI_IHPS_W2_created_data}/Malawi_IHPS_W2_yield_1_6_23.dta", replace
 restore	
 	
 merge m:1 hhid using "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_weights.dta", nogen keep(1 3)
-
-foreach i in region district ta ea hhid {
-	merge m:1 `i' crop_code_long unit using `price_unit_`i'_median', nogen keep(1 3)
+foreach i in ea ta district region hhid {
+	merge m:1 `i' crop_code_long unit condition using `price_unit_`i'_median', nogen keep(1 3)
+	merge m:1 `i' crop_code_long using `price_kg_`i'_median', nogen keep(1 3)
 	}
-merge m:1 unit crop_code_long using `price_unit_country_median', nogen keep(1 3)
+merge m:1 unit condition crop_code_long using `price_unit_country_median', nogen keep(1 3)
+merge m:1 crop_code_long using `price_kg_country_median', nogen keep(1 3)
 
-gen value_harvest = price_unit_hhid * quantity_harvested
-gen missing_price = value_harvest == .
-foreach i in region district ta ea { //decending order from largest to smallest geographical figure
-replace value_harvest = quantity_harvested * price_unit_`i' if missing_price == 1 & obs_`i' > 9 & obs_`i' != . 
+recode obs* (.=0)
+gen price_unit=.
+gen price_kg=.
+
+foreach i in country region district ta ea { //decending order from largest to smallest geographical figure
+replace price_unit = price_unit_`i' if obs_`i'_price > 9
+replace price_kg = price_kg_`i' if obs_`i'_kg > 9
 }
-replace value_harvest = quantity_harvested * price_unit_country if value_harvest==.
 
-	gen val_unit = value_harvest/quantity_harvested
-	gen val_kg = value_harvest/quant_harv_kg 
-	
-	gen plotweight = ha_planted*conversion 
-	gen obs=quantity_harvested>0 & quantity_harvested!=.
+ren price_unit_hhid price_unit_hh
+ren price_kg_hhid price_kg_hh 
+replace price_unit_hh = price_unit if price_unit_hh==.
+replace price_kg_hh = price_kg if price_kg_hh==.
+gen value_harvest = price_unit*quantity_harvested 
+replace value_harvest = price_kg*quant_harv_kg if value_harvest==. 
+gen value_harvest_hh=price_unit_hh*quantity_harvested 
+replace value_harvest_hh=price_kg_hh * quant_harv_kg if value_harvest_hh==.
+
+gen val_unit = value_harvest/quantity_harvested 
+gen val_kg = value_harvest/quant_harv_kg
 
 preserve
 	collapse (mean) val_kg, by (hhid crop_code_long)
@@ -1028,24 +1041,32 @@ restore
 		gen calories = cal_100g * quant_harv_kg * edible_p / .1 
 		count if missing(calories)
 	}	
+	gen lost_crop = lost_flood | lost_drought
 
 //AgQuery
 preserve
-	collapse (sum) quant_harv_kg value_harvest ha_planted ha_harvest number_trees_planted percent_field (max) months_grown, by(region stratum district ea rural hhid plot_id crop_code crop_code_long purestand area_meas_hectares season)
+	gen no_harvest = ha_harvest == .
+	collapse (sum) quant_harv_kg value_harvest* ha_planted ha_harvest number_trees_planted percent_field (max) months_grown lost_crop no_harvest, by(region stratum district ta ea rural hhid plot_id crop_code purestand area_meas_hectares season)
+	recode ha_planted (0=.)
+ 	replace ha_harvest=. if (ha_harvest==0 & no_harvest==1) | (ha_harvest==0 & quant_harv_kg>0 & quant_harv_kg!=.)
+ 	replace quant_harv_kg = . if quant_harv_kg==0 & no_harvest==1
+ 	drop no_harvest
 	bys hhid plot_id : egen percent_area = sum(percent_field)
 	bys hhid plot_id : gen percent_inputs = percent_field/percent_area
 	drop percent_area //Assumes that inputs are +/- distributed by the area planted. Probably not true for mixed tree/field crops, but reasonable for plots that are all field crops
 	//Labor should be weighted by growing season length
 	
 	drop if crop_code==. 
-	merge m:1 hhid plot_id using "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_plot_decision_makers.dta", nogen keep(1 3) keepusing(dm_gender) //650 missing dm_gender (mostly tree crops)
+	merge m:1 hhid plot_id season using "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_plot_decision_makers.dta", keep(1 3) keepusing(dm*) //7,082 matched, 5 unmatched
 	save "${MWI_IHPS_W2_created_data}/Malawi_IHPS_W2_all_plots.dta",replace
+	collapse (sum) ha_planted, by(hhid plot_id season) //Use planted area for hh-level expenses 
+	save "${MWI_IHPS_W2_created_data}/Malawi_IHPS_W2_planted_area.dta", replace
 restore
 	
 collapse (max) lost*, by(hhid)
+//gen lost_crop = lost_flood | lost_drought
 merge 1:1 hhid using "${MWI_IHPS_W2_created_data}/Malawi_IHPS_W2_hhsize.dta", nogen keep(3)
 save "${MWI_IHPS_W2_created_data}/Malawi_IHPS_W2_hh_preharv_losses.dta", replace
-
 
 ************************
 *CROP EXPENSES
@@ -1595,10 +1616,19 @@ save "${MWI_IHPS_W2_created_data}/Malawi_IHPS_W2_hh_preharv_losses.dta", replace
 	replace plot_id = ag_k00 if plot_id==""
 	drop if plot_id==""
 	replace season=1 if season==.
+	
+	preserve
+	gen plot_irr=1 if ag_d28a !=7 //7 is no irrigation
+	replace plot_irr=1 if plot_irr==0 & ag_k29a != 7
+	recode plot_irr (.=0)
+	keep hhid plot_irr plot_id season  
+	save "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_plot_irrigation.dta", replace	
+	restore
+	
 	ren ag_d37a qtyorgfert1
 	ren ag_d37b unitorgfert1
 
-ren ag_d39a itemcodeinorg1
+	ren ag_d39a itemcodeinorg1
 	ren ag_d39d qtyinorg1 //already in kgs
 	gen unitinorg1=2
 	ren ag_d39f itemcodeinorg2
@@ -1875,8 +1905,6 @@ ren ag_d39a itemcodeinorg1
 	* Updating the unit for unit to "1" (to match SEEDS code) for the relevant units after conversion
 	replace unit = 1 if inlist(unit, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)
 
-
-
 	//Replacing household level quantities with plot totals if the latter are larger - as a way to correct for unit errors. Some folks are using *a lot* of manure but otherwise the replacements look reasonable. A few obs of pesticides at the 1-5 gram level 
 	drop if unit!=1 
 	bys hhid input itemcode season : egen tot_qty = sum(qty)
@@ -1902,7 +1930,6 @@ ren ag_d39a itemcodeinorg1
 	restore
 	tempfile phys_inputs
 	save `phys_inputs'
-
 
 	drop if input=="transfert" | val==.
 	gen price_kg = val/qty  //note apparent data entry error for 23:21:0 in hhid==101012040045
@@ -1953,8 +1980,6 @@ ren ag_d39a itemcodeinorg1
 
 	tempfile phys_inputs_plot
 	save `phys_inputs_plot'
-
-
 
 	*********************************
 	* 			 SEED			    *
@@ -2017,7 +2042,6 @@ ren ag_d39a itemcodeinorg1
 	ren ag_h40 valseedtransexp3 //all transportation is explicit
 	replace valseedtransexp3 = ag_n40 if valseedtransexp3 == .
 
-
 	local suffix exp1 exp2 exp3 imp1 imp2
 	foreach s in `suffix' {
 	//CONVERT SPECIFIED UNITS TO KGS
@@ -2065,20 +2089,16 @@ ren ag_d39a itemcodeinorg1
 	drop if crop_code_long==. & strmatch(input, "seeds")
 	gen condition=1 
 	replace condition=3 if inlist(crop_code, 5, 6, 7, 28, 29, 30, 31, 32, 33, 37, 39, 40, 41, 42, 43, 44, 45, 47) 
-
 	merge m:1 hhid using  "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_hhsize.dta", keepusing (region district ta ea) nogen keep(1 3) 
 	capture tostring unit*, replace force
 	merge m:1 region crop_code_long unit condition using "${directory}\Malawi IHS\Nonstandard Unit Conversion Factors\Malawi_IHS_cf.dta", keep (1 3) 
 	// old :  2,394 New:  2,445 // 2,278 matches CG 11.20.2024
 	destring unit*, replace force
-
-
 	replace qty=. if input=="seedtrans" //0 changes, seedtrans must already have blanks for qty on all observations
 	keep if qty>0 //0 obs deleted
 
 	//This chunk ensures that conversion factors did not get used for planted-as-seed crops where the conversion factor weights only work for planted-as-harvested crops
 	replace conversion =. if inlist(crop_code, 5-8, 10, 28-29, 37, 39-45, 47) //
-
 	replace unit=1 if unit==.
 	replace conversion = 1 if unit==1 //conversion factor converts everything in kgs so if kg is the unit, cf is 1
 	replace conversion = 1 if unit==9 //if unit is piece, we use conversion factor of 1 but maintain unit name as "piece"/unitcode #9
@@ -2106,9 +2126,7 @@ ren ag_d39a itemcodeinorg1
 	lab var rental_anml "Costs for renting animal traction"
 	lab var rental_mech "Costs for renting other agricultural items" 
 	save "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_asset_rental_costs.dta", replace
-
 	ren rental_* val*
-
 	reshape long val, i(hhid) j(var) string
 	ren var input
 	gen exp = "exp"
@@ -2222,8 +2240,6 @@ ren ag_d39a itemcodeinorg1
 	save `plot_to_hh_cropexpenses', replace
 	restore
 
-
-
 	*** HH LEVEL Files: seed, asset_rental, phys inputs
 	use `seeds', clear
 	append using `asset_rental'
@@ -2233,7 +2249,6 @@ ren ag_d39a itemcodeinorg1
 	merge m:1 hhid using "${MWI_IHPS_W2_created_data}/Malawi_IHPS_W2_weights.dta", nogen keep(1 3) keepusing(weight region district ea ta) // merge in hh weight & geo data 
 	tempfile all_HH_LEVEL_inputs
 	save `all_HH_LEVEL_inputs', replace
-	
 
 	* Calculating Geographic Medians for HH LEVEL files
 	keep if strmatch(exp,"exp") & qty!=. 
@@ -2279,7 +2294,6 @@ ren ag_d39a itemcodeinorg1
 	replace val=qty*price if val==0
 	replace input = "orgfert" if itemcode==5
 	replace input = "inorg" if strmatch(input,"fert")
-
 
 	preserve
 	keep if strpos(input,"orgfert") | strpos(input,"inorg") | strpos(input,"herb") | strpos(input,"pest")
@@ -2394,7 +2408,6 @@ forvalues k=1(1)$nb_topcrops  {
 restore
 }
 	
-
 use "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_plot_cost_inputs_long.dta", clear 
 merge m:1 hhid plot_id using "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_plot_decision_makers.dta", nogen keep(1 3) keepusing(dm_gender)
 collapse (sum) val, by(hhid plot_id dm_gender input)
@@ -2419,88 +2432,98 @@ foreach cn in $topcropname_area {
 	collapse (sum) val*, by(hhid)
 	foreach i in `input_names' {
 		
-		egen val_`i'_`cn'_hh = rowtotal(val_`i'_`cn'_male val_`i'_`cn'_female val_`i'_`cn'_mixed val_`i'_`cn'_unknown) 
+		egen val_`i'_`cn'_hh = rowtotal(val_`i'_`cn'_*) 
 		
 	}
-	drop *unknown*
+	//drop *unknown*
 	save "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_inputs_`cn'.dta", replace
 	}
 	}
 	restore
 }
 
-************************
+********************************************************************************
 *TLU (Tropical Livestock Units)
-************************
+********************************************************************************
 use "${MWI_IHPS_W2_appended_data}/ag_mod_r1_13.dta", clear
-gen tlu_coefficient=0.5 if (ag_r0a==304|ag_r0a==303|ag_r0a==302|ag_r0a==301) // bull, cow, steer & heifer, calf 
-replace tlu_coefficient=0.1 if (ag_r0a==307|ag_r0a==308) // goat, sheep
-replace tlu_coefficient=0.2 if (ag_r0a==309) // pig
-replace tlu_coefficient=0.01 if (ag_r0a==311|ag_r0a==313|ag_r0a==315|ag_r0a==318|ag_r0a==319|ag_r0a==3310|ag_r0a==3314|ag_r0a==315) //local hen, local cock, duck, other, dove/pigeon, chicken layer/chicken-broiler and turkey/guinea fowl
+gen tlu_coefficient=0.5 if (ag_r0a==304|ag_r0a==303|ag_r0a==302|ag_r0a==301 |ag_r0a==3305) // bull (304), cow (303), steer & heifer (302), calf (301), ox (3305) 
+replace tlu_coefficient=0.1 if (ag_r0a==307|ag_r0a==308) // goat (307), sheep (308)
+replace tlu_coefficient=0.2 if (ag_r0a==309) // pig (309)
+replace tlu_coefficient=0.3 if (ag_r0a==3305) // donkey/mule/horse (3305)
+replace tlu_coefficient=0.01 if (ag_r0a==311|ag_r0a==313|ag_r0a==315|ag_r0a==318|ag_r0a==3304|ag_r0a==3310|ag_r0a==3314) //local hen (311), local cock (313), duck (315), other (319), dove/pigeon (3304), chicken layer/chicken-broiler (3310) and turkey/guinea fowl (3314)
 lab var tlu_coefficient "Tropical Livestock Unit coefficient"
 
-*Livestock categories
-gen cattle=inrange(ag_r0a,301,304) // calf and bull for MW2. Included bull and female calf under cattle
-gen smallrum=inlist(ag_r0a,307,309) // sheep, goat
-gen poultry=inlist(ag_r0a,311,313,315, 319,3310,3314)  //local hen, local cock, duck, dove/pigeon, chicken layer/chicken-broiler and turkey/guinea fowl
-gen other_ls=ag_r0a==318 | 3305 | 3304 // includes other, donkey/horse, ox
-gen cows=ag_r0a==303
-gen chickens= ag_r0a==313 | 311 | 3310 | 3314 // includes local cock (313), local hen (311),  chicken layer and broiler(3310), and turkey (3314)
-ren ag_r0a livestock_code
+*Owned
+ren ag_r0a lvstckid
+gen cattle=inlist(lvstckid,301, 302, 303, 304, 3305) //calf-bull/ox
+gen largerum=inlist(lvstckid,301, 302, 303, 304, 3305) //calf-bull/ox
+gen smallrum=inlist(lvstckid,307,308, 3314) //goat, sheep, guinea
+gen poultry=inlist(lvstckid, 311, 313, 315, 3304, 3310, 3314) // local hen, local cock, duck, dove/pigeon, chicken layer, guinea 
+gen equines=inlist(lvstckid, 3305) // donkey/mule/horse
+gen other_ls=inlist(lvstckid, 3305, 319) //donkey/mule/horse, other
+gen cows=inlist(lvstckid, 303)
+gen chickens=inlist(lvstckid, 3310, 313, 311) // local hen, local cock, chicken layer
 
-*Number of livestock owned at present
+ren ag_r07 nb_ls_1yearago
+gen nb_cattle_1yearago=nb_ls_1yearago if cattle==1 
+gen nb_smallrum_1yearago=nb_ls_1yearago if smallrum==1 
+gen nb_largerum_1yearago=nb_ls_1yearago if largerum==1
+gen nb_poultry_1yearago=nb_ls_1yearago if poultry==1 
+gen nb_equines_1yearago=nb_ls_1yearago if equines==1 
+gen nb_other_ls_1yearago=nb_ls_1yearago if other_ls==1 
+gen nb_cows_1yearago=nb_ls_1yearago if cows==1 
+gen nb_chickens_1yearago=nb_ls_1yearago if chickens==1 
 ren ag_r02 nb_ls_today
-gen nb_cattle_today=nb_ls_today if cattle==1
-gen nb_smallrum_today=nb_ls_today if smallrum==1
-gen nb_poultry_today=nb_ls_today if poultry==1
-gen nb_other_ls_today=nb_ls_today if other==1
-gen nb_cows_today=nb_ls_today if cows==1
-gen nb_chickens_today=nb_ls_today if chickens==1
+gen nb_cattle_today=nb_ls_today if cattle==1 
+gen nb_smallrum_today=nb_ls_today if smallrum==1 
+gen nb_largerum_today=nb_ls_today if largerum==1
+gen nb_poultry_today=nb_ls_today if poultry==1 
+gen nb_equines_today=nb_ls_today if equines==1 
+gen nb_other_ls_today=nb_ls_today if other_ls==1  
+gen nb_cows_today=nb_ls_today if cows==1 
+gen nb_chickens_today=nb_ls_today if chickens==1 
+gen tlu_1yearago = nb_ls_1yearago * tlu_coefficient
 gen tlu_today = nb_ls_today * tlu_coefficient
-
-lab var nb_cattle_today "Number of cattle owned as of the time of survey"
-lab var nb_smallrum_today "Number of small ruminant owned as of the time of survey"
-lab var nb_poultry_today "Number of cattle poultry as of the time of survey"
-lab var nb_other_ls_today "Number of other livestock (horse, donkey, and other) owned as of the time of survey"
-lab var nb_cows_today "Number of cows owned as of the time of survey"
-lab var nb_chickens_today "Number of chickens owned as of the time of survey"
-lab var tlu_today "Tropical Livestock Units as of the time of survey"
-lab var nb_ls_today "Number of livestock owned as of today"
-
-*Number of livestock owned 1 year ago
-gen nb_cattle_1yearago = ag_r07 if cattle==1
-gen nb_smallrum_1yearago=ag_r07 if smallrum==1
-gen nb_poultry_1yearago=ag_r07 if poultry==1
-gen nb_other_1yearago=ag_r07 if other==1
-gen nb_cows_1yearago=ag_r07 if cows==1
-gen nb_chickens_1yearago=ag_r07 if chickens==1
-gen tlu_1yearago = ag_r07 * tlu_coefficient
-ren ag_r07 nb_ls_1yearago 
-
-lab var nb_cattle_1yearago "Number of cattle owned as of 12 months ago"
-lab var nb_smallrum_1yearago "Number of small ruminant owned as of 12 months ago"
-lab var nb_poultry_1yearago "Number of cattle poultry as of 12 months ago"
-lab var nb_other_1yearago "Number of other livestock (horse, donkey, and other) owned as of 12 months ago"
-lab var nb_cows_1yearago "Number of cows owned as of 12 months ago"
-lab var nb_chickens_1yearago "Number of chickens owned as of 12 months ago"
-lab var nb_ls_1yearago "Number of livestock owned 12 months ago"
+rename ag_r17 income_ls_sales 
+rename ag_r16 nb_ls_sold
 
 recode tlu_* nb_* (.=0)
 collapse (sum) tlu_* nb_*  , by (hhid)
+lab var nb_cattle_1yearago "Number of cattle owned as of 12 months ago"
+lab var nb_smallrum_1yearago "Number of small ruminant owned as of 12 months ago"
+lab var nb_poultry_1yearago "Number of poultry as of 12 months ago"
+lab var nb_largerum_1yearago "Number of large ruminant owned as of 12 months ago"
+lab var nb_equines_1yearago "Number of equines as of 12 months ago"
+lab var nb_other_ls_1yearago "Number of other livestock (dog, donkey, and other) owned as of 12 months ago"
+lab var nb_cows_1yearago "Number of cows owned as of 12 months ago"
+lab var nb_chickens_1yearago "Number of chickens owned as of 12 months ago"
+lab var nb_cattle_today "Number of cattle owned as of the time of survey"
+lab var nb_smallrum_today "Number of small ruminant owned as of the time of survey"
+lab var nb_largerum_today "Number of small ruminant owned as of the time of survey"
+lab var nb_poultry_today "Number of poultry as of the time of survey"
+lab var nb_equines_today "Number of equines as of the time of survey"
+lab var nb_other_ls_today "Number of other livestock (dog, donkey, and other) owned as of the time of survey"
+lab var nb_cows_today "Number of cows owned as of the time of survey"
+lab var nb_chickens_today "Number of chickens owned as of the time of survey"
+lab var tlu_1yearago "Tropical Livestock Units as of 12 months ago"
+lab var tlu_today "Tropical Livestock Units as of the time of survey"
+lab var nb_ls_1yearago  "Number of livestock owned as of 12 months ago"
+lab var nb_ls_1yearago  "Number of livestock owned as of 12 months ago"
+lab var nb_ls_today "Number of livestock owned as of today"
 drop tlu_coefficient
 save "${MWI_IHPS_W2_created_data}/Malawi_IHPS_W2_TLU_Coefficients.dta", replace
 
-
-************************
+********************************************************************************
 *GROSS CROP REVENUE 
-************************
+********************************************************************************
 * Three things we are trying to accomplish with GROSS CROP REVENUE
 * 1. Total value of all crop sales by hhid (summed up over all crops)
 * 2. Total value of post harvest losses by hhid (summed up over all crops)
 * 3. Amount sold (kgs) of unique crops by hhid
 use "${MWI_IHPS_W2_appended_data}/ag_mod_q_13.dta", clear
-ren ag_q0b crop_code_long
+ren ag_q0b crop_code_long 
 recode crop_code_long (100=49)(2=50)(3=51)(4=52)(5=53)(6=54)(7=55)(8=56)(9=57)(10=58)(11=59)(12=60)(13=61)(14=62)(15=63)(16=64)(17=65)(18=1800)(19=1900)(20=2000)(21=48)
+gen crop_code=crop_code_long
 tempfile tree_perm
 save `tree_perm'
 
@@ -2513,9 +2536,11 @@ use "${MWI_IHPS_W2_appended_data}/ag_mod_i_13.dta", clear
 ren ag_i0b crop_code_long
 append using `dry_sales'
 append using `tree_perm'
-
+replace crop_code = crop_code_long if crop_code==.
+/* Should be defined by now.
 label define relabel /*these exist already*/ 1 "MAIZE LOCAL" 2 "MAIZE COMPOSITE/OPV" 3 "MAIZE HYBRID" 4 "MAIZE HYBRID RECYCLED" 5 "TOBACCO BURLEY" 6 "TOBACCO FLUE CURED" 7 "TOBACCO NNDF" 8 "TOBACCOSDF" 9 "TOBACCO ORIENTAL" 10 "OTHER TOBACCO (SPECIFY)" 11 "GROUNDNUT CHALIMBANA" 12 "GROUNDNUT CG7" 13 "GROUNDNUT MANIPINTA" 14 "GROUNDNUT MAWANGA" 15 "GROUNDNUT JL24" 16 "OTHER GROUNDNUT(SPECIFY)" 17 "RISE LOCAL" 18 "RISE FAYA" 19 "RISE PUSSA" 20 "RISE TCG10" 21 "RISE IET4094 (SENGA)" 22 "RISE WAMBONE" 23 "RISE KILOMBERO" 24 "RISE ITA" 25 "RISE MTUPATUPA" 26 "OTHER RICE(SPECIFY)"  28 "SWEET POTATO" 29 "IRISH [MALAWI] POTATO" 30 "WHEAT" 34 "BEANS" 35 "SOYABEAN" 36 "PIGEONPEA(NANDOLO" 37 "COTTON" 38 "SUNFLOWER" 39 "SUGAR CANE" 40 "CABBAGE" 41 "TANAPOSI" 42 "NKHWANI" 43 "THERERE/OKRA" 44 "TOMATO" 45 "ONION" 46 "PEA" 47 "PAPRIKA" 48 "OTHER (SPECIFY)"/*cleaning up these existing labels*/ 27 "GROUND BEAN (NZAMA)" 31 "FINGER MILLET (MAWERE)" 32 "SORGHUM" 33 "PEARL MILLET (MCHEWERE)" /*now creating unique codes for tree crops*/ 49 "CASSAVA" 50 "TEA" 51 "COFFEE" 52 "MANGO" 53 "ORANGE" 54 "PAWPAW/PAPAYA" 55 "BANANA" 56 "AVOCADO" 57 "GUAVA" 58 "LEMON" 59 "NAARTJE (TANGERINE)" 60 "PEACH" 61 "POZA (CUSTADE APPLE)" 62 "MASUKU (MEXICAN APPLE)" 63 "MASAU" 64 "PINEAPPLE" 65 "MACADEMIA" /*adding other specified crop codes*/ 105 "MAIZE GREEN" 203 "SWEET POTATO WHITE" 204 "SWEET POTATO ORANGE" 207 "PLANTAIN" 208 "COCOYAM (MASIMBI)" 301 "BEAN, WHITE" 302 "BEAN, BROWN" 308 "COWPEA (KHOBWE)" 405 "CHINESE CABBAGE" 409 "CUCUMBER" 410 "PUMPKIN" 1800 "FODDER TREES" 1900 "FERTILIZER TREES" 2000 "FUEL WOOD TREES", modify
-label val crop_code_long relabel
+*/
+label val crop_code relabel
 
 * Creating a value variable for value of crop sold
 rename ag_i03 value
@@ -2541,27 +2566,28 @@ merge m:1 region crop_code_long unit condition using "${directory}\Malawi IHS\No
 destring unit*, replace force
 
 ***We merge Crop Sold Conversion Factor at the crop-unit-national level***
- 
+ //Todo: figure out why this isn't coming up in the cf merge.
+replace conversion=1 if unit==1 & conversion==.
+replace conversion=50 if unit==2 & conversion==.
 *We create Quantity Sold (kg using standard  conversion factor table for each crop- unit and region). 
-replace conversion=conversion if region!=. //  We merge the national standard conversion factor for those hhid with missing regional info. 
 gen kgs_sold = qty*conversion 
-drop if crop_code_long == . & crop_code == .
-replace crop_code = crop_code_long if crop_code == .
+
+drop if crop_code == .
 recode crop_code (2=1)(3=1)(4=1)(6=5)(7=5)(8=5)(9=5)(10=5)(12=11)(13=11)(14=11)(15=11)(16=11)(18=17)(19=17)(20=17)(21=17)(22=17)(23=17)(24=17)(25=17)(26=17)
-collapse (sum) value kgs_sold, by (hhid crop_code crop_code_long)
+collapse (sum) value kgs_sold, by (hhid crop_code)
 drop if crop_code ==.
 ren value sales_value
 lab var sales_value "Value of sales of this crop"
 save "${MWI_IHPS_W2_created_data}/Malawi_IHPS_W2_cropsales_value.dta", replace
 
 use "${MWI_IHPS_W2_created_data}/Malawi_IHPS_W2_all_plots.dta", clear
-collapse (sum) value_harvest, by (hhid crop_code crop_code_long) // Update: SW We start using the standarized version of value harvested and kg harvested
-merge 1:1 hhid crop_code_long using "${MWI_IHPS_W2_created_data}/Malawi_IHPS_W2_cropsales_value.dta"
+collapse (sum) value_harvest, by (hhid crop_code) // Update: SW We start using the standarized version of value harvested and kg harvested
+merge 1:1 hhid crop_code using "${MWI_IHPS_W2_created_data}/Malawi_IHPS_W2_cropsales_value.dta"
 //recode  value_harvest value_crop_sales  (.=0)
 recode value_harvest sales_value (.=0)
 //replace value_harvest = value_crop_sales if value_crop_sales>value_harvest & value_crop_sales !=. /* In a few cases, sales value reported exceeds the estimated value of crop harvest */
 ren sales_value value_crop_sales 
-collapse (sum) value_harvest value_crop_sales, by (hhid crop_code_long crop_code)
+collapse (sum) value_harvest value_crop_sales, by (hhid crop_code crop_code)
 ren value_harvest value_crop_production
 lab var value_crop_production "Gross value of crop production, summed over main and short season"
 lab var value_crop_sales "Value of crops sold so far, summed over main and short season"
@@ -2576,14 +2602,15 @@ save "${MWI_IHPS_W2_created_data}/Malawi_IHPS_W2_hh_crop_production.dta", replac
 
 *Crops lost post-harvest
 use "${MWI_IHPS_W2_appended_data}/ag_mod_i_13.dta", clear
-ren ag_i0b crop_code_long
+ren ag_i0b crop_code
 append using "${MWI_IHPS_W2_appended_data}/ag_mod_o_13.dta"
-replace crop_code_long = ag_o0b if crop_code_long==.
+replace crop_code = ag_o0b if crop_code==.
+recode crop_code (1 2 3 4=1)(5 6 7 8 9 10=5)(11 12 13 14 15 16=11)(17 18 19 20 21 22 23 24 25 26=17)
 drop if crop_code==. 
 rename ag_i36d percent_lost
 replace percent_lost = ag_o36d if percent_lost==. & ag_o36d!=.
 replace percent_lost = 100 if percent_lost > 100 & percent_lost!=. 
-merge m:1 hhid crop_code_long using "${MWI_IHPS_W2_created_data}/Malawi_IHPS_W2_hh_crop_values_production.dta", nogen keep(1 3)
+merge m:1 hhid crop_code using "${MWI_IHPS_W2_created_data}/Malawi_IHPS_W2_hh_crop_values_production.dta", nogen keep(1 3)
 gen value_lost = value_crop_production * (percent_lost/100)
 recode value_lost (.=0)
 collapse (sum) value_lost, by (hhid)
@@ -2591,9 +2618,9 @@ rename value_lost crop_value_lost
 lab var crop_value_lost "Value of crop production that had been lost by the time of survey"
 save "${MWI_IHPS_W2_created_data}/Malawi_IHPS_W2_crop_losses.dta", replace
 
-************
+********************************************************************************
 *LIVESTOCK INCOME
-************
+********************************************************************************
 use "${MWI_IHPS_W2_appended_data}/ag_mod_r2_13.dta", clear
 append using "${MWI_IHPS_W2_appended_data}/ag_mod_r1_13.dta"
 rename ag_r28 cost_fodder_livestock      
@@ -2736,10 +2763,10 @@ replace price_per_unit = . if price_per_unit == 0
 lab var price_per_unit "Price per unit sold"
 lab var quantity_produced "Quantity of product produced"
 ren ea_id ea
-save "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_livestock_products", replace
+save "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_livestock_products_long", replace
 
 * EA Level
-use "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_livestock_products", clear
+use "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_livestock_products_long", clear
 keep if price_per_unit !=. 
 gen observation = 1
 bys region district ea ta livestock_code: egen obs_ea = count(observation)
@@ -2752,7 +2779,7 @@ save "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_livestock_products_prices_ea.dt
 *No ward data available 
 
 * ta Level
-use "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_livestock_products", clear
+use "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_livestock_products_long", clear
 keep if price_per_unit !=.
 gen observation = 1
 bys region district ea ta livestock_code: egen obs_ta = count(observation)
@@ -2762,9 +2789,8 @@ lab var price_median_ta "Median price per unit for this livestock product in the
 lab var obs_ta "Number of sales observations for this livestock product in the ta"
 save "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_livestock_products_prices_ta.dta", replace 
 
-//updated above 
 * District Level
-use "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_livestock_products", clear
+use "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_livestock_products_long", clear
 keep if price_per_unit !=.
 gen observation = 1
 bys region district livestock_code: egen obs_district = count(observation)
@@ -2775,7 +2801,7 @@ lab var obs_district "Number of sales observations for this livestock product in
 save "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_livestock_products_prices_district.dta", replace
 
 * Region Level
-use "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_livestock_products", clear
+use "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_livestock_products_long", clear
 keep if price_per_unit !=.
 gen observation = 1
 bys region livestock_code: egen obs_region = count(observation)
@@ -2786,7 +2812,7 @@ lab var obs_region "Number of sales observations for this livestock product in t
 save "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_livestock_products_prices_region.dta", replace
 
 * Country Level
-use "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_livestock_products", clear
+use "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_livestock_products_long", clear
 keep if price_per_unit !=.
 gen observation = 1
 bys livestock_code: egen obs_country = count(observation)
@@ -2796,7 +2822,7 @@ lab var price_median_country "Median price per unit for this livestock product i
 lab var obs_country "Number of sales observations for this livestock product in the country"
 save "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_livestock_products_prices_country.dta", replace
 
-use "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_livestock_products", clear
+use "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_livestock_products_long", clear
 merge m:1 region district ea ta livestock_code using "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_livestock_products_prices_ea.dta", nogen
 merge m:1 region district ea ta livestock_code using "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_livestock_products_prices_ta.dta", nogen
 merge m:1 region district livestock_code using "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_livestock_products_prices_district.dta", nogen
@@ -2827,6 +2853,22 @@ lab var value_eggs_produced "Value of eggs produced"
 lab var value_other_produced "Value of skins, meat and manure produced"
 recode value_milk_produced value_eggs_produced value_other_produced (0=.)
 save "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_hh_livestock_products", replace
+
+*Ag Query
+use "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_livestock_products_other.dta", clear
+gen sales_eggs = earnings_sales if livestock_code == 402 | livestock_code == 403
+collapse (sum) sales_eggs, by(hhid)
+save "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_sales_eggs.dta", replace
+
+use "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_hh_livestock_products.dta", clear
+merge m:1 hhid using "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_livestock_products_milk.dta", nogen keep (1 3)
+merge m:1 hhid using "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_sales_eggs.dta", nogen keep (1 3)
+ren earnings_milk_year sales_milk 
+collapse (sum) value_milk_produced value_eggs_produced value_livestock_products value_other_produced share_livestock_prod_sold sales_livestock_products sales_milk sales_eggs, by (hhid)
+gen prop_dairy_sold = sales_milk / value_milk_produced
+gen prop_eggs_sold = sales_eggs / value_eggs_produced
+save "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_livestock_products.dta", replace
+//1,599
 
 * Manure
 use "${MWI_IHPS_W2_appended_data}/AG_MOD_S_13.dta", clear
@@ -2937,10 +2979,10 @@ save "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_livestock_sales", replace
 *TLU (Tropical Livestock Units)
 use "${MWI_IHPS_W2_appended_data}/ag_mod_r1_13.dta", clear
 rename ag_r0a livestock_code 
-gen tlu_coefficient=0.5 if (livestock_code==301|livestock_code==302|livestock_code==303|livestock_code==304|livestock_code==3304) // calf, steer/heifer, cow, bull, ox
+gen tlu_coefficient=0.5 if (livestock_code==301|livestock_code==302|livestock_code==303|livestock_code==304|livestock_code==3305) // calf, steer/heifer, cow, bull, ox
 replace tlu_coefficient=0.1 if (livestock_code==307|livestock_code==308) //goats, sheep
 replace tlu_coefficient=0.2 if (livestock_code==309) // pigs
-replace tlu_coefficient=0.01 if (livestock_code==311|livestock_code==313|livestock_code==315|livestock_code==319|livestock_code==3310|livestock_code==3314) // local hen, cock, duck, dove/pigeon, chicken layer/broiler, turkey/guinea fowl
+replace tlu_coefficient=0.01 if (livestock_code==311|livestock_code==313|livestock_code==315|livestock_code==318|livestock_code==3304|livestock_code==3310|livestock_code==3314) // local hen, cock, duck, dove/pigeon, chicken layer/broiler, turkey/guinea fowl
 replace tlu_coefficient=0.3 if (livestock_code==3305) // donkey/mule/horse
 lab var tlu_coefficient "Tropical Livestock Unit coefficient"
 rename ag_r07 number_1yearago
@@ -2964,11 +3006,11 @@ la val species species
 *Now to household level
 *First, generating these values by species
 preserve
-collapse (firstnm) share_imp_herd_cows (sum) number_today_total number_1yearago animals_lost12months /*lost_disease*/ /*ihs*/ number_today_exotic lvstck_holding=number_today_total, by(hhid species)
+collapse (firstnm) share_imp_herd_cows (sum) number_today_total number_1yearago animals_lost12months /*lost_disease*/ number_today_exotic lvstck_holding=number_today_total, by(hhid species)
 egen mean_12months = rowmean(number_today_total number_1yearago)
 gen any_imp_herd = number_today_exotic!=0 if number_today_total!=. & number_today_total!=0
 	
-foreach i in animals_lost12months mean_12months any_imp_herd lvstck_holding /*lost_disease*/ /*ihs*/{
+foreach i in animals_lost12months mean_12months any_imp_herd lvstck_holding /*lost_disease*/ {
 		gen `i'_lrum = `i' if species==1
 		gen `i'_srum = `i' if species==2
 		gen `i'_pigs = `i' if species==3
@@ -2982,7 +3024,7 @@ collapse (sum) number_today_total number_today_exotic (firstnm) *lrum *srum *pig
 gen any_imp_herd = number_today_exotic!=0 if number_today_total!=0
 drop number_today_exotic number_today_total
 
-foreach i in lvstck_holding animals_lost12months mean_12months /*ihs*/{
+foreach i in lvstck_holding animals_lost12months mean_12months {
 	gen `i' = .
 }
 la var lvstck_holding "Total number of livestock holdings (# of animals)"
@@ -3051,17 +3093,18 @@ merge 1:1 hhid using "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_hh_livestock_pr
 merge 1:1 hhid using "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_manure.dta", nogen
 merge 1:1 hhid using "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_livestock_expenses", nogen
 merge 1:1 hhid using "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_TLU.dta", nogen
-
+recode value_milk_produced (.=0)
+recode value_other_produced (.=0)
+recode value_eggs_produced (.=0)
 gen livestock_income = value_lvstck_sold + /*value_slaughtered*/ - value_livestock_purchases /*
 */ + (value_milk_produced + value_eggs_produced + value_other_produced + sales_manure) /*
 */ - (cost_hired_labor_livestock + cost_fodder_livestock + cost_vaccines_livestock + cost_othervet_livestock + cost_input_livestock)
-
 lab var livestock_income "Net livestock income"
 save "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_livestock_income.dta", replace
 
-************
+********************************************************************************
 *FISH INCOME
-************
+********************************************************************************
 *Fishing expenses  
 use "${MWI_IHPS_W2_appended_data}/fs_mod_c_13.dta", clear
 append using "${MWI_IHPS_W2_appended_data}/fs_mod_g_13.dta"
@@ -3172,9 +3215,9 @@ lab var income_fish_sales "Value of fish sales"
 save "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_fish_income.dta", replace
 
 
-************
+********************************************************************************
 *SELF-EMPLOYMENT INCOME
-************
+********************************************************************************
 use "${MWI_IHPS_W2_appended_data}/HH_MOD_N2_13.dta", clear
 rename hh_n40 last_months_profit
 gen self_employed_yesno = .
@@ -3328,9 +3371,9 @@ lab var annual_salary_agwage "Annual earnings from agricultural wage"
 save "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_agwage_income.dta", replace
 
 
-************
+********************************************************************************
 *OTHER INCOME
-***************
+********************************************************************************
 use "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_hh_crop_prices_for_wages.dta", clear
 keep if crop_code_long == 1
 ren hh_price_mean price_kg 
@@ -3391,9 +3434,9 @@ lab var land_rental_income "Estimated income from renting out land over previous
 save "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_land_rental_income.dta", replace
 
 
-***************
+********************************************************************************
 *OFF-FARM HOURS
-***************
+********************************************************************************
 use "${MWI_IHPS_W2_appended_data}/hh_mod_e_13.dta", clear
 gen  hrs_main_wage_off_farm=hh_e24_1 if !inlist(hh_e19b, 62, 63, 64) & hh_e19b!=. 	
 gen  hrs_sec_wage_off_farm=hh_e38_1 if hh_e33b!=62 & hh_e33b!=.  
@@ -3442,9 +3485,9 @@ la var nworker_other_all "Number of HH members with positve hours - other activi
 la var nworker_self_off_farm  "Number of HH members with positve hours - self-employment off-farm"
 save "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_off_farm_hours.dta", replace
 
-************
+********************************************************************************
 *FARM SIZE / LAND SIZE
-************
+********************************************************************************
 use "${MWI_IHPS_W2_appended_data}/ag_mod_g_13.dta", clear
 append using "${MWI_IHPS_W2_appended_data}/ag_mod_m_13.dta"
 gen cultivated = 1 
@@ -3590,9 +3633,9 @@ save "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_plot_family_hired_labor.dta", r
 collapse (sum) labor_*, by(hhid)
 save "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_family_hired_labor.dta", replace
 
-***************
+********************************************************************************
 *VACCINE USAGE
-***************
+********************************************************************************
 use "${MWI_IHPS_W2_appended_data}/ag_mod_r1_13.dta", clear
 gen vac_animal=ag_r24>0
 * MW2: How many of your[Livestock] are currently vaccinated?  
@@ -3647,16 +3690,16 @@ drop t patid
 collapse (max) all_vac_animal , by(hhid farmerid)
 gen indiv=farmerid
 drop if indiv==.
-merge 1:1 hhid indiv using "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_gender_merge.dta", nogen
+merge 1:1 hhid indiv using "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_person_ids.dta", nogen
 lab var all_vac_animal "1 = Individual farmer (livestock keeper) uses vaccines"
 gen livestock_keeper=1 if farmerid!=.
 recode livestock_keeper (.=0)
 lab var livestock_keeper "1=Indvidual is listed as a livestock keeper (at least one type of livestock)" 
 save "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_farmer_vaccine.dta", replace
 
-***************
+********************************************************************************
 *ANIMAL HEALTH
-***************
+********************************************************************************
 use "${MWI_IHPS_W2_appended_data}/ag_mod_r1_13.dta", clear
 gen disease_animal = 1 if ag_r22==1 // Answered "yes" for "Did livestock suffer from any disease in last 12m?"
 replace disease_animal = 0 if inlist(ag_r22,0,2,3,4,6,9)
@@ -3742,7 +3785,7 @@ replace pid = ag_k02 if pid == . & ag_k02 != .
 keep hhid plot_id pid
 ren pid indiv
 drop if plot_id == ""
-merge m:1 hhid indiv using "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_gender_merge.dta", nogen keep(1 3) //  7,291   matched / 12 not matched
+merge m:1 hhid indiv using "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_person_ids.dta", nogen keep(1 3) //  7,291   matched / 12 not matched
 tempfile personids
 save `personids'
 
@@ -3760,7 +3803,6 @@ save `plotfertilizer'
 use `imprv_hybr_seed', clear	
 merge m:1 hhid plot_id using `plotfertilizer', nogen keep(1 3)
 merge m:m hhid plot_id using `personids', nogen keep(1 3)
-
 
 preserve
 ren use_imprv_seed all_imprv_seed_
@@ -3808,9 +3850,9 @@ la var use_org_fert "1=household uses organic fertilizer on at least one plot"
 save "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_input_use.dta", replace	
 restore	
 
-*********************
+********************************************************************************
 *REACHED BY AG EXTENSION   
-*********************
+********************************************************************************
 use "${MWI_IHPS_W2_appended_data}/ag_mod_t1_13.dta", clear
 ren ag_t01 receive_advice
 ren ag_t02 sourceids
@@ -3882,9 +3924,9 @@ recode mobile_owned (.=0) // recode missing to 0
 collapse (max) mobile_owned, by(hhid)
 save "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_mobile_own.dta", replace
 
-*********************
+********************************************************************************
 *USE OF FORMAL FINANCIAL SERVICES 
-*********************
+********************************************************************************
 use "${MWI_IHPS_W2_appended_data}/hh_mod_f_13.dta", clear
 append using "${MWI_IHPS_W2_appended_data}/hh_mod_s1_13.dta"
 gen borrow_bank= hh_s04==10 //Code source of loan. No microfinance or mortgage loan in Malawi W2 
@@ -3913,9 +3955,9 @@ lab var use_fin_serv_credit "1= Household uses formal financial services - credi
 lab var use_fin_serv_others "1= Household uses formal financial services - others"
 save "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_fin_serv.dta", replace
 
-************
+********************************************************************************
 *MILK PRODUCTIVITY
-************
+********************************************************************************
 *Total production
 //only cow milk in MWI, not including large ruminant variables
 use "${MWI_IHPS_W2_appended_data}/ag_mod_s_13.dta", clear
@@ -3931,10 +3973,9 @@ drop if milk_liters_produced==.
 keep hhid product_code months_milked liters_month milk_liters_produced
 save "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_milk_animals.dta", replace
 
-
-************
+********************************************************************************
 *EGG PRODUCTIVITY
-************
+********************************************************************************
 use "${MWI_IHPS_W2_appended_data}/ag_mod_r1_13.dta", clear
 rename ag_r0a lvstckid
 gen poultry_owned = ag_r02 if inlist(lvstckid, 311, 313, 315, 318, 319, 3310, 3314) //local hen, local cock, duck, other, dove/pigeon, chicken layer/chicken-broiler and turkey/guinea fowl
@@ -4020,21 +4061,26 @@ save "${MWI_IHPS_W2_created_data}/Malawi_IHPS_W2_cropcosts.dta", replace
 use "${MWI_IHPS_W2_created_data}/Malawi_IHPS_W2_all_plots.dta", clear
 collapse (sum) ha_planted, by(hhid plot_id season dm_gender region)
 merge m:1 hhid season using "${MWI_IHPS_W2_created_data}/Malawi_IHPS_W2_input_quantities.dta", nogen keep(1 3)
+merge m:1 hhid season plot_id using "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_plot_irrigation.dta", nogen keep(1 3)	
+
 drop if ha_planted==0
 recode *kg (.=0)
 gen dm_gender2 = "male" if dm_gender==1
 replace dm_gender2 = "female" if dm_gender==2
 replace dm_gender2 = "mixed" if dm_gender==3
 replace dm_gender2 = "unknown" if dm_gender==.
-drop dm_gender
-unab vars : *_kg
-ren *kg *kg_
+drop dm_gender _merge
+gen ha_irr = plot_irr * ha_planted
 ren ha_planted ha_planted_
-drop _merge
+unab vars : *kg 
+ren *kg *kg_
+local vars `vars' ha_irr ha_planted
+
+ren ha_irr ha_irr_
 //reshape wide ha_planted_ inorg_fert_kg_ org_fert_kg_ pest_kg_ herb_kg_, i(hhid season) j(dm_gender2) string
 reshape wide *_, i(hhid plot_id) j(dm_gender2) string
 //recode ha_planted* (0=.)
-collapse (sum) *kg* ha_planted_*, by(hhid)
+collapse (sum) *kg* ha_planted_* ha_irr_*, by(hhid)
 /*
 foreach i in inorg_fert org_fert herb pest {
 	foreach j in male female mixed {
@@ -4047,7 +4093,7 @@ foreach i in inorg_fert org_fert herb pest {
 foreach i in `vars' {
 	egen `i' = rowtotal(`i'_*)
 }
-drop *unknown 
+drop *_unknown 
 /*
 foreach i in ha_planted fert_inorg_kg fert_org_kg pest_kg herb_kg {
 	egen `i' = rowtotal(`i'_*)
@@ -4063,6 +4109,12 @@ lab var npk_kg "NPK fertilizer (kgs) for household"
 lab var n_kg "Units of Nitrogen (kgs) for household"
 lab var p_kg "Units of Phosphorus (kgs) for household"
 lab var k_kg "Units of Potassium (kgs) for household"
+lab var n_org_kg "Units of organic Nitrogen (kgs) for household"
+lab var nps_kg "Units of NPS (kgs) for household"
+lab var dap_kg "Units of DAP (kgs) for household"
+lab var can_kg "Units of CAN (kgs) for household"
+la var ha_irr "Planted area under irrigation (ha) for hh"
+lab var ha_planted "Area planted (ha), all crops, for household"
 
 foreach i in male female mixed {
 lab var inorg_fert_kg_`i' "Inorganic fertilizer (kgs) for `i'-managed plots"
@@ -4078,6 +4130,8 @@ lab var nps_kg "Units of NPS (kgs) for `i'-managed plots"
 lab var n_org_kg "Units of organic Nitrogen (kgs) for `i'-managed plots"
 lab var dap_kg "Units of DAP (kgs) for `i'-managed plots"
 lab var can_kg "Units of CAN (kgs) for `i'-managed plots"
+lab var ha_planted_`i' "Area planted (ha), all crops, `i'-managed plots"
+la var ha_irr_`i' "Planted hectares under irrigation for `i'-managed plots"
 }
 save  "${MWI_IHPS_W2_created_data}/Malawi_IHPS_W2_fertilizer_application.dta", replace
 
@@ -4109,35 +4163,197 @@ replace farmerid= ag_k02 if farmerid==.
 collapse (max) all_use_inorg_fert , by(hhid farmerid)
 gen indiv=farmerid
 drop if indiv==.
-merge 1:1 hhid indiv using "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_gender_merge.dta", nogen // 3,224 Matched
+merge 1:1 hhid indiv using "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_person_ids.dta", nogen // 3,224 Matched
 lab var all_use_inorg_fert "1 = Individual farmer (plot manager) uses inorganic fertilizer"
 gen farm_manager=1 if farmerid!=.
 recode farm_manager (.=0)
 lab var farm_manager "1=Individual is listed as a manager for at least one plot" 
-
 save "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_farmer_fert_use.dta", replace	
 
+********************************************************************************
+*USE OF IMPROVED SEED        
+********************************************************************************
+**# Bookmark #1 - in progress 3.13.25 CG
+/*
+use "${MWI_IHPS_W2_appended_data}/ag_mod_h_13.dta", clear
+//ag_h0c = seed type code, looks like there is maize, tobacco, groundnut, rice... need to figure out which seed types = improved
 
 
-************
+
+gen short=0
+append using "${MWI_IHPS_W2_appended_data}/ag_mod_m_13.dta" 
+recode short (.=1)
+gen imprv_seed_use= ag_g0f==2 | ag_m0f==2 | ag_m0f==3
+collapse (max) imprv_seed_use, by(hhid plot_id garden_id crop_code short)
+tempfile imprv_seed
+save `imprv_seed' //Will use this in a minute
+collapse (max) imprv_seed_use, by(hhid crop_code) //AgQuery
+*Use of seed by crop
+forvalues k=1/$nb_topcrops {
+	local c : word `k' of $topcrop_area
+	local cn : word `k' of $topcropname_area
+	gen imprv_seed_`cn'=imprv_seed_use if crop_code==`c'
+	gen hybrid_seed_`cn'=.
+}
+collapse (max) imprv_seed_* hybrid_seed_*, by(hhid)
+lab var imprv_seed_use "1 = Household uses improved seed"
+foreach v in $topcropname_area {
+	lab var imprv_seed_`v' "1= Household uses improved `v' seed"
+	lab var hybrid_seed_`v' "1= Household uses improved `v' seed"
+}
+*Replacing permanent crop seed information with missing because this section does not ask about permanent crops 
+replace imprv_seed_cassav = .
+//replace imprv_seed_banana = . //banana is no longer a top crop
+save "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_improvedseed_use.dta", replace
+
+use "${MWI_IHPS_W2_appended_data}/AG_MOD_D.dta", clear 
+gen short=0
+append using "${MWI_IHPS_W2_appended_data}/AG_MOD_K.dta" 
+recode short (.=1)
+ren plotid plot_id
+ren gardenid garden_id
+merge 1:m hhid plot_id garden_id short using `imprv_seed', nogen
+ren ag_d01 dm1
+ren ag_d01_2a dm2
+ren ag_d01_2b dm3 
+ren ag_k02 dm0
+ren ag_k02_2a dm0_2a
+ren ag_k02_2b dm0_2b
+keep hhid plot_id crop_code dm* imprv*
+gen dummy=_n
+reshape long dm, i(hhid plot_id crop_code imprv_seed_use dummy) j(idno)
+drop idno
+drop if dm==. //90,231 obs deleted 
+collapse (max) imprv_seed_use, by(hhid crop_code dm)
+ren dm indiv 
+//To go to "wide" format:
+egen cropmatch = anymatch(crop_code), values($topcrop_area)
+keep if cropmatch==1
+drop cropmatch
+ren imprv_seed_use all_imprv_seed_
+gen all_hybrid_seed_ = .
+gen farmer_ = 1 //indiv update
+gen cropname=""
+forvalues k=1/$nb_topcrops {
+	local c : word `k' of $topcrop_area
+	local cn : word `k' of $topcropname_area
+	replace cropname = "`cn'" if crop_code==`c'
+}
+drop crop_code
+bys hhid indiv : egen all_imprv_seed_use = max(all_imprv_seed_)
+reshape wide all_imprv_seed_ all_hybrid_seed_ farmer_, i(hhid all_imprv_seed_use indiv) j(cropname) string //indiv update
+forvalues k=1/$nb_topcrops {
+	local c : word `k' of $topcrop_area
+	local cn : word `k' of $topcropname_area
+	capture confirm var all_imprv_seed_`cn' //Checks for missing topcrops
+	if _rc!=0 { 
+		gen all_imprv_seed_`cn'=.
+		gen all_hybrid_seed_`cn'=.
+		gen `cn'_farmer=0
+	}
+}
+gen all_hybrid_seed_use=.
+ren farmer_* *_farmer 
+drop if indiv==.
+recode all_imprv_seed_* *_farmer (.=0) 
+merge m:1 hhid indiv using "${MWI_IHS_IHPS_W4_created_data}\Malawi_IHS_IHPS_W4_gender_merge.dta", nogen //10,635 matched, 57,457 not matched
+lab var all_imprv_seed_use "1 = Individual farmer (plot manager) uses improved seeds"
+forvalues k=1/$nb_topcrops {
+	local v : word `k' of $topcropname_area
+	local vn : word `k' of $topcropname_area_full
+	lab var all_imprv_seed_`v' "1 = Individual farmer (plot manager) uses improved seeds - `vn'"
+	lab var all_hybrid_seed_`v' "1 = Individual farmer (plot manager) uses hybrid seeds - `vn'"
+	lab var `v'_farmer "1 = Individual farmer (plot manager) grows `vn'"
+}
+gen farm_manager=1 if indiv!=.
+recode farm_manager (.=0)
+lab var farm_manager "1=Indvidual is listed as a manager for at least one plot" 
+*Replacing permanent crop seed information with missing because this section does not ask about permanent crops
+replace all_imprv_seed_cassav = . 
+//replace all_imprv_seed_banana = . 
+save "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_farmer_improvedseed_use.dta", replace */
+
+//if individual uses any improved seed on any plot
+
+********************************************************************************
 *HOUSEHOLD'S DIET DIVERSITY SCORE
-************
+********************************************************************************
 * Malawi LSMS 2 does not report individual consumption but instead household level consumption of various food items.
 * Thus, only the proportion of households eating nutritious food can be estimated
+* Constructing rCSI: stands for reduced coping strategies index and is a weighted total of the types of strategies a household uses to avoid insufficient food
+use "${MWI_IHPS_W2_appended_data}/hh_mod_h_13.dta" , clear
+keep hh_h02* hhid
+*Weights from The Coping Strategies Index: Field Methods Manual (2008)
+ren hh_h02a strategy1 // Rely on less preferred and/or less expensive foods * (severity weight = 1)
+ren hh_h02b strategy2 // Limit portion size at meal-times * (severity weight = 1)
+ren hh_h02c strategy3 // Reduce number of meals eaten in a day * (severity weight = 1)
+ren hh_h02d strategy4 // Restrict consumption by adults in order for small children to eat * (severity weight = 3)
+ren hh_h02e strategy5 // Borrow food or rely on help from a relative * (severity weight = 2)
+gen rcsi=strategy1 + strategy2 + strategy3 + 3*strategy4 + 2*strategy5 
+label var rcsi "Reducing Coping Strategies Index, weighted total of the types of strategies a household uses to avoid insufficient food"
+keep hhid rcsi 
+//MWI rCSI varies by season and not all households were interviewed at the same time. 
+gen rcsi_phase1 = (rcsi <= 3)
+gen rcsi_phase2 = (rcsi > 3 & rcsi <= 18)
+gen rcsi_phase3 = (rcsi > 19 & rcsi <= 42)
+gen rcsi_phase4 = (rcsi > 42)
+label var rcsi_phase1 "1 = Household rCSI score belongs to IPC Phase 1, minimal food insecurity (0-3)"
+label var rcsi_phase2 "1 = Household rCSI score belongs to IPC Phase 2, stressed food insecurity (4 - 18)"
+label var rcsi_phase3 "1 = Household rCSI score belongs to IPC Phase 3, crisis food insecurity (19 - 42)"
+label var rcsi_phase4 "1 = Household rCSI score belongs to IPC Phase 4, emergency food insecurity (> 42)"
+save "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_rcsi.dta", replace
+
+* Constructing FCS: similar to HDDS but it adds in the last 7 days and weighted by food group 
+use "${MWI_IHPS_W2_appended_data}/hh_mod_g2_13.dta", clear
+ren hh_g08a foodgroup
+ren hh_g08c days
+recode days (8=7)
+recode days (.=0)
+keep foodgroup hhid days
+reshape wide days, i(hhid) j(foodgroup)
+gen max_days = max(days1, days2)
+gen min_days = min(days1, days2)
+gen sum_days = days1+days2
+gen fcs_a =.
+replace fcs_a =7 if max_days==7
+replace fcs_a=max_days if min_days==0
+replace fcs_a=((max_days+min_days)/2) if sum_days>7
+drop days1 days2 days10 *_days
+ren fcs_a days1
+reshape long days, i(hhid) j(foodgroup)
+gen weight = .
+replace weight = 2 if foodgroup==1  // max of A and B 
+replace weight = 3 if foodgroup == 3  // C
+replace weight = 1 if foodgroup == 4 | foodgroup == 6 // D & F
+replace weight = 4 if foodgroup == 5 | foodgroup == 7  // E & G
+replace weight = 0.5 if foodgroup == 8 | foodgroup == 9  // H & I
+gen fcs =. 
+replace fcs = days*weight
+collapse (sum) fcs, by (hhid)
+label var fcs "Food Consumption Score"
+gen fcs_poor = (fcs <= 21)
+gen fcs_borderline = (fcs > 21 & fcs <= 35)
+gen fcs_acceptable = (fcs > 35)
+label var fcs_poor "1 = Household has poor Food Consumption Score (0-21)"
+label var fcs_borderline "1 = Household has borderline Food Consumption Score (21.5 - 35)"
+label var fcs_acceptable "1 = Household has acceptable Food Consumption Score (> 35)"
+save "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_fcs.dta", replace
+
 use "${MWI_IHPS_W2_appended_data}/hh_mod_g1_13.dta" , clear
 ren hh_g02 itemcode
+drop if itemcode==829 | itemcode==830 //Restaurant meals and other.
 * recode food items to map HDDS food categories
-recode itemcode 	(101/117 						=1	"CEREALS" )  //// Also includes biscuits, buns, scones
-					(201/209    					=2	"WHITE ROOTS,TUBERS AND OTHER STARCHES"	)  ////
+recode itemcode 	(101/117 820					=1	"CEREALS" )  //// Also includes biscuits, buns, scones
+					(201/209 822 					=2	"WHITE ROOTS,TUBERS AND OTHER STARCHES"	)  ////
 					(401/414	 					=3	"VEGETABLES"	)  ////	
 					(601/610						=4	"FRUITS"	)  ////	
-					(504/512 515					=5	"MEAT"	)  ////Tinned meat or fish, included in meat				
-					(501 						    =6	"EGGS"	)  ////
-					(502/503 513/514				=7  "FISH") ///
+					(504/512 515 824/825			=5	"MEAT"	)  ////Tinned meat or fish, included in meat				
+					(501 823 					    =6	"EGGS"	)  ////
+					(502/503 513/514 826			=7  "FISH") ///
 					(301/310						=8	"LEGUMES, NUTS AND SEEDS") ///
 					(701/709						=9	"MILK AND MILK PRODUCTS")  ////
-					(801/804  						=10	"OILS AND FATS"	)  ////
-					(815/817 						=11	"SWEETS"	)  //// 
+					(801/804 821 827 828			=10	"OILS AND FATS"	)  ////
+					(815/817						=11	"SWEETS"	)  //// 
 					(901/916  810/814 818			=14 "SPICES, CONDIMENTS, BEVERAGES"	)  ////
 					,generate(Diet_ID)
 				
@@ -4149,29 +4365,27 @@ label define YesNo 1 "Yes" 0 "No"
 label val adiet_yes YesNo
 * Now, estimate the number of food groups eaten by each individual
 collapse (sum) adiet_yes, by(hhid )
-ren adiet_yes number_foodgroup 
-sum number_foodgroup 
+ren adiet_yes hdds 
 local cut_off1=6
 local cut_off2=round(r(mean))
-gen household_diet_cut_off1=(number_foodgroup>=`cut_off1')
-gen household_diet_cut_off2=(number_foodgroup>=`cut_off2')
+gen household_diet_cut_off1=(hdds>=`cut_off1')
+gen household_diet_cut_off2=(hdds>=`cut_off2')
 lab var household_diet_cut_off1 "1= household consumed at least `cut_off1' of the 12 food groups last week" 
 lab var household_diet_cut_off2 "1= household consumed at least `cut_off2' of the 12 food groups last week" 
-label var number_foodgroup "Number of food groups individual consumed last week HDDS"
+label var hdds "Number of food groups individual consumed last week HDDS"
+merge 1:1 hhid using "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_rcsi.dta", nogen 
+merge 1:1 hhid using "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_fcs.dta", nogen 
 save "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_household_diet.dta", replace
 
-
-
-************
+********************************************************************************
 *WOMEN'S CONTROL OVER INCOME
-************
+********************************************************************************
 *Code as 1 if a woman is listed as one of the decision-makers for at least 1 income-related area; 
 *can report on % of women who make decisions, taking total number of women HH members as denominator
 *In most cases, MW LSMS 2 lists the first TWO decision makers.
 *Indicator may be biased downward if some women would participate in decisions about the use of income
 *but are not listed among the first two
  
-
 /*
 Areas of decision making to be considered
 Decision-making areas
@@ -4402,7 +4616,6 @@ lab var control_nonfarmincome "1=individual has control over non-farm (business,
 lab var control_all_income "1=individual has control over at least one type of income"
 save "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_control_income.dta", replace
 
-
 ********************************************************************************
 *WOMEN'S PARTICIPATION IN AGRICULTURAL DECISION MAKING
 ********************************************************************************
@@ -4540,12 +4753,10 @@ lab var make_decision_livestock "1=invidual makes decision about livestock produ
 lab var make_decision_ag "1=invidual makes decision about agricultural (crop or livestock) production activities"
 
 save "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_make_ag_decision.dta", replace
-
-
  
-************
+********************************************************************************
 *WOMEN'S OWNERSHIP OF ASSETS
-************
+********************************************************************************
 * Code as 1 if a woman is sole or joint owner of any specified productive asset; 
 * can report on % of women who own, taking total number of women HH members as denominator
 * MLW W2 asked to list up to 2 owners.
@@ -4628,7 +4839,6 @@ lab var hired_female "Total hired labor (number of persons days) -female workers
 lab var hired_male "Total hired labor (number of persons days) -male workers"
 save "${MWI_IHPS_W2_created_data}/Malawi_IHPS_W2_ag_wage.dta", replace
 
-
 ********************************************************************************
 *CROP YIELDS*
 ********************************************************************************
@@ -4642,6 +4852,49 @@ gen number_trees_planted_coffee = number_trees_planted if crop_code == 51
 recode number_trees_planted_mango number_trees_planted_other_fruit number_trees_planted_cassava number_trees_planted_tea number_trees_planted_coffee (.=0)
 collapse (sum) number_trees_planted*, by(hhid)
 save "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_trees.dta", replace
+
+use "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_all_plots.dta", clear
+gen no_harvest=ha_harvest==.
+ ren quant_harv_kg harvest 
+ ren ha_planted area_plan
+ ren ha_harvest area_harv 
+ gen mixed = "inter"  //Note to adjust this for lost crops 
+ replace mixed="pure" if purestand==1
+ gen dm_gender2="unknown"
+ replace dm_gender2="male" if dm_gender==1
+ replace dm_gender2="female" if dm_gender==2
+ replace dm_gender2="mixed" if dm_gender==3
+ 
+ foreach i in harvest area_plan area_harv {	
+ 	foreach j in inter pure {
+ 		gen `i'_`j'=`i' if mixed == "`j'"
+ 		foreach k in male female mixed {
+ 			gen `i'_`j'_`k' = `i' if mixed=="`j'" & dm_gender2=="`k'"
+ 			capture confirm var `i'_`k'
+ 			if _rc {
+ 				gen `i'_`k'=`i' if dm_gender2=="`k'"
+ 			}
+ 		}
+ 	}
+ }
+ 
+ collapse (sum) harvest* area* (max) no_harvest, by(hhid crop_code)
+ unab vars : harvest* area*
+ foreach var in `vars' {
+ 	replace `var' = . if `var'==0 & no_harvest==1
+ }
+ 
+ replace area_plan = . if area_plan==0
+ replace area_harv = . if area_plan==. | (area_harv==0 & no_harvest==1)
+ unab vars2 : area_plan_*
+ local suffix : subinstr local vars2 "area_plan_" "", all
+ foreach var in `suffix' {
+ 	replace area_plan_`var' = . if area_plan_`var'==0
+ 	replace harvest_`var'=. if area_plan_`var'==. | (harvest_`var'==0 & no_harvest==1)
+ 	replace area_harv_`var'=. if area_plan_`var'==. | (area_harv_`var'==0 & no_harvest==1)
+ }
+ drop no_harvest
+ save "${MWI_IHPS_W2_created_data}/Malawi_IHPS_W2_hh_crop_area_plan.dta", replace
 
 use "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_all_plots.dta", clear
 collapse (sum) area_harv_=ha_harvest area_plan_=ha_planted harvest_=quant_harv_kg, by(hhid dm_gender purestand crop_code)
@@ -5024,6 +5277,123 @@ save "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_shannon_diversity_index.dta", r
 ********************************************************************************
 *CONSUMPTION
 ******************************************************************************** 
+use "${MWI_IHPS_W2_appended_data}/ConsAggW2.dta", clear
+merge m:1 hhid using "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_weights.dta", nogen keep (3)
+collapse (mean) price_index_region=price_indexL [aw=weight], by(region intmonth)
+save "${MWI_IHPS_W2_created_data}/Malawi_IHPS_W2_price_index_lookup_region.dta", replace
+
+use "${MWI_IHPS_W2_appended_data}/ConsAggW2.dta", clear
+merge m:1 hhid using "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_weights.dta", nogen keep (3)
+collapse (mean) price_index_district=price_indexL [aw=weight], by(district region intmonth)
+fillin region district intmonth
+merge m:1 region intmonth using "${MWI_IHPS_W2_created_data}/Malawi_IHPS_W2_price_index_lookup_region.dta", nogen keep (3)
+gen price_index=price_index_district
+replace price_index=price_index_region if price_index ==.
+keep district intmonth price_index
+save "${MWI_IHPS_W2_created_data}/Malawi_IHPS_W2_price_index_lookup.dta", replace
+
+use "${MWI_IHPS_W2_appended_data}\hh_mod_g1_13.dta", clear
+ren hh_g05 cons_value // how much did you spend? 
+ren hh_g04b unit_purchase //how much came from purchases (unit)?
+ren hh_g04a qty_purchase //how much came from purchases (qty)?
+gen price_unit = cons_value/qty_purchase
+lab var price_unit "Price per unit of food item, estimated from purchases"
+gen unit_gift=hh_g07b
+gen qty_gift=hh_g07a
+gen qty_own =hh_g06a
+gen unit_own=hh_g06b
+ren hh_g02 itemcode
+recode qty* (.=0)
+drop if qty_purchase==0 & qty_own==0 & qty_gift==0
+merge m:1 hhid using "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_weights.dta", nogen	
+ren ea_id ea
+keep hhid weight price_unit unit* qty* itemcode region district ta ea
+gen country = "MWI" 
+save "${MWI_IHPS_W2_created_data}/Malawi_IHPS_W2_cons_value.dta", replace
+
+use "${MWI_IHPS_W2_created_data}/Malawi_IHPS_W2_cons_value.dta", clear
+drop if price_unit==0 | price_unit==. 
+gen obs=price_unit!=.
+gen obs_weight = weight*qty_purchase
+
+*create a value for the price of each food consumed at different levels
+	foreach i in country region district ta ea hhid {
+	preserve
+	collapse (median) price_unit_`i' = price_unit (rawsum) obs_`i'_price = obs [aw=obs_weight], by(`i' unit_purchase itemcode) 
+	ren unit_purchase unit 
+	tempfile price_`i'_median 
+	save `price_`i'_median'
+	restore
+	}
+	
+use "${MWI_IHPS_W2_created_data}/Malawi_IHPS_W2_cons_value.dta", clear
+reshape long unit qty, i(hhid itemcode price_unit) j(item_source) string
+gen price_missing=price_unit==.
+foreach i in country region district ta ea hhid {
+	merge m:1 `i' unit itemcode using `price_`i'_median', nogen keep(1 3)
+	replace price_unit = price_unit_`i' if obs_`i'_price >9 & price_missing ==1 & price_unit_`i' !=.
+	}
+replace price_unit = price_unit_hhid if price_unit_hhid !=. 
+replace price_unit = price_unit_country if price_unit==.
+gen val_fdcons=price_unit*qty
+collapse (sum) val_fdcons, by (hhid) 
+
+merge m:1 hhid using "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_hhids.dta", nogen keep (1 3)
+merge m:1 hhid using "${MWI_IHPS_W2_appended_data}\hh_mod_a_filt_13.dta", nogen keep(1 3)	
+gen intmonth=.
+replace intmonth = hh_a23a_2 if qx_type == 1
+replace intmonth = hh_a23b_2 if qx_type == 1 & intmonth ==.
+replace intmonth = hh_a23c_2 if qx_type == 1 & intmonth ==.
+replace intmonth = hh_a37a_2 if qx_type == 2 
+ren ea_id ea
+keep intmonth hhid val_fdcons district region ea
+merge m:m district intmonth using "${MWI_IHPS_W2_created_data}/Malawi_IHPS_W2_price_index_lookup.dta", nogen keep(1 3) 
+gen missing_p_index = price_index ==.
+gen intmonth_orig=intmonth
+replace intmonth=intmonth-1 if missing_p_index == 1
+replace intmonth=2 if intmonth==0
+rename price_index price_index1
+merge m:m district intmonth using "${MWI_IHPS_W2_created_data}/Malawi_IHPS_W2_price_index_lookup.dta", nogen keep(1 3) //2,087 matched, 2 not matched
+replace price_index1=price_index if price_index1==.
+drop price_index
+rename price_index1 price_index
+gen imputed=missing_p_index & price_index !=.
+gen price_fdcons = (price_index/100)*val_fdcons 
+keep hhid val_fdcons district region district intmonth price_index price_fdcons ea
+save "${MWI_IHPS_W2_created_data}/Malawi_IHPS_W2_food_consumption.dta", replace
+ren ea ea_id
+merge m:1 ea_id hhid using "${MWI_IHPS_W2_appended_data}/ConsAggW2.dta", nogen keep(3)
+gen annual_val_fdcons=(val_fdcons*52)
+save "${MWI_IHPS_W2_created_data}/Malawi_IHPS_W2_agg_consumption.dta", replace 
+
+use "${MWI_IHPS_W2_appended_data}\hh_mod_i1_13.dta", clear
+append using "${MWI_IHPS_W2_appended_data}\hh_mod_i2_13.dta"
+append using "${MWI_IHPS_W2_appended_data}\hh_mod_j_13.dta"
+append using "${MWI_IHPS_W2_appended_data}\hh_mod_k_13.dta"
+gen rexp_cat02=hh_i03*52 if inlist(hh_i02, 103) // tobacco, past week
+gen rexp_cat03=hh_j03*4 if inrange(hh_j02, 301, 327) // clothing/footwear
+gen rexp_cat04=hh_i06*12 if inlist(hh_i05, 215, 216, 217, 218, 219) // housing/utilities
+replace rexp_cat04=hh_i03*12 if inlist(hh_i02, 101, 102) // housing/utilities, past month
+replace rexp_cat04=hh_j03*4 if inlist(hh_j02, 328, 329, 330, 331, 333, 338) // housing/utilities
+replace rexp_cat04=hh_k03 if inrange(hh_k02, 401, 410) // housing/utilities
+replace rexp_cat04=hh_k03 if inlist(hh_k02, 420) // housing/utilities
+gen rexp_cat06=hh_i06*12 if inlist(hh_i05, 202, 204, 205, 206, 207) // health
+gen rexp_cat07=hh_i03*52 if inlist(hh_i02, 107, 108, 109) // transport, past week
+replace rexp_cat07=hh_i06*12 if inlist(hh_i05, 212, 213, 214) //transport
+gen rexp_cat08=hh_i03*12 if inlist(hh_i02, 210, 221) // communication, past month
+replace rexp_cat08=hh_i06*12 if inlist(hh_i05, 106) // communication
+gen rexp_cat09=hh_j03*4 if inrange(hh_j02, 334, 337) // recreation
+gen rexp_cat11=hh_j03*4 if inlist(hh_j02, 339) // hotels/restaurants
+gen rexp_cat12=hh_i06*12 if inlist(hh_i05, 201, 203, 209, 211, 220) // misc goods & services
+replace rexp_cat12=hh_i03*52 if inlist(hh_i02, 104, 105) // misc goods & services, past week
+replace rexp_cat12=hh_j03*4 if inlist(hh_j02, 332) // misc goods & services
+replace rexp_cat12=hh_k03 if inrange(hh_k02, 411, 419) // misc goods & services
+keep hhid rexp*
+ren rexp* rexp*new
+merge m:1 hhid using "${MWI_IHPS_W2_appended_data}/ConsAggW2.dta", nogen keep (3)
+*Our method produces differnces from the World Bank consumption method. This code allows you to compare both panel and cross section. 
+save "${MWI_IHPS_W2_created_data}/Malawi_IHPS_W2_aggregate_consumption.dta", replace
+
 *first get adult equivalent
 use "${MWI_IHPS_W2_appended_data}/ConsAggW2.dta", clear
 collapse (sum) adulteq, by(hhid)
@@ -5052,6 +5422,11 @@ merge 1:1 hhid using "${MWI_IHPS_W2_appended_data}/hh_mod_h_13.dta", nogen
 gen int_month = hh_a23a_2 
 replace int_month = hh_a37a_2 if qx_type==2
 gen int_year = 2013 //For all relevant interviews
+preserve
+keep hhid int_month int_year
+tempfile int_meta
+save `int_meta'
+restore
 gen apr_2012 = hh_h05a == "X" if int_month < 5
 gen may_2012 = hh_h05b == "X" if int_month < 6
 gen jun_2012 = hh_h05c == "X" if int_month < 7
@@ -5071,21 +5446,31 @@ gen jul_2013 = hh_h05p == "X" if int_month > 7
 gen aug_2013 = hh_h05q == "X" if int_month > 8
 gen sep_2013 = hh_h05r == "X" if int_month > 9
 gen oct_2013 = hh_h05s == "X" if int_month > 10
-ren *_2012 hunger2012*
-ren *_2013 hunger2013*
-keep ea_id hhid hunger*
-reshape long hunger2012 hunger2013, i(hhid) j(month) string
-reshape long hunger, i(hhid month) j(year)
-la def months 1 "may" 2 "jun" 3 "jul" 4 "aug" 5 "sep" 6 "oct" 7 "nov" 8 "dec" 9 "jan" 10 "feb" 11 "mar" 12 "apr"
-encode month, l(months) gen(labmonth)
-drop month
-ren labmonth month
-la drop months
-replace year = year-1 if month > 8
-collapse (sum) hunger, by(hhid)
-ren hunger months_food_insec
-save "${MWI_IHPS_W2_created_data}/Malawi_IHPS_W2_food_insecurity.dta", replace
+egen months_food_insec=rowtotal(apr_2012-oct_2013)
+keep hhid months_food_insec
+lab var months_food_insec "Number of months of inadequate food provision"
+save "${MWI_IHPS_W2_created_data}/Malawi_IHPS_W2_months_food_insufficient.dta", replace
 
+use "${MWI_IHPS_W2_appended_data}/hh_mod_a_filt_13.dta", clear
+merge 1:1 hhid using "${MWI_IHPS_W2_appended_data}/hh_mod_h_13.dta", nogen
+merge 1:1 hhid using `int_meta', nogen keep(3)
+ren hh_h01 days_nofd
+ren hh_h02a rcsi_1
+ren hh_h02b rcsi_2
+ren hh_h02c rcsi_3
+ren hh_h02d rcsi_4
+ren hh_h02e rcsi_5
+recode days_nofd rcsi* (.=0)
+egen rcsi_6ques = rowtotal(days_nofd-rcsi_5)
+gen rcsi_FEWS = rcsi_1 + rcsi_2 + rcsi_3 + rcsi_4 * 3 + rcsi_5 * 2
+foreach i in 1 2 3 4 5 {
+gen rcsi_`i'cat = rcsi_`i'
+recode rcsi_`i'cat (1 2 3 = 1) (4 5 6 7=2)
+}
+gen rcsi_Rasch = rcsi_1cat + rcsi_2cat + rcsi_3cat + (rcsi_5cat!=0)*2 + rcsi_4cat*2
+keep ea_id hhid days_nofd rcsi* int*
+merge 1:1 hhid using "${MWI_IHPS_W2_created_data}/Malawi_IHPS_W2_months_food_insufficient.dta", nogen
+save "${MWI_IHPS_W2_created_data}/Malawi_IHPS_W2_food_insecurity.dta", replace
 
 ***************************************************************************
 *HOUSEHOLD ASSETS*
@@ -5100,8 +5485,6 @@ collapse (sum) value_assets, by(hhid) // no of assets multipl by value
 la var value_assets "Value of household assets"
 save "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_hh_assets.dta", replace 
 
-
-
 ********************************************************************************
 *FOOD SECURITY*
 ********************************************************************************
@@ -5111,8 +5494,6 @@ gen daily_per_aeq_fdcons = fdconstot / adulteq / 365
 gen daily_percap_fdcons = fdconstot / hhsize / 365
 keep case_id ea_id region urban district hhsize adulteq fdconstot daily_per_aeq_fdcons daily_percap_fdcons
 save "${MWI_IHPS_W2_created_data}/Malawi_IHPS_W2_food_cons.dta", replace
-
-
 
 ********************************************************************************
 *HOUSEHOLD VARIABLES
@@ -5147,15 +5528,6 @@ foreach c in $topcropname_area {
 	if _rc==0 { 
 	merge 1:1 hhid  using "${MWI_IHPS_W2_created_data}/Malawi_IHPS_W2_inputs_`c'.dta", nogen //All expenses are in here now.
 	merge 1:1 hhid  using "${MWI_IHPS_W2_created_data}/Malawi_IHPS_W2_`c'_monocrop_hh_area.dta", nogen
-	}
-}
-
-*top crop costs by area planted
-foreach c in $topcropname_area {
-	capture confirm file "${MWI_IHPS_W2_created_data}/Malawi_IHPS_W2_inputs_`c'.dta"
-	if _rc==0 {
-	merge 1:1 hhid using "${MWI_IHPS_W2_created_data}/Malawi_IHPS_W2_inputs_`c'.dta", nogen
-	merge 1:1 hhid using "${MWI_IHPS_W2_created_data}/Malawi_IHPS_W2_`c'_monocrop_hh_area.dta", nogen
 	}
 }
 
@@ -5474,10 +5846,7 @@ foreach v in $topcropname_area {
 }
 gen cost_total = cost_total_hh
 gen cost_expli = cost_expli_hh
-global wins_var_top1_gender $wins_var_top1_gender cost_total cost_expli inorg_fert_kg org_fert_kg pest_kg herb_kg urea_kg npk_kg n_kg p_kg k_kg wage_paid_aglabor
-
-**# Bookmark #1 - 10.30.2024 CG 
-
+global wins_var_top1_gender $wins_var_top1_gender cost_total cost_expli inorg_fert_kg org_fert_kg pest_kg herb_kg urea_kg npk_kg n_kg p_kg k_kg wage_paid_aglabor ha_irr
 
 foreach v of varlist $wins_var_top1_gender {
 	_pctile `v' [aw=weight] , p($wins_upper_thres)  
@@ -5583,6 +5952,8 @@ foreach c of global topcropname_area {
 //gen inorg_fert_kg=w_inorg_fert_kg/w_ha_planted
 gen cost_total_ha = w_cost_total / w_ha_planted
 gen cost_expli_ha = w_cost_expli / w_ha_planted 
+gen cost_explicit_hh_ha=w_cost_expli_hh/w_ha_planted
+gen irr_rate = w_ha_irr / w_ha_planted
 
 *generate inorg_fert_rate, costs_total_ha, and costs_expli_ha using winsorized values
 foreach v in inorg_fert org_fert n p k herb pest urea npk {
@@ -5595,7 +5966,8 @@ foreach v in inorg_fert org_fert n p k herb pest urea npk {
 
 foreach g of global gender {
 	gen cost_total_ha_`g'=w_cost_total_`g'/ w_ha_planted_`g' 
-	gen cost_expli_ha_`g'=w_cost_expli_`g'/ w_ha_planted_`g' 		
+	gen cost_expli_ha_`g'=w_cost_expli_`g'/ w_ha_planted_`g' 	
+	gen irr_rate_`g' = ha_irr_`g' / ha_planted_`g'
 }
 foreach g in $gender {
 lab var inorg_fert_rate_`g' "Rate of fertilizer application (kgs/ha) (`g'-managed crops)"
@@ -5609,6 +5981,7 @@ lab var pest_rate_`g' "Rate of pesticide application (kgs/ha) (`g'-managed plots
 lab var herb_rate_`g' "Rate of herbicide application (kgs/ha) (`g'-managed plots)"
 lab var urea_rate_`g' "Rate of urea application (kgs/ha) (`g'-managed plots)"
 lab var npk_rate_`g' "Rate of NPK fertilizer application (kgs/ha) (`g'-managed plots)"
+la var irr_rate_`g' "Proportion of planted area irrigated (household)"
 }
 
 lab var inorg_fert_rate "Rate of fertilizer application (kgs/ha) (household level)"
@@ -5620,7 +5993,16 @@ lab var herb_rate "Rate of herbicide application (kgs/ha) (household level)"
 lab var pest_rate "Rate of pesticide application (kgs/ha) (household level)"
 lab var urea_rate "Rate of urea application (kgs/ha) (household level)"
 lab var npk_rate "Rate of urea application (kgs/ha) (household level)"
-lab var cost_total_ha "Explicit + implicit costs (per ha) of crop production costs that can be disaggregated at the plot manager level"
+lab var irr_rate "Proportion of planted area irrigated (household)"
+lab var cost_total_ha "Explicit + implicit costs (per ha) of crop production (household level)"		
+lab var cost_total_ha_male "Explicit + implicit costs (per ha) of crop production (male-managed plots)"
+lab var cost_total_ha_female "Explicit + implicit costs (per ha) of crop production (female-managed plots)"
+lab var cost_total_ha_mixed "Explicit + implicit costs (per ha) of crop production (mixed-managed plots)"
+lab var cost_expli_ha "Explicit costs (per ha) of crop production (household level)"
+lab var cost_expli_ha_male "Explicit costs (per ha) of crop production (male-managed plots)"
+lab var cost_expli_ha_female "Explicit costs (per ha) of crop production (female-managed plots)"
+lab var cost_expli_ha_mixed "Explicit costs (per ha) of crop production (mixed-managed plots)"
+lab var cost_explicit_hh_ha "Explicit costs (per ha) of crop production (household level)"
 
 *mortality rate
 global animal_species lrum srum pigs equine poultry 
@@ -5696,8 +6078,8 @@ global empty_vars $empty_vars cost_per_lit_milk
 
 *****getting correct subpopulations***
 *all rural housseholds engaged in crop production 
-recode inorg_fert_rate cost_total_ha cost_expli_ha cost_expli_hh_ha land_productivity labor_productivity (.=0) if crop_hh==1
-recode inorg_fert_rate cost_total_ha cost_expli_ha cost_expli_hh_ha land_productivity labor_productivity (nonmissing=.) if crop_hh==0
+recode *irr_rate* *org_fert_rate* *n_rate* *p_rate* *k_rate* *herb_rate* *pest_rate* *urea_rate* *npk_rate* cost_total_ha cost_expli_ha cost_expli_hh_ha land_productivity labor_productivity (.=0) if crop_hh==1
+recode *irr_rate* *org_fert_rate* *n_rate* *p_rate* *k_rate* *herb_rate* *pest_rate* *urea_rate* *npk_rate* cost_total_ha cost_expli_ha cost_expli_hh_ha land_productivity labor_productivity (nonmissing=.) if crop_hh==0
 *all rural households engaged in livestock production of a given species
 foreach i in lrum srum poultry{
 	recode mortality_rate_`i' (nonmissing=.) if lvstck_holding_`i'==0
@@ -5742,7 +6124,7 @@ recode costs_dairy_percow cost_per_lit_milk (.=0) if dairy_hh==1
 recode costs_dairy_percow cost_per_lit_milk (nonmissing=.) if dairy_hh==0		
 
 *now winsorize ratios only at top 1% 
-global wins_var_ratios_top1 inorg_fert_rate org_fert_rate n_rate p_rate k_rate herb_rate pest_rate urea_rate npk_rate cost_total_ha cost_expli_ha cost_expli_hh_ha /*		
+global wins_var_ratios_top1 inorg_fert_rate org_fert_rate n_rate p_rate k_rate herb_rate pest_rate urea_rate npk_rate cost_total_ha cost_expli_ha cost_expli_hh_ha irr_rate/*		
 */ land_productivity labor_productivity /*
 */ mortality_rate* liters_per_largeruminant liters_per_cow  egg_poultry_year costs_dairy_percow /*
 */ hrs_*_pc_all hrs_*_pc_any cost_per_lit_milk 
@@ -5979,10 +6361,12 @@ gen adulteq_weight=adulteq*weight
 	// 151.1089* 1.6587243 = 250.648 N
 *NOTE: if the survey was carried out over multiple years we use the last year
 *This is the poverty line at the local currency in the year the survey was carried out
-gen poverty_under_1_9 = (daily_percap_cons < $Malawi_IHPS_W2_poverty_190)		 
-la var poverty_under_1_9 "Household has a percapita conumption of under $1.90 in 2011 $ PPP)"
-gen poverty_under_2_15 = daily_percap_cons < $Malawi_IHPS_W2_poverty_215
+gen poverty_under_1_9 = (daily_percap_cons < $MWI_IHPS_W2_poverty_under_190)		 
+la var poverty_under_1_9 "Household has a percapita conumption of under $1.90 in 2011 $ PPP"
+gen poverty_under_2_15 = daily_percap_cons < $MWI_IHPS_W2_poverty_under_215
 la var poverty_under_2_15 "Household per-capita consumption is below $2.15 in 2017 $ PPP"
+gen poverty_under_npl = daily_percap_cons < $MWI_IHPS_W2_poverty_under_npl
+la var poverty_under_npl "Household per-capita consumption is below the 2017 national poverty line."
 *average consumption expenditure of the bottom 40% of the rural consumption expenditure distribution
 *First, generating variable that reports the individuals in the bottom 40% of rural consumption expenditures
 *By per capita consumption
@@ -5998,11 +6382,11 @@ replace bottom_40_peraeq = 1 if r(r1) > w_daily_peraeq_cons & rural==1
 ****Currency Conversion Factors***
 gen ccf_loc = 1 
 lab var ccf_loc "currency conversion factor - 2016 $MWK"
-gen ccf_usd = 1/$Malawi_IHPS_W2_exchange_rate 
+gen ccf_usd = 1/$MWI_IHPS_W2_exchange_rate 
 lab var ccf_usd "currency conversion factor - 2016 $USD"
-gen ccf_1ppp = 1/ $Malawi_IHPS_W2_cons_ppp_dollar
+gen ccf_1ppp = 1/ $MWI_IHPS_W2_cons_ppp_dollar
 lab var ccf_1ppp "currency conversion factor - 2016 $Private Consumption PPP"
-gen ccf_2ppp = 1/ $Malawi_IHPS_W2_gdp_ppp_dollar
+gen ccf_2ppp = 1/ $MWI_IHPS_W2_gdp_ppp_dollar
 lab var ccf_2ppp "currency conversion factor - 2017 $GDP PPP"
 
 *generating clusterid and strataid
@@ -6038,7 +6422,7 @@ keep hhid  fhh clusterid strataid *weight* *wgt* region district ta ea_id rural 
 */ *_exp* poverty_under_* *value_crop_production* *value_harv* *value_crop_sales* *value_sold* *kgs_harvest* *total_planted_area* *total_harv_area* /*
 */ *all_area_* grew_* agactivities_hh ag_hh crop_hh livestock_hh fishing_hh *_milk_produced* *eggs_total_year *value_eggs_produced* /*
 */ *value_livestock_products* *value_livestock_sales* *total_cons* nb_cattle_today nb_cows_today nb_poultry_today nb_smallrum_today bottom_40_percap bottom_40_peraeq /*
-*/ ccf_loc ccf_usd ccf_1ppp ccf_2ppp *sales_livestock_products area_plan* area_harv*  value_pro*  *value_sal* *pure* *inter*
+*/ ccf_loc ccf_usd ccf_1ppp ccf_2ppp *sales_livestock_products area_plan* area_harv*  value_pro* *_rate* *value_sal* *pure* *inter*
 
 gen ssp = (farm_size_agland <= 2 & farm_size_agland != 0) & (nb_cows_today <= 10 & nb_smallrum_today <= 10 & nb_poultry_today <= 50)
 ren weight weight_sample 
@@ -6062,14 +6446,13 @@ gen instrument = 42
 la var instrument "Wave and location of survey"
 capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2" 13 "Tanzania NPS Wave 3" 14 "Tanzania NPS Wave 4" 15 "Tanzania NPS SDD" 16 "Tanzania NPS Wave 5" /*
 	*/ 21 "Ethiopia ESS Wave 1" 22 "Ethiopia ESS Wave 2" 23 "Ethiopia ESS Wave 3" 24 "Ethiopia ESS Wave 4" 25 "Ethiopia ESS Wave 5" /*
-	*/ 31 "Nigeria GHS Wave 1" 32 "Nigeria GHS Wave 2" 33 "Nigeria GHS Wave 3" 34 "Nigeria GHS Wave 4"/*
+	*/ 31 "Nigeria GHS Wave 1" 32 "Nigeria GHS Wave 2" 33 "Nigeria GHS Wave 3" 34 "Nigeria GHS Wave 4" 35 "Nigeria GHS Wave 5"/*
 	*/ 41 "Malawi IHS/IHPS Wave 1" 42 "Malawi IHS/IHPS Wave 2" 43 "Malawi IHS/IHPS Wave 3" 44 "Malawi IHS/IHPS Wave 4" /*
     */ 51 "Uganda NPS Wave 1" 52 "Uganda NPS Wave 2" 53 "Uganda NPS Wave 3" 54 "Uganda NPS Wave 4" 55 "Uganda NPS Wave 5" /*W6 does not exist*/ 56 "Uganda NPS Wave 7" 57 "Uganda NPS Wave 8" /* 
 */ 61 "Burkina Faso EMC Wave 1" /* 
 */ 71 "Mali EACI Wave 1" 72 "Mali EACI Wave 2" /*
 */ 81 "Niger ECVMA Wave 1" 82 "Niger ECVMA Wave 2"
 saveold "${MWI_IHPS_W2_final_data}/MWI_IHPS_W2_household_variables.dta", replace // NOTE TO DEV: filename MWI... is intentionally different from standard file naming format. Keep MWI for Summary Stat file compatibility
-
 
 ********************************************************************************
 *INDIVIDUAL LEVEL VARIABLES*
@@ -6102,10 +6485,7 @@ tempfile ag_hh
 save `ag_hh'
 restore
 merge m:1 hhid using `ag_hh', nogen keep (1 3)
-
 replace make_decision_ag =. if ag_hh==0
-
-
 
 //Set improved seed adoption to missing if household is not growing crop
 foreach v in $topcropname_area {
@@ -6153,7 +6533,7 @@ gen instrument = 42
 //Only runs if label isn't already defined.
 capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2" 13 "Tanzania NPS Wave 3" 14 "Tanzania NPS Wave 4" 15 "Tanzania NPS SDD" 16 "Tanzania NPS Wave 5" /*
 	*/ 21 "Ethiopia ESS Wave 1" 22 "Ethiopia ESS Wave 2" 23 "Ethiopia ESS Wave 3" 24 "Ethiopia ESS Wave 4" 25 "Ethiopia ESS Wave 5" /*
-	*/ 31 "Nigeria GHS Wave 1" 32 "Nigeria GHS Wave 2" 33 "Nigeria GHS Wave 3" 34 "Nigeria GHS Wave 4"/*
+	*/ 31 "Nigeria GHS Wave 1" 32 "Nigeria GHS Wave 2" 33 "Nigeria GHS Wave 3" 34 "Nigeria GHS Wave 4" 35 "Nigeria GHS Wave 5"/*
 	*/ 41 "Malawi IHS/IHPS Wave 1" 42 "Malawi IHS/IHPS Wave 2" 43 "Malawi IHS/IHPS Wave 3" 44 "Malawi IHS/IHPS Wave 4" /*
     */ 51 "Uganda NPS Wave 1" 52 "Uganda NPS Wave 2" 53 "Uganda NPS Wave 3" 54 "Uganda NPS Wave 4" 55 "Uganda NPS Wave 5" /*W6 does not exist*/ 56 "Uganda NPS Wave 7" 57 "Uganda NPS Wave 8" /* 
 */ 61 "Burkina Faso EMC Wave 1" /* 
@@ -6223,13 +6603,13 @@ foreach v of varlist  plot_productivity  plot_labor_prod {
 }
 
 
-gen ccf_loc = (1/$Malawi_IHPS_W2_inflation) 
+gen ccf_loc = (1/$MWI_IHPS_W2_inflation) 
 lab var ccf_loc "currency conversion factor - 2017 MWK"
-gen ccf_usd = ccf_loc/$Malawi_IHPS_W2_exchange_rate 
+gen ccf_usd = ccf_loc/$MWI_IHPS_W2_exchange_rate 
 lab var ccf_usd "currency conversion factor - 2017 $USD"
-gen ccf_1ppp = ccf_loc/$Malawi_IHPS_W2_cons_ppp_dollar
+gen ccf_1ppp = ccf_loc/$MWI_IHPS_W2_cons_ppp_dollar
 lab var ccf_1ppp "currency conversion factor - 2017 $Private Consumption PPP"
-gen ccf_2ppp = ccf_loc/$Malawi_IHPS_W2_gdp_ppp_dollar
+gen ccf_2ppp = ccf_loc/$MWI_IHPS_W2_gdp_ppp_dollar
 lab var ccf_2ppp "currency conversion factor - 2017 $GDP PPP"
 
 global monetary_val plot_value_harvest plot_productivity  plot_labor_prod 
@@ -6401,7 +6781,7 @@ gen instrument = 42
 //Only runs if label isn't already defined.
 capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2" 13 "Tanzania NPS Wave 3" 14 "Tanzania NPS Wave 4" 15 "Tanzania NPS SDD" 16 "Tanzania NPS Wave 5" /*
 	*/ 21 "Ethiopia ESS Wave 1" 22 "Ethiopia ESS Wave 2" 23 "Ethiopia ESS Wave 3" 24 "Ethiopia ESS Wave 4" 25 "Ethiopia ESS Wave 5" /*
-	*/ 31 "Nigeria GHS Wave 1" 32 "Nigeria GHS Wave 2" 33 "Nigeria GHS Wave 3" 34 "Nigeria GHS Wave 4"/*
+	*/ 31 "Nigeria GHS Wave 1" 32 "Nigeria GHS Wave 2" 33 "Nigeria GHS Wave 3" 34 "Nigeria GHS Wave 4" 35 "Nigeria GHS Wave 5"/*
 	*/ 41 "Malawi IHS/IHPS Wave 1" 42 "Malawi IHS/IHPS Wave 2" 43 "Malawi IHS/IHPS Wave 3" 44 "Malawi IHS/IHPS Wave 4" /*
     */ 51 "Uganda NPS Wave 1" 52 "Uganda NPS Wave 2" 53 "Uganda NPS Wave 3" 54 "Uganda NPS Wave 4" 55 "Uganda NPS Wave 5" /*W6 does not exist*/ 56 "Uganda NPS Wave 7" 57 "Uganda NPS Wave 8" /* 
 */ 61 "Burkina Faso EMC Wave 1" /* 

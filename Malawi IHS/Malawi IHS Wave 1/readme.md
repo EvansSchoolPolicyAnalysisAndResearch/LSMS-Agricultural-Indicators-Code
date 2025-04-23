@@ -8,28 +8,34 @@
 * Extract the files to the "raw_data" folder in the cloned directory
   * We use the full sample raw data files for the Malawi - Third Integrated Household Survey 2010-2011 including both panel (Panel A and Panel B) and cross-sectional households.
 * Update the paths on lines 148-154 to align with your cloned directory.
-* Note for the first time running this code: ensure that you run the "Cross-wave compatibility" section
+* Note for the first time running this code: ensure that you run the "Appended Data" section
   * This section is commented out, as it must be run only once.
 
 ## Table of Contents
 ### Globals
 * This section sets global variables for use later in the script, including:
-  * **Population:** LSMS-ISA survey design oversamples rural households compared to urban. We reference true rural and urban population estimates to re-weight households.
-    * Malawi_IHS_W1_pop_tot - Total population in 2010 (World Bank)
-    * Malawi_IHS_W1_pop_rur - Rural population in 2010 (World Bank)
-    * Malawi_IHS_W1_pop_urb - Urban population in 2010 (World Bank)
-  * **Exchange Rates**
-    * Malawi_IHS_W1_exchange_rate - USD-MWK conversion in 2017 (World Bank)
-    * Malawi_IHS_W1_gdp_ppp_dollar - GDP-based purchasing power parity conversion in 2017 (World Bank-Indicator PA.NUS.PPP)
-    * Malawi_IHS_W1_cons_ppp_dollar - Private-consumption-based purchasing power parity conversion in 2017 (World Bank-Indicator PA.NUS.PRVT.P)
-    * Malawi_IHS_W1_inflation - Ratio of 2010:2017 Malawi consumer price index (World Bank), used for calculating poverty thresholds
-  * **Poverty Thresholds**
-    * Malawi_IHS_W1_poverty_threshold - The pre-2023 $1.90 2011 PPP poverty line used by the World Bank, converted to local currency
-    * Malawi_IHS_W1_poverty_ifpri - The poverty threshold as reported by IFPRI, deflated to 2010 via consumer price index (CPI) adjustment
-    * Malawi_IHS_W1_poverty_215 - The updated $2.15 2017 PPP poverty line currently used by the World Bank, converted to local currency
-  * **Thresholds for Winsorization:** the smallest (below the 1 percentile) and largest (above the 99 percentile) are replaced with the observations closest to them
-  * **Priority Crops:** the top 12 crops by area cultivated (determined by ALL PLOTS later in the code)
-    
+* **Population:** LSMS-ISA survey design oversamples rural households compared to urban. We reference true rural and urban population estimates to re-weight households.
+    * MWI_IHS_W1_pop_tot - Total population in 2010 (World Bank)
+    * MWI_IHS_W1_pop_rur - Rural population in 2010 (World Bank)
+    * MWI_IHS_W1_pop_urb - Urban population in 2010 (World Bank)
+* **Exchange Rates**
+    * MWI_IHS_W1_exchange_rate - USD-MWK conversion in 2017 (World Bank)
+    * MWI_IHS_W1_gdp_ppp_dollar - GDP-based purchasing power parity conversion in 2017 (World Bank-Indicator PA.NUS.PPP)
+    * MWI_IHS_W1_cons_ppp_dollar - Private-consumption-based purchasing power parity conversion in 2017 (World Bank-Indicator PA.NUS.PRVT.P)
+    * MWI_IHS_W1_inflation - Ratio of 2010:2017 Malawi consumer price index (World Bank), used for calculating poverty thresholds
+* **Poverty Thresholds**
+    * MWI_IHS_W1_poverty_under_190 - The pre-2023 $1.90 2011 PPP poverty line used by the World Bank, converted to local currency
+    * MWI_IHS_W1_poverty_under_npl - The poverty threshold as reported by IFPRI, deflated to 2010 via consumer price index (CPI) adjustment
+    * MWI_IHS_W1_poverty_under_215 - The updated $2.15 2017 PPP poverty line currently used by the World Bank, converted to local currency
+* **Thresholds for Winsorization:** the smallest (below the 1 percentile) and largest (above the 99 percentile) are replaced with the observations closest to them
+* **Priority Crops:** the top 12 crops by area cultivated (determined by ALL PLOTS later in the code)
+   
+### Appending Malawi IHS Data 
+- **Description:** This section ensures cross-wave compatibility of raw data files by generating a unique HHID identifier for all waves. This code replaces the existing hhid with the newly assigned unique identifier.
+- **Output:** All raw data has generated new appended data files. 
+- **Coding Status:** ![Complete](https://placehold.co/15x15/c5f015/c5f015.png) `Complete`
+- **Known Issues:** None
+
 ### Household IDs
 - **Description:** This dataset includes hhid as a unique identifier, along with its location identifiers (i.e. rural, region, district, ta, ea_id, etc.). For households that are surveyed across multiple years (waves), a household's hhid value reflects a different format. In all cases, hhid is an anonymous, unique identifier associated with a single household.
 - **Output:** `Malawi_IHS_W1_hhids.dta`
@@ -178,7 +184,7 @@
 - **Description:** This dataset includes hhid as a unique identifier and a series of binary variables indicating whether a household experienced livestock types having various diseases.
 - **Output:** `Malawi_IHS_W1_livestock_diseases.dta`
 - **Coding Status:** ![Complete](https://placehold.co/15x15/c5f015/c5f015.png) `Complete`
-- **Known Issues:** None
+- **Known Issues:** Questionnaire differs slightly from Waves 2-3, resulting in a lower number of reported diseases. 
 
 ### Use of Inorganic Fertilizer
 - **Description:** This dataset includes hhid and indiv as a unique identifiers, whether or not the farmer use inorganic fertilizer, and farmer characteristics (age, gender, etc.) 
@@ -241,7 +247,7 @@
 - **Known Issues:** None
 
 ### Household's Dietary Diversity Score
-- **Description:** This dataset includes hhid as a unique identifier, a count of food groups (out of 12) the surveyed individual consumed last week, and whether or not a houseshold consumed at least 6 of the 12 food groups, of 8 of the 12 food groups. 
+- **Description:** This dataset includes hhid as a unique identifier, a count of food groups (out of 12) the surveyed individual consumed last week, and whether or not a houseshold consumed at least 6 of the 12 food groups, of 8 of the 12 food groups. The Food Consumption Score (FCS) was calculated by summing the frequency of consumption of different food groups over the past 7 days, each weighted according to its nutritional value. The Reduced Coping Strategies Index (rCSI) was calculated by summing the frequency of five food-related coping behaviors used in the past 7 days, each multiplied by a standardized severity weight.  
 - **Output:** `Malawi_IHS_W1_household_diet.dta`
 - **Coding Status:** ![Complete](https://placehold.co/15x15/c5f015/c5f015.png) `Complete`
 - **Known Issues:** None
@@ -286,7 +292,7 @@
 - **Description:** This dataset includes hhid as a unique identifier and a series of variables describing household consumption (e.g. total, per capita, per adult equivalent, etc.).
 - **Output:** `Malawi_IHS_W1_consumption.dta`
 - **Coding Status:** ![Complete](https://placehold.co/15x15/c5f015/c5f015.png) `Complete`
-- **Known Issues:** None
+- **Known Issues:** Consumption panel does not include cross section households. We constructed aggregate consumption with the cross section households that produces differences compared to the World Bank consumption method. 
 
 ### Household Food Provision
 - **Description:** This dataset includes hhid as a unique identifier and a numeric variable describing months that the household experienced food insecurity.
