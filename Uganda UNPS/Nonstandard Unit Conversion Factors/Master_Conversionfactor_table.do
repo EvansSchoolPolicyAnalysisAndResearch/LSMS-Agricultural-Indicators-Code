@@ -8,173 +8,149 @@
 *Date			: This Version - 7 July 2023
 
 ----------------------------------------------------------------------------------------------------------------------------------------------------*/
+global directory "../.."
+global Uganda_NPS_W1_raw_data 	"$directory/Uganda UNPS/Uganda UNPS Wave 1/Raw DTA Files"
+global Uganda_NPS_W2_raw_data 	"$directory/Uganda UNPS/Uganda UNPS Wave 2/Raw DTA Files"
+global Uganda_NPS_W3_raw_data 	"$directory/Uganda UNPS/Uganda UNPS Wave 3/Raw DTA Files"
+global Uganda_NPS_W4_raw_data 	"$directory/Uganda UNPS/Uganda UNPS Wave 4/Raw DTA Files"
+global Uganda_NPS_W5_raw_data 	"$directory/Uganda UNPS/Uganda UNPS Wave 5/Raw DTA Files"
+global Uganda_NPS_W7_raw_data 	"$directory/Uganda UNPS/Uganda UNPS Wave 7/Raw DTA Files"
+global Uganda_NPS_W8_raw_data 	"$directory/Uganda UNPS/Uganda UNPS Wave 8/Raw DTA Files"
 
+global Uganda_NPS_W1_created_data "$directory/Uganda UNPS/Uganda UNPS Wave 1/Final DTA Files/created_data"
+global Uganda_NPS_W2_created_data "$directory/Uganda UNPS/Uganda UNPS Wave 2/Final DTA Files/created_data"
+global Uganda_NPS_W3_created_data "$directory/Uganda UNPS/Uganda UNPS Wave 3/Final DTA Files/created_data"
+global Uganda_NPS_W4_created_data "$directory/Uganda UNPS/Uganda UNPS Wave 4/Final DTA Files/created_data"
+global Uganda_NPS_W5_created_data "$directory/Uganda UNPS/Uganda UNPS Wave 5/Final DTA Files/created_data"
+global Uganda_NPS_W7_created_data "$directory/Uganda UNPS/Uganda UNPS Wave 7/Final DTA Files/created_data"
+global Uganda_NPS_W8_created_data "$directory/Uganda UNPS/Uganda UNPS Wave 8/Final DTA Files/created_data"
 
 *I. Create Panel Dataset with All 7 Uganda Waves
 *I.1 Uganda Wave 1
 *Crop Harvest
-use  "R:\Project\EPAR\Working Files\378 - LSMS Burkina Faso, Malawi, Uganda\uganda-wave1-2009-10\raw_data\2009_AGSEC5a.dta" , replace
-gen season=1
-append using "R:\Project\EPAR\Working Files\378 - LSMS Burkina Faso, Malawi, Uganda\uganda-wave1-2009-10\raw_data\2009_AGSEC5B.dta"
-replace season=2 if season==1
+use  "${Uganda_NPS_W1_raw_data}\2009_AGSEC5a.dta" , replace
+append using "${Uganda_NPS_W1_raw_data}\2009_AGSEC5B.dta"
 rename Hhid HHID
 rename A5aq4 crop_name
 rename A5aq5 crop_code
-gen condition_harv=A5aq6b
-replace condition_harv=A5bq6b if condition_harv==.
-gen unit_code = A5aq6c
-replace unit_code = A5bq6c if unit_code==.
-gen conv_fact_harv =A5aq6d
-replace conv_fact_harv=A5bq6d if conv_fact_harv==.
-*Crop Sold (Missing Conversion factor sold)
-gen condition_sold =A5aq7b 
-replace condition_sold=A5bq7a if condition_sold==.
-gen sold_unit_code=A5aq7c
-replace sold_unit_code=A5bq7c if sold_unit_code==.
-merge m:1 HHID using "R:\Project\EPAR\Working Files\378 - LSMS Burkina Faso, Malawi, Uganda\uganda-wave1-2009-10\temp\Uganda_NPS_LSMS_ISA_W1_hhids.dta", nogen keepusing (region district county subcounty parish ea weight)
-keep HHID crop_name crop_code condition_harv unit_code conv_fact_harv condition_sold sold_unit_code region weight /*district county subcounty parish ea*/
-keep if crop_name!=""
+gen condition =A5aq6b
+replace condition =A5bq6b if condition ==.
+gen unit = A5aq6c
+replace unit = A5bq6c if unit==.
+gen conv_fact =A5aq6d
+replace conv_fact=A5bq6d if conv_fact==.
+merge m:1 HHID using "${Uganda_NPS_W1_created_data}\Uganda_NPS_LSMS_ISA_W1_weights.dta", nogen keepusing (region weight_pop_rururb) keep(1 3)
+ren weight_pop_rururb weight
+keep HHID crop_code region weight unit condition conv_fact 
+drop if unit>83 //Other/specify (not specified.)
 gen wave="wave 1" 
+tempfile wave1
+save `wave1'
+
 *I.2. Uganda Wave 2
 *Crop Harvest
-preserve 
-use "R:/Project/EPAR/Working Files/378 - LSMS Burkina Faso, Malawi, Uganda/uganda-wave2-2010-11/raw_data/AGSEC5A.dta", clear
-gen season=1
-append using "R:/Project/EPAR/Working Files/378 - LSMS Burkina Faso, Malawi, Uganda/uganda-wave2-2010-11/raw_data/AGSEC5B.dta"
-replace season=2 if season==.
+use "${Uganda_NPS_W2_raw_data}/AGSEC5A.dta", clear
+append using "${Uganda_NPS_W2_raw_data}/AGSEC5B.dta"
 rename cropID crop_code
 * Unit of Crop Harvested 
-clonevar condition_harv = a5aq6b
-replace condition_harv = a5bq6b if season==2
-clonevar unit_code=a5aq6c
-replace unit_code=a5bq6c if unit_code==.
-clonevar conv_fact_harv = a5aq6d 
-replace conv_fact_harv = a5bq6d if season==2
-replace conv_fact_harv = 1 if unit_code==1
-gen condition_sold=a5aq7b
-replace condition_sold=a5bq7b if condition_sold==.
-clonevar sold_unit_code =a5aq7c
-replace sold_unit_code=a5bq7c if sold_unit_code==.
+clonevar condition = a5aq6b
+replace condition = a5bq6b if condition==.
+clonevar unit=a5aq6c
+replace unit=a5bq6c if unit==.
+clonevar conv_fact = a5aq6d 
+replace conv_fact = a5bq6d if conv_fact==.
 tostring HHID, format(%18.0f) replace
-merge m:1 HHID using "R:/Project/EPAR/Working Files/378 - LSMS Burkina Faso, Malawi, Uganda/uganda-wave2-2010-11/temp/Uganda_NPS_W2_hhids.dta", nogen keepusing(region district county subcounty parish ea weight) keep(1 3)
-keep HHID /*crop_name*/ crop_code condition_harv unit_code conv_fact_harv condition_sold sold_unit_code region weight /*district county subcounty parish ea*/
+merge m:1 HHID using "${Uganda_NPS_W2_created_data}/Uganda_NPS_W2_weights.dta", nogen keepusing (region weight_pop_rururb) keep(1 3)
+ren weight_pop_rururb weight
+keep HHID crop_code region weight unit condition conv_fact 
+drop if unit>83 //Other/specify (not specified.)
+replace condition=3 if condition==.
 gen wave="wave 2" 
 keep if crop_code!=.
 tempfile wave2 
 save `wave2'
-restore
 
-/* OLD preserve 
-use "R:/Project/EPAR/Working Files/378 - LSMS Burkina Faso, Malawi, Uganda/uganda-wave2-2010-11/temp/Uganda_NPS_W2_crop_value.dta", replace 
-clonevar condition_harv=a5aq6b
-replace condition_harv=a5bq6b if condition==.
-clonevar conv_fact_harv= a5aq6d
-replace conv_fact_harv=a5bq6d if conv_fact_harv==.
-gen condition_sold=a5aq7b
-replace condition_sold=a5bq7b if condition_sold==.
-keep HHID /*crop_name*/ crop_code condition_harv unit_code conv_fact_harv condition_sold sold_unit_code region weight /*district county subcounty parish ea*/
-gen wave="wave 2" 
-keep if crop_code!=.
-tempfile wave2 
-save `wave2'
-restore */
 
 *I.3. Uganda Wave 3 
-preserve
-use "R:\Project\EPAR\Working Files\378 - LSMS Burkina Faso, Malawi, Uganda\uganda-wave3-2011-12\raw_data\AGSEC5A.dta", clear
-gen season=1
-append using "R:\Project\EPAR\Working Files\378 - LSMS Burkina Faso, Malawi, Uganda\uganda-wave3-2011-12\raw_data\AGSEC5B.dta"
-replace season=2 if season==.
+
+use "${Uganda_NPS_W3_raw_data}\AGSEC5A.dta", clear
+append using "${Uganda_NPS_W3_raw_data}\AGSEC5B.dta"
 rename cropID crop_code
 * Unit of Crop Harvested 
-clonevar condition_harv = a5aq6b
-replace condition_harv = a5bq6b if season==2
-clonevar unit_code=a5aq6c
-replace unit_code=a5bq6c if unit_code==.
-clonevar conv_fact_harv = a5aq6d 
-replace conv_fact_harv = a5bq6d if season==2
-replace conv_fact_harv = 1 if unit_code==1
+clonevar conditionharv = a5aq6b
+replace conditionharv = a5bq6b if conditionharv==.
+clonevar unitharv=a5aq6c
+replace unitharv=a5bq6c if unit==.
+clonevar conv_factharv = a5aq6d 
+replace conv_factharv = a5bq6d if conv_factharv==.
 *Unit of Crop Sold
-clonevar sold_unit_code =a5aq7c
-replace sold_unit_code=a5bq7c if sold_unit_code==.
-clonevar conv_fact_sold = A5AQ7D 
-replace conv_fact_sold = A5BQ7D if season==2
-replace conv_fact_sold = 1 if sold_unit_code==1
+clonevar unitsold =a5aq7c
+replace unitsold=a5bq7c if unitsold==.
+clonevar conditionsold=A5aq7b 
+clonevar conv_factsold = A5AQ7D 
+replace conv_factsold = A5BQ7D if conv_factsold==.
+gen conditionsold==3 //For missing condition, question is present in instrument but not recorded in data. 
 tostring HHID, format(%18.0f) replace
-merge m:1 HHID using "R:\Project\EPAR\Working Files\378 - LSMS Burkina Faso, Malawi, Uganda\uganda-wave3-2011-12\temp\Uganda_NPS_LSMS_ISA_W3_hhids.dta", nogen keepusing(region district county subcounty parish ea weight) keep(1 3)
-keep HHID /*crop_name*/ crop_code condition_harv unit_code conv_fact_harv /*condition_sold*/ sold_unit_code conv_fact_sold region weight /*district county subcounty parish ea*/
+merge m:1 HHID using "${Uganda_NPS_W3_created_data}\Uganda_NPS_LSMS_ISA_W3_weights.dta", nogen keepusing (region weight_pop_rururb) keep(1 3)
+ren weight_pop_rururb weight
+keep HHID crop_code region condition* unit* conv* weight
+reshape long condition unit conv_fact, i(HHID crop_code region weight) j(harvsold) string 
+drop if unit > 83 //Internally inconsistent unit codes. 
+replace condition=3 if condition==.
+drop if conv_fact==18888 | conv_fact==.
 gen wave="wave 3" 
 tempfile wave3
 save `wave3'
-restore
 
-/*I.3. Uganda Wave 3 (r])
-preserve
-use "R:/Project/EPAR/Working Files/378 - LSMS Burkina Faso, Malawi, Uganda/uganda-wave3-2011-12/temp/Uganda_NPS_LSMS_ISA_W3_crop_value2.dta", replace 
-clonevar condition_harv=a5aq6b
-replace condition_harv=a5bq6b if condition==.
-clonevar conv_fact_harv= a5aq6d
-replace conv_fact_harv=a5bq6d if conv_fact_harv==.
-gen conv_fact_sold=A5AQ7D
-replace conv_fact_sold=A5BQ7D if conv_fact_sold==.
-keep HHID /*crop_name*/ crop_code condition_harv unit_code conv_fact_harv /*condition_sold*/ sold_unit_code conv_fact_sold region weight /*district county subcounty parish ea*/
-gen wave="wave 3" 
-tempfile wave3
-save `wave3'
-restore */
 
 *I.4. Uganda Wave 4
-preserve
-use "\\netid.washington.edu\wfs\EvansEPAR\Project\EPAR\Working Files\378 - LSMS Burkina Faso, Malawi, Uganda\uganda-wave4-2013-14\raw_data\Agric\AGSEC5A.dta", clear
-gen season = 1
-append using "\\netid.washington.edu\wfs\EvansEPAR\Project\EPAR\Working Files\378 - LSMS Burkina Faso, Malawi, Uganda\uganda-wave4-2013-14\raw_data\Agric\AGSEC5B.dta"
-replace season = 2 if season == .
+use "${Uganda_NPS_W4_raw_data}\AGSEC5A.dta", clear
+append using "${Uganda_NPS_W4_raw_data}\AGSEC5B.dta"
 *Crop Harvest
-rename a5aq6b condition_harv
-replace condition_harv=a5bq6b if condition_harv==.
-rename  a5aq6c unit_code
-replace unit_code =a5bq6c if unit_code==.
-rename a5aq6d conv_fact_harv
-replace conv_fact_harv=a5bq6d if conv_fact_harv==.
+rename a5aq6b conditionharv
+replace conditionharv=a5bq6b if conditionharv==.
+rename  a5aq6c unitharv
+replace unitharv =a5bq6c if unitharv==.
+rename a5aq6d conv_factharv
+replace conv_factharv=a5bq6d if conv_factharv==.
 *Crop Sold
-rename a5aq7b condition_sold
-replace condition_sold = a5bq7b if condition_sold==.
-rename a5aq7c sold_unit_code
-replace sold_unit_code=a5bq7c if sold_unit_code==.
-rename a5aq7d conv_fact_sold
-replace conv_fact_sold = a5bq7d if conv_fact_sold==.
-ren HHID hhid
+rename a5aq7b conditionsold
+replace conditionsold = a5bq7b if conditionsold==.
+rename a5aq7c unitsold
+replace unitsold=a5bq7c if unitsold==.
+rename a5aq7d conv_factsold
+replace conv_factsold = a5bq7d if conv_factsold==.
+drop HHID
 ren hh HHID 
 rename cropID crop_code
-keep if condition_harv!=.
-merge m:1 HHID using "\\netid.washington.edu\wfs\EvansEPAR\Project\EPAR\Working Files\378 - LSMS Burkina Faso, Malawi, Uganda\uganda-wave4-2013-14\temp\Uganda_NPS_W4_hhids.dta", nogen keepusing(region weight) keep(1 3)
-keep HHID /*crop_name*/ crop_code condition_harv unit_code conv_fact_harv condition_sold sold_unit_code conv_fact_sold region weight /*district county subcounty parish ea*/
+merge m:1 HHID using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_weights.dta", nogen keepusing(region weight_pop_rururb) keep(1 3)
+ren weight_pop_rururb weight
+keep HHID crop_code region condition* unit* conv* weight
+reshape long condition unit conv_fact, i(HHID crop_code region weight) j(harvsold) string 
 gen wave="wave 4" 
 tempfile wave4
 save `wave4'
-restore
+
 
 *I.5. Uganda Wave 5
-preserve
-use "\\netid.washington.edu\wfs\EvansEPAR\Project\EPAR\Working Files\378 - LSMS Burkina Faso, Malawi, Uganda\uganda-wave5-2015-16\raw_data\AGSEC5A.dta", clear
-gen season = 1
-append using "\\netid.washington.edu\wfs\EvansEPAR\Project\EPAR\Working Files\378 - LSMS Burkina Faso, Malawi, Uganda\uganda-wave5-2015-16\raw_data\AGSEC5B.dta"
-*Crop Harvest
-rename a5aq6b condition_harv
-replace condition_harv =a5bq6b if condition_harv==.
-rename a5aq6c unit_code
-replace unit_code=a5bq6c if unit_code==.
-rename a5aq6d conv_fact_harv
-replace conv_fact_harv = a5bq6d if conv_fact_harv==.
+use "${Uganda_NPS_W5_raw_data}\AGSEC5A.dta", clear
+append using "${Uganda_NPS_W5_raw_data}\AGSEC5B.dta"
+
+rename a5aq6b conditionharv
+replace conditionharv =a5bq6b if conditionharv==.
+rename a5aq6c unitharv
+replace unitharv=a5bq6c if unitharv==.
+rename a5aq6d conv_factharv
+replace conv_factharv = a5bq6d if conv_factharv==.
 *Crop Sold
-rename a5aq7b condition_sold
-replace condition_sold = a5bq7b if condition_sold==.
-rename a5aq7c sold_unit_code
-replace sold_unit_code = a5bq7c if sold_unit_code==.
-rename A5AQ7D conv_fact_sold 
-replace conv_fact_sold = a5bq7d if conv_fact_sold==.
+rename a5aq7b conditionsold
+replace conditionsold = a5bq7b if conditionsold==.
+rename a5aq7c unitsold
+replace unitsold = a5bq7c if unitsold==.
+rename A5AQ7D conv_factsold 
+replace conv_factsold = a5bq7d if conv_factsold==.
 rename HHID hhid
-merge m:1 hhid using "\\netid.washington.edu\wfs\EvansEPAR\Project\EPAR\Working Files\378 - LSMS Burkina Faso, Malawi, Uganda\uganda-wave5-2015-16\temp\Uganda_NPS_W5_hhids.dta", nogen keepusing(/*district scounty_code parish_code*/ region pweight) keep(1 3)
+merge m:1 hhid using "${Uganda_NPS_W4_created_data}\Uganda_NPS_W5_weights.dta", nogen keepusing(/*district scounty_code parish_code*/ region pweight) keep(1 3)
 rename hhid HHID
 rename cropID crop_code
 rename pweight weight
@@ -182,18 +158,15 @@ keep HHID /*crop_name*/ crop_code condition_harv unit_code conv_fact_harv condit
 gen wave="wave 5" 
 tempfile wave5
 save `wave5'
-restore
 
 *I.6 Uganda Wave 7 (UG Wave 6 missing)
-preserve
-use "\\netid.washington.edu\wfs\EvansEPAR\Project\EPAR\Working Files\378 - LSMS Burkina Faso, Malawi, Uganda/uganda-wave7-2018-19\raw_data\Agric\AGSEC5A.dta", clear
-gen season = 1
-append using "\\netid.washington.edu\wfs\EvansEPAR\Project\EPAR\Working Files\378 - LSMS Burkina Faso, Malawi, Uganda/uganda-wave7-2018-19/raw_data/Agric/AGSEC5B.dta"
-replace season = 2 if season == .
-rename a5aq6b condition_harv 
-replace condition_harv = a5bq6c if condition_harv==.
+use "${Uganda_NPS_W7_raw_data}\AGSEC5A.dta", clear
+append using "${Uganda_NPS_W7_raw_data}/AGSEC5B.dta"
+
+rename a5aq6b conditionharv 
+replace conditionharv = a5bq6c if conditionharv==.
 rename a5aq6c unit_code
-replace unit_code =a5bq6b  if unit_code==. // Not sure here since the numbers don't match correctly Ask Peter
+replace unit_code =a5bq6b  if unit_code==. 
 rename a5aq6d conv_fact_harv
 replace conv_fact_harv = a5bq6d if conv_fact_harv==.
 *Crop Sold
@@ -209,14 +182,13 @@ keep HHID /*crop_name*/ crop_code condition_harv unit_code conv_fact_harv condit
 gen wave="wave 6" 
 tempfile wave6
 save `wave6'
-restore
+
 
 
 *I.7 Uganda Wave 8 
-preserve
-use "R:\Project\EPAR\Working Files\378 - LSMS Burkina Faso, Malawi, Uganda\uganda-wave8-2019-20\raw_data\UGA_2019_UNPS_v01_M_STATA14\Agric\agsec5a.dta", clear
+use "${Uganda_NPS_W8_raw_data}\agsec5a.dta", clear
 gen season=1
-append using "R:\Project\EPAR\Working Files\378 - LSMS Burkina Faso, Malawi, Uganda\uganda-wave8-2019-20\raw_data\UGA_2019_UNPS_v01_M_STATA14\Agric\agsec5b.dta"
+append using "${Uganda_NPS_W8_raw_data}\agsec5b.dta"
 replace season = 2 if season ==.
 recast str32 hhid
 rename cropID crop_code 
@@ -248,7 +220,7 @@ replace sold_unit_code2=s5bq07c_2 if sold_unit_code2==.
 *2c. Conversion Factor Sold (No Conversion factor sold)
 keep hhid parcelID pltid season /*crop_name*/ crop_code condition_harv* unit_code* conv_fact_harv* condition_sold* sold_unit_code* /*conv_fact_sold region weight district county subcounty parish ea*/
 reshape long /*qty_harvest*/  condition_harv unit_code conv_fact_harv condition_sold sold_unit_code , i(hhid parcelID pltid /*crop_name*/ crop_code season) j(cond_no) string 
-merge m:1 hhid using "R:\Project\EPAR\Working Files\378 - LSMS Burkina Faso, Malawi, Uganda\uganda-wave8-2019-20\temp\Uganda_NPS_w8_hhids.dta", nogen /*keepusing(weight)*/ keep(1 3)
+merge m:1 hhid using "${Uganda_NPS_W8_created_data}\Uganda_NPS_w8_weights.dta", nogen /*keepusing(weight)*/ keep(1 3)
 gen wave ="wave 8"
 rename hhid HHID
 keep wave HHID /*crop_name*/ crop_code condition_harv* unit_code* conv_fact_harv* condition_sold* sold_unit_code* /*conv_fact_sold*/ region weight /*district county subcounty parish ea*/

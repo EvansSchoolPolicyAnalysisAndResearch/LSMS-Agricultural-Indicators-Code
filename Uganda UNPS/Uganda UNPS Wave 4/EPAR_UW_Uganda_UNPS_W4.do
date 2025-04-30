@@ -1,14 +1,12 @@
 /*
 --------------------------------------------------------------------------------------
-*Title/Purpose: This do.file was developed by the Evans School Policy Analysis & Research Group (EPAR) for the construction of a set of agricultural development indicators using the Uganda National Panel Survey (UNPS) LSMS-ISA Wave 4 (2013-14)
+*Title/Purpose: Agricultural Development Indicators for the LSMS-ISA, Uganda National Panel Survey (UNPS) LSMS-ISA Wave 4 (2013-14)
 
-*Author(s): Didier Alia, Andrew Tomes, Peter Agamile & C. Leigh Anderson
-
-*Acknowledgments: We acknowledge the helpful contributions of Pierre Biscaye, David Coomes, Nina Forbes, Joshua Grandbouche, Basil Hariri, Conor Hennessy, Marina Kaminsky, Claire Kasinadhuni, Sammi Kiel, Jack Knauer, Josh Merfeld, Adam Porton, Ahana Raina, Nezih Evren, Travis Reynolds, Carly Schmidt, Isabella Sun, Chelsea Sweeney, Emma Weaver, Ayala Wineman, and Sebastian Wood, members of the World Bank's LSMS-ISA team, the FAO's RuLIS team, IFPRI, IRRI, and the Bill & Melinda Gates Foundation Agricultural Development Data and Policy team in discussing indicator construction decisions. 
+*Author(s): Didier Alia & C. Leigh Anderson; uw.eparx@uw.edu
 															  
-*Date : 21st May 2024
+*Date : March 31st, 2025
 
-*Dataset Version: UGA_2013_UNPS_v02_M
+*Dataset Version: UGA_2013_UNPS_v03_M
 --------------------------------------------------------------------------------------*/
 
 
@@ -49,7 +47,7 @@ Below are the list of the main files created by running this Master do.file
 *-------------------------------------------------------------------------------------
 *HOUSEHOLD IDS						Uganda_NPS_W4_hhids.dta
 *INDIVIDUAL IDS						Uganda_NPS_W4_person_ids.dta
-*HOUSEHOLD SIZE						Uganda_NPS_W4_hhsize.dta
+*HOUSEHOLD SIZE						Uganda_NPS_W4_weights.dta
 *PARCEL AREAS						Uganda_NPS_W4_parcel_areas.dta
 *PLOT-CROP DECISION MAKERS			Uganda_NPS_W4_plot_decision_makers.dta
 
@@ -162,11 +160,11 @@ ssc install findname  // need this user-written ado file for some commands to wo
 * These paths correspond to the folders where the raw data files are located 
 * and where the created data and final data will be stored.
 
-global directory  "../.."
+global directory "../.."
 global Uganda_NPS_W4_raw_data 	"$directory/Uganda UNPS/Uganda UNPS Wave 4/Raw DTA Files"
 global Uganda_NPS_W4_created_data "$directory/Uganda UNPS/Uganda UNPS Wave 4/Final DTA Files/created_data"
-global Uganda_NPS_W4_final_data  "$directory/Uganda UNPS/Uganda UNPS Wave 4/Final DTA Files/final_data"  
-global Uganda_NPS_conv_factors "$directory/Uganda UNPS/Nonstandard Unit Conversion Factors"   
+global Uganda_NPS_W4_final_data  "$directory/Uganda UNPS/Uganda UNPS Wave 4/Final DTA Files/final_data"     
+global Uganda_NPS_conv_factors "$directory/Uganda UNPS/Nonstandard Unit Conversion Factors"
 global summary_stats "$directory/_Summary_statistics/EPAR_UW_335_SUMMARY_STATISTICS.do" //Path to the summary statistics file. This can take a long time to run, so comment out if you don't need it. The do file will end with an error.
 
 
@@ -235,6 +233,7 @@ save "${Uganda_NPS_W4_created_data}\Uganda_NPS_W4_cropname_table.dta", replace
 *                                HOUSEHOLD IDS                                 *
 ********************************************************************************
 use "${Uganda_NPS_W4_raw_data}\GSEC1.dta", clear
+ren HHID hhid
 *gen hhid=substr(hh, 1, 6) + substr(hh, 11, 2)
 ren h1aq1a district 
 ren h1aq3a county
@@ -243,24 +242,15 @@ ren h1aq4a parish
 ren h1aq4b parish_name 
 ren wgt_X weight //wgt_X  is cross-sectional weight for UNPS 2013-2014, applies to all respondents, alternative variable wgt only applies to those interviewed in previous waves
 gen rural=urban==0
-keep HHID region sregion district county county_name parish parish_name ea weight rural
+keep hhid region sregion district county county_name parish parish_name ea weight rural
 lab var rural "1=Household lives in a rural area"
 save "${Uganda_NPS_W4_created_data}\Uganda_NPS_W4_hhids.dta", replace
 
 ********************************************************************************
-*WEIGHTS*
-********************************************************************************
-use "${Uganda_NPS_W4_raw_data}\GSEC1.dta", clear
-ren wgt_X weight
-merge m:1 HHID using "${Uganda_NPS_W4_created_data}\Uganda_NPS_W4_hhids.dta"
-keep HHID weight rural
-save "${Uganda_NPS_W4_created_data}\Uganda_NPS_W4_weights.dta", replace
-
-********************************************************************************
-*								INDIVIDUAL IDS								   *
+*	Individual ID, Household Head Gender, and Weights						   * //AT eliminated some redundancies with previous sections.
 ********************************************************************************
 use "${Uganda_NPS_W4_raw_data}\GSEC2.dta", clear
-
+ren HHID hhid
 //PID is a string variable that contains some of the information we need to identify household members later in the file, need to destring and ignore the "P0" and the "-"
 destring PID, gen(indiv) ignore ("P" "-") 
 gen female=h2q3==2 
@@ -271,24 +261,15 @@ gen hh_head=h2q4==1 // SAK 2019-07-08: There is one Household with two heads. As
 					// a group we need to decide how to handle this.
 lab var hh_head "1= individual is household head"
 ren h2q1 individ //2013/14 roster number // need the roster number for formal land rights 
-keep indiv HHID female age hh_head individ PID
+keep indiv hhid female age hh_head individ PID
 save "${Uganda_NPS_W4_created_data}\Uganda_NPS_W4_person_ids.dta", replace
-
-********************************************************************************
-*								HOUSEHOLD SIZE								   *
-********************************************************************************
-use "${Uganda_NPS_W4_raw_data}\GSEC2.dta", clear
 gen hh_members = 1
-ren h2q4 relhead 
-ren h2q3 gender
-gen fhh = (relhead==1 & gender==2)
-collapse (sum) hh_members (max) fhh, by (HHID)	
+gen fhh = (hh_head & female==1)
+collapse (sum) hh_members (max) fhh, by (hhid)	
 lab var hh_members "Number of household members"
 lab var fhh "1= Female-headed household"
-save "${Uganda_NPS_W4_created_data}\Uganda_NPS_W4_hhsize.dta", replace
-
 *SAW: 10.23.23 Re-scaling survey weights to match population estimates
-merge 1:1 HHID using "${Uganda_NPS_W4_created_data}\Uganda_NPS_W4_hhids.dta", nogen keep(2 3)
+merge 1:1 hhid using "${Uganda_NPS_W4_created_data}\Uganda_NPS_W4_hhids.dta", nogen keep(2 3)
 *Adjust to match total population
 total hh_members [pweight=weight]
 matrix temp =e(b)
@@ -308,8 +289,6 @@ egen weight_pop_rururb=rowtotal(weight_pop_rur weight_pop_urb)
 total hh_members [pweight=weight_pop_rururb]  
 lab var weight_pop_rururb "Survey weight - adjusted to match rural and urban population"
 drop weight_pop_rur weight_pop_urb
-save "${Uganda_NPS_W4_created_data}\Uganda_NPS_W4_hhsize.dta", replace
-merge 1:1 HHID using "${Uganda_NPS_W4_created_data}\Uganda_NPS_W4_weights.dta", nogen
 save "${Uganda_NPS_W4_created_data}\Uganda_NPS_W4_weights.dta", replace
 
 ********************************************************************************
@@ -329,8 +308,8 @@ gen season=1
 append using "${Uganda_NPS_W4_raw_data}/AGSEC4B.dta", generate(last)		
 replace season=2 if season==.
 label var season "Season = 1 if 1st cropping season of 2011, 2 if 2nd cropping season of 2011"
-rename HHID hhid2
-rename hh HHID
+drop HHID
+ren hh hhid
 *ren parcelID parcel_id
 *ren plotID plot_id
 drop if parcelID==.| plotID==.
@@ -346,12 +325,12 @@ rename plot_area ha_planted
 *Now, generate variables to fix issues with the percentage of a plot that crops are planted on not adding up to 100 (both above and below). This is complicated so each line below explains the procedure
 gen percent_planted = a4aq9/100
 replace percent_planted = a4bq9/100 if percent_planted==.
-bys HHID parcelID plotID season : egen total_percent_planted = sum(percent_planted) //generate variable for total percent of a plot that is planted (all crops)
-duplicates tag HHID parcelID plotID season, g(dupes) //generate a duplicates ratio to check for all crops on a specific plot. the number in dupes indicates all of the crops on a plot minus one (the "original")
+bys hhid parcelID plotID season : egen total_percent_planted = sum(percent_planted) //generate variable for total percent of a plot that is planted (all crops)
+duplicates tag hhid parcelID plotID season, g(dupes) //generate a duplicates ratio to check for all crops on a specific plot. the number in dupes indicates all of the crops on a plot minus one (the "original")
 gen missing_ratios = dupes > 0 & percent_planted == . //now use that duplicate variable to find crops that don't have any indication of how much a plot they take up, even though there are multiple crops on that plot (otherwise, duplicates would equal 0)
-bys HHID parcelID plotID season : egen total_missing = sum(missing_ratios) //generate a count, per plot, of how many crops do not have a percentage planted value.
+bys hhid parcelID plotID season : egen total_missing = sum(missing_ratios) //generate a count, per plot, of how many crops do not have a percentage planted value.
 gen remaining_land = 1 - total_percent_planted if total_percent_planted < 1 //calculate the amount of remaining land on a plot (that can be divided up amongst crops with no percentage planted) if it doesn't add up to 100%
-bys HHID parcelID plotID season : egen any_missing = max(missing_ratios)
+bys hhid parcelID plotID season : egen any_missing = max(missing_ratios)
 *Fix monocropped plots
 replace percent_planted = 1 if percent_planted == . & any_missing == 0 //monocropped plots are marked with a percentage of 100% - impacts 5,244 crops
 *Fix plots with or without missing percentages that add up to 100% or more
@@ -361,14 +340,15 @@ replace percent_planted = percent_planted/total_percent_planted if total_percent
 replace percent_planted = remaining_land/total_missing if missing_ratios == 1 & percent_planted == . & total_percent_planted < 1 //if any plots are missing a percentage but are below 100%, the remaining land is subdivided amonst the number of crops missing a percentage - impacts 205 crops
 
 *Bring everything together
-collapse (max) ha_planted (sum) percent_planted, by(HHID parcelID plotID season)
+collapse (max) ha_planted (sum) percent_planted, by(hhid parcelID plotID season)
 gen plot_area = ha_planted / percent_planted
-bys HHID parcelID season : egen total_plot_area = sum(plot_area)
+bys hhid parcelID season : egen total_plot_area = sum(plot_area)
 generate plot_area_pct = plot_area/total_plot_area
-keep HHID parcelID plotID season plot_area total_plot_area plot_area_pct ha_planted
-rename HHID hh
+keep hhid parcelID plotID season plot_area total_plot_area plot_area_pct ha_planted
+rename hhid hh
 merge m:1 hh parcelID using "${Uganda_NPS_W4_raw_data}/AGSEC2A.dta", nogen
 merge m:1 hh parcelID using "${Uganda_NPS_W4_raw_data}/AGSEC2B.dta"
+ren hh hhid
 *generating field_size
 generate parcel_acre = a2aq4 //JHG 10_27_21: Used GPS estimation here to get parcel size in acres if we have it, but many parcels do not have GPS estimation
 replace parcel_acre = a2bq4 if parcel_acre == . 
@@ -380,78 +360,53 @@ gen parcel_ha = parcel_acre * 0.404686
 *cleaning up and saving the data
 rename plotID plot_id
 rename parcelID parcel_id
-rename HHID hhid2
-rename hh HHID
-keep HHID parcel_id plot_id season field_size plot_area total_plot_area parcel_acre ha_planted parcel_ha
+keep hhid parcel_id plot_id season field_size plot_area total_plot_area parcel_acre ha_planted parcel_ha
 drop if field_size == .
 label var field_size "Area of plot (ha)"
-label var HHID "Household identifier"
+label var hhid "Household identifier"
 save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_plot_areas.dta", replace
 
 ********************************************************************************
 *PLOT DECISION MAKERS
 ********************************************************************************
-use "${Uganda_NPS_W4_raw_data}\GSEC2.dta", clear
-//PID is a string variable that contains some of the information we need to identify household members later in the file, need to destring and ignore the "P0" and the "-"
-destring PID, gen(personid) ignore ("P" "-") 
-gen female=h2q3==2 
-lab var female "1= indivdual is female"
-gen age=h2q8
-lab var age "indivdual age"
-gen head=h2q4==1 // SAK 2019-07-08: There is one Household with two heads. As
-					// a group we need to decide how to handle this.
-lab var head "1= individual is household head"
-ren h2q1 indiv //2013/14 roster number // need the roster number for formal land rights 
-destring HHID, gen(hhid) ignore ("H" "-") 
-
-keep personid female age HHID hhid head indiv
-ren personid individ  
-save "${Uganda_NPS_W4_created_data}\Uganda_NPS_W4_gender_merge.dta", replace
-
 use "${Uganda_NPS_W4_raw_data}/AGSEC3A.dta", clear 
 gen season=1
 append using "${Uganda_NPS_W4_raw_data}/AGSEC3B.dta" 
 replace season = 2 if season == .
-ren HHID hhid
-ren hh HHID
+drop HHID
+ren hh hhid
 ren parcelID parcel_id
 ren plotID plot_id
 
-
-
 *First decision-maker variables 
-gen indiv1 = a3aq3_3
-replace indiv1=a3bq3_3 if indiv1 ==. & a3bq3_3!=.
-
-*Second decision-maker variables // ,
-gen indiv2 = a3aq3_4b
-replace indiv2 = a3bq3_4b if indiv2 == . &  a3bq3_4b != .
-
-*Third decision-maker variables // ,    
-gen indiv3 = a3aq3_4a
-replace indiv3 = a3bq3_4a if indiv3 == . &  a3aq3_4a != .
-
-drop if parcel_id==.
- reshape long indiv, i (HHID parcel_id plot_id season) j(indivno) 
- drop indivno
- ren indiv individ 
-merge m:1 hhid individ using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_gender_merge.dta", keep (1 3) 
-
-collapse (mean) female, by ( HHID plot_id parcel_id season)
-gen dm_gender = 1+female
-replace dm_gender = 3 if !inlist(dm_gender, 1,2,.)
-
+ren a3aq3_3 indiv1
+replace indiv1=a3bq3_3 if indiv1==.
+replace indiv1=a3aq3_4a if indiv1==.
+replace indiv1=a3bq3_4a if indiv1==.
+ren a3aq3_4b indiv2
+replace indiv2=a3bq3_4b if indiv2==.
+keep hhid parcel_id plot_id season indiv*
+reshape long indiv, i(hhid parcel_id plot_id season) j(id_no)
+drop if indiv==. | plot_id==.
+merge m:1 hhid indiv using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_person_ids.dta", nogen keep(1 3) 		//993 unmatched. 
+save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_dm_ids.dta", replace
+gen dm1_gender=female+1 if id_no==1
+collapse (mean) female (firstnm) dm1_gender, by(hhid parcel_id plot_id season)
+merge m:1 hhid using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_weights.dta", nogen //These files should get organized.
+gen dm_gender=3 if female!=.
+replace dm_gender=1 if female==0
+replace dm_gender=2 if female==1
+*Replacing observations without gender of plot manager with gender of HOH
+replace dm_gender = 1 if fhh == 0 & dm_gender == .
+replace dm_gender = 2 if fhh == 1 & dm_gender == . 
+replace dm1_gender = dm_gender if dm1_gender==. & dm_gender <3
+keep hhid parcel_id plot_id season dm* fhh 
 label def dm_gender 1 "Male only" 2 "Female only" 3 "Mixed gender"
 label val dm_gender dm_gender
 label var dm_gender "Gender of plot manager/decision maker"
-
-*Replacing observations without gender of plot manager with gender of HOH
-merge m:1 HHID using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_hhsize.dta", nogen
-replace dm_gender = 1 if fhh == 0 & dm_gender == .
-replace dm_gender = 2 if fhh == 1 & dm_gender == . 
-drop if plot_id == . 
-keep HHID parcel_id plot_id season dm_gender fhh 
-//duplicates drop HHID season parcel_id, force //ALT - Why is this drop here?
+la val dm1_gender dm_gender 
+la var dm1_gender "Gender of main plot manager"
+//duplicates drop hhid season parcel_id, force //ALT - Why is this drop here?
 ***lab var cultivated "1=Plot has been cultivated"
 save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_plot_decision_makers.dta", replace
 
@@ -459,8 +414,8 @@ save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_plot_decision_makers.dta", rep
 *FORMALIZED LAND RIGHTS*
 ********************************************************************************
 use "${Uganda_NPS_W4_raw_data}/AGSEC2A.dta", clear
-ren HHID hhid
-    ren hh HHID
+drop HHID
+    ren hh hhid
     ren parcelID parcel_id
     drop if parcel_id==.
 gen formal_land_rights=(a2aq23==1 | a2aq23==2 | a2aq23==3) //hh has certificate/ title, certificate of customary ownership, or certificate of occupancy
@@ -469,8 +424,8 @@ gen formal_land_rights=(a2aq23==1 | a2aq23==2 | a2aq23==3) //hh has certificate/
 *Starting with first owner
 preserve
 	ren a2aq26a indiv
-	merge m:1 HHID indiv using "${Uganda_NPS_W4_created_data}\Uganda_NPS_W4_person_ids.dta" //, nogen keep(3) //keep only matched
-	keep HHID indiv female formal_land_rights
+	merge m:1 hhid indiv using "${Uganda_NPS_W4_created_data}\Uganda_NPS_W4_person_ids.dta" //, nogen keep(3) //keep only matched
+	keep hhid indiv female formal_land_rights
 	tempfile p1
 	save `p1', replace
 restore
@@ -479,16 +434,16 @@ restore
 preserve
 	ren a2aq26b indiv
 	recode indiv (99999999=.)
-	merge m:1 HHID indiv using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_person_ids.dta" //, nogen keep(3)	//keep only matched 
-	keep HHID indiv female formal_land_rights
+	merge m:1 hhid indiv using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_person_ids.dta" //, nogen keep(3)	//keep only matched 
+	keep hhid indiv female formal_land_rights
 	append using `p1'
 	gen formal_land_rights_f = formal_land_rights==1 if female==1
-	collapse (max) formal_land_rights_f, by(HHID indiv)		
+	collapse (max) formal_land_rights_f, by(hhid indiv)		
 	save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_land_rights_ind.dta", replace
 restore	
 
 preserve
-	collapse (max) formal_land_rights_hh=formal_land_rights, by(HHID)	// taking max at household level; equals one if they have official documentation for at least one plot
+	collapse (max) formal_land_rights_hh=formal_land_rights, by(hhid)	// taking max at household level; equals one if they have official documentation for at least one plot
 	save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_land_rights_hh.dta", replace
 restore
 
@@ -526,9 +481,9 @@ replace sold_value=a5bq8 if sold_value==.
 
 gen sold_qty=a5aq7a
 replace sold_qty=a5bq7a if sold_qty==.
-rename HHID Hhid
-rename hh HHID
-merge m:1 HHID using "${Uganda_NPS_W4_created_data}\Uganda_NPS_W4_hhids.dta", nogen keep(1 3)
+drop HHID
+ren hh hhid
+merge m:1 hhid using "${Uganda_NPS_W4_created_data}\Uganda_NPS_W4_hhids.dta", nogen keep(1 3)
 rename plotID plot_id
 rename parcelID parcel_id
 rename cropID crop_code
@@ -553,18 +508,16 @@ gen price_unit = sold_value/quant_sold_kg
 gen obs1 = price_unit!=.
 
 
-// Loop for price per kg for each crop at different geographic dissagregate using Standard price per kg variable (from standar conversion factor table)
-	foreach i in region district county /*subcounty*/ parish ea HHID {
+// Loop for price per kg for each crop at different geographic dissagregate using Standard price per kg variable (from standard conversion factor table)
+	foreach i in region district county county_name parish ea hhid {
 		preserve
-		bys `i' crop_code /*sold_unit_code*/ : egen obs_`i'_price = sum(obs1)
-		collapse (median) price_unit_`i' = price_unit [aw=weight], by /*(`i' sold_unit_code crop_code obs_`i'_price)*/ (crop_code /*sold_unit_code*/ `i' obs_`i'_price)
-		*rename sold_unit_code unit_code_harv //needs to be done for a merge near the end of the all_plots indicator
+		collapse (median) price_unit_`i' = price_unit (rawsum) obs_`i'=obs [aw=weight], by(`i' crop_code)
 		tempfile price_unit_`i'_median
 		save `price_unit_`i'_median'
 		restore
 	}
 	preserve
-	collapse (median) price_unit_country = price_unit (sum) obs_country_price = obs1 [aw=weight], by(crop_code /*sold_unit_code*/)
+	collapse (median) price_unit_country = price_unit (rawsum) obs_country_price = obs [aw=weight], by(crop_code)
 	tempfile price_unit_country_median
 	save `price_unit_country_median'
 	restore
@@ -634,10 +587,12 @@ rename parcelID parcel_id
 rename cropID crop_code_plant //crop codes for what was planted
 drop if crop_code_plant == .
 clonevar crop_code_master = crop_code_plant //we want to keep the original crop IDs intact while reducing the number of categories in the master version
-rename HHID Hhid
-rename hh HHID
+drop HHID
+ren hh hhid
 *Merge area variables (now calculated in plot areas section earlier)
-merge m:1 HHID parcel_id plot_id season using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_plot_areas.dta", nogen keep(1 3)	
+merge m:1 hhid parcel_id plot_id season using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_plot_areas.dta", nogen keep(1 3)	
+gen use_imprv_seed = (a4aq13==2) if a4aq13!=.
+replace use_imprv_seed= (a4bq13==2) if use_imprv_seed==. & a4bq13!=.
 
 *Creating time variables (month planted, harvested, and length of time grown)
 gen month_planted = a4aq9_1
@@ -655,15 +610,16 @@ clonevar crop_code =  crop_code_master
 gen perm_tree = 1 if inlist(crop_code_master, 460, 630, 700, 710, 720, 741, 742, 744, 740, 750, 760, 770, 780, 810, 811, 812, 820, 830, 870) //dodo, cassava, oranges, pawpaw, pineapple, bananas, mango, jackfruit, avocado, passion fruit, coffee, cocoa, tea, and vanilla, in that order SAW everythins works except for 740 banana that is still 741 742 and 744
 replace perm_tree = 0 if perm_tree == .
 lab var perm_tree "1 = Tree or permanent crop" // JHG 1_14_22: what about perennial, non-tree crops like cocoyam (which I think is also called taro)?
-duplicates drop HHID parcel_id plot_id crop_code season, force
+duplicates drop hhid parcel_id plot_id crop_code season, force
 tempfile plotplanted
 save `plotplanted'
 restore
-merge m:1 HHID parcel_id plot_id crop_code season using `plotplanted', nogen keep(1 3)
+merge m:1 hhid parcel_id plot_id crop_code season using `plotplanted', nogen keep(1 3)
 
 **********************************
 ** Plot Variables After Merge **
 **********************************
+/*
 gen months_grown1 = harv_date - plant_date if perm_tree==0
 gen months_grown = harv_date - plant_date if perm_tree==0
 
@@ -671,11 +627,13 @@ gen months_grown = harv_date - plant_date if perm_tree==0
 	preserve
 		gen obs2 = 1
 		replace obs2 = 0 if inrange(a5aq17,1,5) | inrange(a5bq17,1,5) //obs = 0 if crop was lost for some reason like theft, flooding, pests, etc. SAW 6.29.22 Should it be 1-5 not 1-4?
-		collapse (sum) crops_plot = obs2, by(HHID parcel_id plot_id season)
+		collapse (sum) crops_plot = obs2, by(hhid parcel_id plot_id season)
+		replace crops_plot=1 if crops_plot > 1 & crops_plot!=.
+		collapse (sum) crops_plot, by(hhid parcel_id plot_id season)
 		tempfile ncrops 
 		save `ncrops'
 	restore 
-	merge m:1 HHID parcel_id plot_id season using `ncrops', nogen
+	merge m:1 hhid parcel_id plot_id season using `ncrops', nogen
 	*drop if hh_agric == .
 	gen contradict_mono = 1 if a4aq9 == 100 | a4bq9 == 100 & crops_plot > 1 //6 plots have >1 crop but list monocropping
 	gen contradict_inter = 1 if crops_plot == 1
@@ -683,24 +641,30 @@ gen months_grown = harv_date - plant_date if perm_tree==0
 
 *Generate variables around lost and replanted crops
 	gen lost_crop = inrange(a5aq17,1,5) | inrange(a5bq17,1,5) // SAW I think it should be intange(var,1,5) why not include "other"
-	bys HHID parcel_id plot_id season : egen max_lost = max(lost_crop) //more observations for max_lost than lost_crop due to parcels where intercropping occurred because one of the crops grown simultaneously on the same plot was lost
+	bys hhid parcel_id plot_id season : egen max_lost = max(lost_crop) //more observations for max_lost than lost_crop due to parcels where intercropping occurred because one of the crops grown simultaneously on the same plot was lost
 	gen replanted = (max_lost == 1 & crops_plot > 0)
+	preserve 
+	keep if replanted==1 & lost_crop==1 
+	tempfile lostcrops
+	save `lostcrops'
+	restore
+	gen purestand=crops_plot==1
 	drop if replanted == 1 & lost_crop == 1 //Crop expenses should count toward the crop that was kept, probably. 89 plots did not replant; keeping and assuming yield is 0.
 
 	*Generating monocropped plot variables (Part 1)
-	bys HHID parcel_id plot_id season: egen crops_avg = mean(crop_code_master) //Checks for different versions of the same crop in the same plot and season
+	bys hhid parcel_id plot_id season: egen crops_avg = mean(crop_code_master) //Checks for different versions of the same crop in the same plot and season
 	gen purestand = 1 if crops_plot == 1 //This includes replanted crops
-	bys HHID parcel_id plot_id season : egen permax = max(perm_tree)
-	bys HHID parcel_id plot_id season a5aq6e a5aq6e_1 a5bq6e a5bq6e_1 : gen plant_date_unique = _n
+	bys hhid parcel_id plot_id season : egen permax = max(perm_tree)
+	bys hhid parcel_id plot_id season a5aq6e a5aq6e_1 a5bq6e a5bq6e_1 : gen plant_date_unique = _n
 	*replace plant_date_unique = . if a4aq9_1 == 99 | a4bq9_1 == 99 //JHG  1_12_22: added this code to remove permanent crops with unknown planting dates, so they are omitted from this analysis SAW No Unknow planting dates
-	bys HHID parcel_id plot_id season a5aq6e a5bq6e : gen harv_date_unique = _n // SAW harvest was all in the same year (2011)
-	bys HHID parcel_id plot_id season : egen plant_dates = max(plant_date_unique)
-	bys HHID parcel_id plot_id season : egen harv_dates = max(harv_date_unique)
+	bys hhid parcel_id plot_id season a5aq6e a5bq6e : gen harv_date_unique = _n // SAW harvest was all in the same year (2011)
+	bys hhid parcel_id plot_id season : egen plant_dates = max(plant_date_unique)
+	bys hhid parcel_id plot_id season : egen harv_dates = max(harv_date_unique)
 	replace purestand = 0 if (crops_plot > 1 & (plant_dates > 1 | harv_dates > 1)) | (crops_plot > 1 & permax == 1) //Multiple crops planted or harvested in the same month are not relayed; may omit some crops that were purestands that preceded or followed a mixed crop
 	
 	*Generating mixed stand plot variables (Part 2)
 	gen mixed = (a4aq8 == 2 | a4bq8 == 2)
-	bys HHID parcel_id plot_id season : egen mixed_max = max(mixed)
+	bys hhid parcel_id plot_id season : egen mixed_max = max(mixed)
 	/*replace purestand = 1 if crops_plot > 1 & plant_dates == 1 & harv_dates == 1 & permax == 0 & mixed_max == 0 //JHG 1_14_22: 8 replacements, all of which report missing crop_code values. Should all missing crop_code values be dropped? If so, this should be done at an early stage.
 	//I dropped the values after the latest merge above, and there were zero replacements for this line of code. No relay cropping?
 	gen relay = 1 if crops_plot > 1 & plant_dates == 1 & harv_dates == 1 & permax == 0 & mixed_max == 0 */
@@ -708,41 +672,40 @@ gen months_grown = harv_date - plant_date if perm_tree==0
 	replace purestand = 0 if purestand == . //assumes null values are just 0 SAW Should we assume null values are intercropped?  or maybe missing information??
 	lab var purestand "1 = monocropped, 0 = intercropped or relay cropped"
 	drop crops_plot crops_avg plant_dates harv_dates plant_date_unique harv_date_unique permax
+	*/
+	bys hhid parcel_id plot_id season : gen n_crops=_N
+	gen purestand=n_crops==1
 	gen percent_field = ha_planted/field_size
 *Generating total percent of purestand and monocropped on a field
-	bys HHID parcel_id plot_id season: egen total_percent = total(percent_field)
-
-	*Dealing with crops which have monocropping larger than plot size or monocropping that fills plot size and still has intercropping to add
+	bys hhid parcel_id plot_id season: egen total_percent = total(percent_field)
 	replace percent_field = percent_field/total_percent if total_percent > 1 & purestand == 0
 	replace percent_field = 1 if percent_field > 1 & purestand == 1
-		replace ha_planted = percent_field*field_size
-
-	//8568 changes made
+	replace ha_planted = percent_field*field_size
+	gen pct_harvest=1-(a5aq16/100)
+	replace pct_harvest=1-(a5bq16/100) if pct_harvest==.
+	gen ha_harvest=ha_planted*pct_harvest 
 	
 **********************************
 ** Crop Harvest Value **
 **********************************
 *SAW 6/27/23 Update Incorporating median price per kg to calculate Value of Harvest ($) - Using Standard Conversion Factors 
-foreach i in  region district county /*subcounty*/ parish ea HHID {	
+replace price_unit=. //Scrapping observed prices to fill in with geographic medians, using household median for the household level.
+foreach i in  region district county county_name parish ea hhid {	
 	merge m:1 `i' /*unit_code*/ crop_code using `price_unit_`i'_median', nogen keep(1 3)
+	recode obs_`i' (.=0)
+	replace price_unit= price_unit_`i' if obs_`i' > 9
 }
 	merge m:1 /*unit_code*/ crop_code using `price_unit_country_median', nogen keep(1 3)
-rename price_unit val_unit
-
-*Generate a definitive list of value variables
-//JHG 1_28_22: We're going to prefer observed prices first, starting at the highest level (country) and moving to the lowest level (ea, I think - need definitive ranking of these geographies)
-recode obs_* (.=0) //ALT 
-foreach i in country region district county /*subcounty*/ parish ea {
-	replace val_unit = price_unit_`i' if obs_`i'_price > 9
-	*replace val_kg = val_kg_`i' if obs_`i'_kg  > 9 //JHG 1_28_22: why 9?
-}
-	gen val_missing = val_unit == .
-	replace val_unit = price_unit_HHID if price_unit_HHID != .
-	gen value_harvest = val_unit*quant_harv_kg 
+	recode obs_country (.=0)
+	replace price_unit=price_unit_country if obs_country > 9
+	replace price_unit=price_unit_hhid if price_unit==.
+	replace price_unit_hhid = price_unit if price_unit_hhid == .
+gen value_harvest =price_unit*quant_harv_kg 
+gen value_harvest_hh=price_unit_hhid*quant_harv_kg
 
 preserve
 	ren unit_code_harv unit
-	collapse (mean) val_unit, by (HHID crop_code unit)
+	collapse (mean) val_unit=price_unit, by (hhid crop_code unit)
 	ren val_unit hh_price_mean
 	lab var hh_price_mean "Average price reported for this crop-unit in the household"
 	save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_crop_prices_for_wages.dta", replace
@@ -753,14 +716,29 @@ recode crop_code (811 812 = 810) (741 742 744 = 740) (224 = 223) //740 is banana
 label define cropID 740 "Bananas", modify //need to add new codes to the value label, cropID
 label values crop_code cropID //apply crop labels to crop_code_master
 
-*AgQuery+
-	collapse (sum) quant_harv_kg value_harvest ha_planted percent_field /*s_quant_harv_kg s_value_harvest*/ (max) months_grown plant_date harv_date harv_end, by(region district county /*subcounty*/ parish ea HHID parcel_id plot_id season crop_code purestand field_size /*month_planted month_harvest*/)
-	bys HHID parcel_id plot_id season : egen percent_area = sum(percent_field)
-	bys HHID parcel_id plot_id season : gen percent_inputs = percent_field / percent_area
+gen no_harvest = ha_harvest == .
+
+collapse (sum) quant_harv_kg value_harvest ha_planted ha_harvest percent_field ///
+         (max) use_imprv_seed no_harvest /*months_grown plant_date harv_date harv_end no_harvest*/ ///
+         , by(region district county parish ea hhid parcel_id plot_id season crop_code purestand field_size)
+
+recode ha_planted (0 = .)
+
+replace ha_harvest = . if (ha_harvest == 0 & no_harvest == 1) | ///
+                         (ha_harvest == 0 & quant_harv_kg > 0 & quant_harv_kg != .)
+
+replace quant_harv_kg = . if quant_harv_kg == 0 & no_harvest == 1
+replace value_harvest = . if value_harvest == 0 & no_harvest == 1
+
+drop no_harvest
+	bys hhid parcel_id plot_id season : egen percent_area = sum(percent_field)
+	bys hhid parcel_id plot_id season : gen percent_inputs = percent_field / percent_area
 	drop percent_area //Assumes that inputs are +/- distributed by the area planted. Probably not true for mixed tree/field crops, but reasonable for plots that are all field crops
 	//Labor should be weighted by growing season length, though. 
-	merge m:1 HHID parcel_id plot_id season using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_plot_decision_makers.dta", nogen keep(1 3) keepusing(dm_gender)
+	merge m:1 hhid parcel_id plot_id season using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_plot_decision_makers.dta", nogen keep(1 3) keepusing(dm*)
 	save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_all_plots.dta", replace
+	
+	
 ********************************************************************************
 ** 								ALL PLOTS END								  **
 ********************************************************************************
@@ -776,8 +754,8 @@ append using "${Uganda_NPS_W4_raw_data}/AGSEC5B.dta"
 rename parcelID parcel_id
 rename plotID plot_id
 ren cropID crop_code 
-rename HHID hhid2
-rename hh HHID
+drop HHID
+ren hh hhid
 drop if plot_id == . 
 ren a5aq8 value_sold
 replace value_sold = a5bq8 if value_sold == . 
@@ -786,7 +764,7 @@ ren a5aq7a qty_sold
 replace qty_sold = a5bq7a if qty_sold==. & a5bq7a!=. 
 gen sold_unit_code=a5aq7c
 replace sold_unit_code=a5bq7c if sold_unit_code==.
-merge m:1 HHID using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_hhids.dta", nogen keep(1 3)
+merge m:1 hhid using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_hhids.dta", nogen keep(1 3)
 ***We merge Crop Sold Conversion Factor at the crop-unit-regional level***
 merge m:1 crop_code sold_unit_code region using  "${Uganda_NPS_conv_factors}/UG_Conv_fact_sold_table.dta", keep(1 3) nogen 
 
@@ -798,25 +776,25 @@ merge m:1 crop_code sold_unit_code  using "${Uganda_NPS_conv_factors}/UG_Conv_fa
 replace s_conv_factor_sold = sn_conv_factor_sold if region==. //  We merge the national standard conversion factor for those HHID with missing regional info. 
 gen kgs_sold = qty_sold*s_conv_factor_sold
 recode crop_code (811 812 = 810) (741 742 744 = 740) (224 = 223) //740 is bananas, which is being reduced from different types to just bananas. Same for peas (220).
-collapse (sum) value_sold kgs_sold, by (HHID crop_code)
+collapse (sum) value_sold kgs_sold, by (hhid crop_code)
 lab var value_sold "Value of sales of this crop"
 save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_cropsales_value.dta", replace
 
 use "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_all_plots.dta", replace
 *ren crop_code_master crop_code
-collapse (sum) value_harvest quant_harv_kg , by (HHID crop_code) 
-merge 1:1 HHID crop_code using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_cropsales_value.dta"
+collapse (sum) value_harvest quant_harv_kg , by (hhid crop_code) 
+merge 1:1 hhid crop_code using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_cropsales_value.dta"
 recode value_harvest value_sold (.=0)
 replace value_harvest = value_sold if value_sold>value_harvest & value_sold!=. /* In a few cases, sales value reported exceeds the estimated value of crop harvest */
 ren value_sold value_crop_sales 
-collapse (sum) value_harvest value_crop_sales kgs_sold quant_harv_kg, by (HHID crop_code)
+collapse (sum) value_harvest value_crop_sales kgs_sold quant_harv_kg, by (hhid crop_code)
 ren value_harvest value_crop_production
 lab var value_crop_production "Gross value of crop production, summed over main and short season"
 lab var value_crop_sales "Value of crops sold so far, summed over main and short season"
 save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_hh_crop_values_production.dta", replace
 
 //Legacy code 
-collapse (sum) value_crop_production value_crop_sales, by (HHID)
+collapse (sum) value_crop_production value_crop_sales, by (hhid)
 lab var value_crop_production "Gross value of crop production for this household"
 lab var value_crop_sales "Value of crops sold so far"
 gen proportion_cropvalue_sold = value_crop_sales / value_crop_production
@@ -829,17 +807,17 @@ append using "${Uganda_NPS_W4_raw_data}/AGSEC5B.dta"
 rename parcelID parcel_id
 rename plotID plot_id
 ren cropID crop_code 
-rename HHID hhid2
-rename hh HHID
+drop HHID
+ren hh hhid
 recode crop_code (811 812 = 810) (741 742 744 = 740) (224 = 223) //740 is bananas, which is being reduced from different types to just bananas. Same for peas (220).
 drop if crop_code==.
 rename a5aq16 percent_lost
 replace percent_lost = a5bq16 if percent_lost==. & a5bq16!=.
 replace percent_lost = 100 if percent_lost > 100 & percent_lost!=. 
-merge m:1 HHID crop_code using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_hh_crop_values_production.dta", nogen keep(1 3)
+merge m:1 hhid crop_code using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_hh_crop_values_production.dta", nogen keep(1 3)
 gen value_lost = value_crop_production * (percent_lost/100)
 recode value_lost (.=0)
-collapse (sum) value_lost, by (HHID)
+collapse (sum) value_lost, by (hhid)
 rename value_lost crop_value_lost
 lab var crop_value_lost "Value of crop production that had been lost by the time of survey"
 save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_crop_losses.dta", replace
@@ -872,8 +850,8 @@ use "${Uganda_NPS_W4_raw_data}/AGSEC3A.dta", clear
 gen season = 1
 append using "${Uganda_NPS_W4_raw_data}/AGSEC3B.dta"
 replace season = 2 if season == .
-rename HHID Hhid
-rename hh HHID
+drop HHID
+ren hh hhid
 ren plotID plot_id
 ren parcelID parcel_id
 ren a3aq35a dayshiredmale
@@ -899,28 +877,28 @@ replace wagehiredmale = wagehiredmale/dayshiredtotal
 replace wagehiredfemale = wagehiredfemale/dayshiredtotal
 replace wagehiredchild = wagehiredchild/dayshiredtotal
 
-keep HHID parcel_id plot_id season *hired*
+keep hhid parcel_id plot_id season *hired*
 drop wagehired dayshiredtotal
 
 * 6.30.22 SAW We need to drop duplicates in order to conduct the following code reshape 6 observations droped
-duplicates drop HHID parcel_id plot_id season, force
-reshape long dayshired wagehired, i(HHID parcel_id plot_id season) j(gender) string
-reshape long days wage, i(HHID parcel_id plot_id season gender) j(labor_type) string
+duplicates drop hhid parcel_id plot_id season, force
+reshape long dayshired wagehired, i(hhid parcel_id plot_id season) j(gender) string
+reshape long days wage, i(hhid parcel_id plot_id season gender) j(labor_type) string
 recode wage days (. = 0)
 drop if wage == 0 & days == 0
 /*replace wage = wage/number //ALT 08.16.21: The question is "How much did you pay in total per day to the hired <laborers>." For getting median wages for implicit values, we need the wage/person/day*/
 * 6.30.22 SAW  "How much did you pay including the value of in-kind payments for these days of labor?" Not 100% sure this is the same as what is mentioned above. Maybe the variable wagehired is for total? Might want to check Uganda wages to see if it's payment per day per perosn or for the total number of days... 
 gen val = wage*days
-tostring HHID, format(%18.0f) replace
-merge m:1 HHID parcel_id plot_id season using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_plot_areas.dta", nogen keep(1 3) keepusing(field_size)
-merge m:1 HHID using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_weights.dta", nogen keep(1 3) keepusing(weight)
-merge m:1 HHID using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_hhids.dta", nogen keep(1 3)
+tostring hhid, format(%18.0f) replace
+merge m:1 hhid parcel_id plot_id season using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_plot_areas.dta", nogen keep(1 3) keepusing(field_size)
+merge m:1 hhid using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_weights.dta", nogen keep(1 3) keepusing(weight)
+merge m:1 hhid using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_hhids.dta", nogen keep(1 3)
 gen plotweight = weight * field_size //hh crossectional weight multiplied by the plot area
 recode wage (0 = .)
 gen obs = wage != .
 
 *Median wages
-foreach i in region district county /*subcounty*/ parish ea HHID {
+foreach i in region district county /*subcounty*/ parish ea hhid {
 preserve
 	bys `i' season gender : egen obs_`i' = sum(obs)
 	collapse (median) wage_`i' = wage [aw = plotweight], by (`i' season gender obs_`i')
@@ -948,63 +926,46 @@ use "${Uganda_NPS_W4_raw_data}/AGSEC3A.dta", clear
 gen season = 1
 append using "${Uganda_NPS_W4_raw_data}/AGSEC3B.dta"
 replace season = 2 if season == .
-rename HHID Hhid
-rename hh HHID
+drop HHID
+ren hh hhid
 ren plotID plot_id
 ren parcelID parcel_id
 rename a3aq33* indiv_* //indiv
 rename indiv_*_* days_*
-keep HHID parcel_id plot_id season indiv_* days_* /*days fam_worker_count*/
+keep hhid parcel_id plot_id season indiv_* days_* /*days fam_worker_count*/
 
-preserve 
-use "${Uganda_NPS_W4_raw_data}\GSEC2.dta", clear
-destring PID, gen(indiv) ignore ("P" "-") 
-gen male = h2q3==1
-gen age = h2q8
-keep HHID PID age male indiv
-isid HHID PID
-tempfile members
-save `members', replace
-restore
-
-duplicates drop  HHID parcel_id plot_id season, force // SAW 3 observations deleted 
-reshape long indiv days, i(HHID parcel_id plot_id season) j(colid) string
+duplicates drop hhid parcel_id plot_id season, force // SAW 3 observations deleted 
+reshape long indiv days, i(hhid parcel_id plot_id season) j(colid) string
 drop if days == .
-*tostring HHID, format(%18.0f) replace
+*tostring hhid, format(%18.0f) replace
 *tostring PID, format(%18.0f) replace
-merge m:1 HHID indiv using `members', nogen keep(1 3) 
+merge m:1 hhid indiv using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_person_ids.dta", nogen keep(1 3) 
 gen gender = "child" if age < 16
-replace gender = "male" if strmatch(gender, "") & male == 1
-replace gender = "female" if strmatch(gender, "") & male == 0 
-replace gender = "unknown" if strmatch(gender, "") & male == .
+replace gender = "male" if strmatch(gender, "") & female == 0
+replace gender = "female" if strmatch(gender, "") & female == 1 
+replace gender = "unknown" if strmatch(gender, "") & female == .
 gen labor_type = "family"
 drop if gender == "unknown"
 
-merge m:1 HHID using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_hhids.dta", nogen keep(1 3) //merge in regional data (districts, etc.)
-keep region district county /*subcounty*/ parish ea HHID parcel_id plot_id season gender days labor_type /*fam_worker_count*/
+merge m:1 hhid using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_hhids.dta", nogen keep(1 3) //merge in regional data (districts, etc.)
+keep region district county /*subcounty*/ parish ea hhid parcel_id plot_id season gender days labor_type /*fam_worker_count*/
 
-foreach i in region district county /*subcounty*/ parish ea HHID {
+gen wage=.
+foreach i in region district county /*subcounty*/ parish ea /*hhid*/ { //skipping household-level wages to conform to crop_code. 
 	merge m:1 `i' gender season using `wage_`i'_median', nogen keep(1 3) 
+	replace wage=wage_`i' if wage==. & obs_`i' >9
 }
 	merge m:1 gender season using `wage_country_median', nogen keep(1 3) //JHG 5_12_22: 1,692 with missing vals b/c they don't have matches on pid, see code above
+	replace wage=wage_country if wage==.
 
-	gen wage = wage_HHID
-	*recode wage (.=0)
-foreach i in country region district county /*subcounty*/ parish ea {
-	replace wage = wage_`i' if obs_`i' > 9
-	} //Goal of this loop is to get median wages to infer value of family labor as an implicit expense. Uses continually more specific values by geography to fill in gaps of implicit labor value.
-
-
-egen wage_sd = sd(wage_HHID), by(gender season)
-egen mean_wage = mean(wage_HHID), by(gender season)
-by HHID parcel_id plot_id season, sort: egen numworkers = count(_n)
+by hhid parcel_id plot_id season, sort: egen numworkers = count(_n)
 replace days = days/numworkers // If we divided by famworkers we would not be capturing the total amount of days worked. 
 gen val = wage * days
 append using `all_hired'
-keep region district county /*subcounty*/ parish ea HHID parcel_id plot_id season days val labor_type gender
+keep region district county /*subcounty*/ parish ea hhid parcel_id plot_id season days val labor_type gender
 drop if val == . & days == .
-merge m:1 HHID parcel_id plot_id season using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_plot_decision_makers.dta", nogen keep(1 3) keepusing(dm_gender)
-collapse (sum) val days, by(HHID parcel_id plot_id season labor_type gender dm_gender) //JHG 5_18_22: Number of workers is not measured by this survey, may affect agwage section
+merge m:1 hhid parcel_id plot_id season using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_plot_decision_makers.dta", nogen keep(1 3) keepusing(dm_gender)
+collapse (sum) val days, by(hhid parcel_id plot_id season labor_type gender dm_gender) //JHG 5_18_22: Number of workers is not measured by this survey, may affect agwage section
 	la var gender "Gender of worker"
 	la var dm_gender "Plot manager gender"
 	la var labor_type "Hired, exchange, or family labor"
@@ -1013,8 +974,8 @@ collapse (sum) val days, by(HHID parcel_id plot_id season labor_type gender dm_g
 save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_plot_labor_long.dta", replace
 
 preserve
-collapse (sum) labor_ = days, by (HHID parcel_id plot_id labor_type)
-reshape wide labor_, i(HHID parcel_id plot_id) j(labor_type) string
+collapse (sum) labor_ = days, by (hhid parcel_id plot_id labor_type)
+reshape wide labor_, i(hhid parcel_id plot_id) j(labor_type) string
 		la var labor_family "Number of family person-days spent on plot, all seasons"
 		la var labor_hired "Number of hired labor person-days spent on plot, all seasons"
 save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_plot_labor_days.dta", replace
@@ -1024,25 +985,25 @@ restore
 preserve
 	gen exp = "exp" if strmatch(labor_type,"hired")
 	replace exp = "imp" if strmatch(exp, "")
-	collapse (sum) val, by(HHID parcel_id plot_id exp dm_gender) //JHG 5_18_22: no season?
+	collapse (sum) val, by(hhid parcel_id plot_id exp dm_gender) //JHG 5_18_22: no season?
 	gen input = "labor"
 save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_plot_labor.dta", replace
 
 restore	
 //And now we go back to wide
-collapse (sum) val, by(HHID parcel_id plot_id season labor_type dm_gender)
+collapse (sum) val, by(hhid parcel_id plot_id season labor_type dm_gender)
 ren val val_ 
-reshape wide val_, i(HHID parcel_id plot_id season dm_gender) j(labor_type) string
+reshape wide val_, i(hhid parcel_id plot_id season dm_gender) j(labor_type) string
 ren val* val*_
-reshape wide val*, i(HHID parcel_id plot_id dm_gender) j(season)
+reshape wide val*, i(hhid parcel_id plot_id dm_gender) j(season)
 gen dm_gender2 = "male" if dm_gender == 1
 replace dm_gender2 = "female" if dm_gender == 2
 replace dm_gender2 = "mixed" if dm_gender == 3
 drop dm_gender
 ren val* val*_
 drop if dm_gender2 == "" //JHG 5_18_22: 169 observations lost, due to missing values in both plot decision makers and gender of head of hh. Looked into it but couldn't find a way to fill these gaps, although I did minimize them.
-reshape wide val*, i(HHID parcel_id plot_id) j(dm_gender2) string
-collapse (sum) val*, by(HHID)
+reshape wide val*, i(hhid parcel_id plot_id) j(dm_gender2) string
+collapse (sum) val*, by(hhid)
 save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_hh_cost_labor.dta", replace
 
 ******************************************************************************
@@ -1055,8 +1016,8 @@ use "${Uganda_NPS_W4_raw_data}/AGSEC3A.dta", clear
 gen season = 1
 append using "${Uganda_NPS_W4_raw_data}/AGSEC3B.dta"
 replace season = 2 if season == .
-rename HHID Hhid
-rename hh HHID
+drop HHID
+ren hh hhid
 ren plotID plot_id
 ren parcelID parcel_id
 ren a3aq24a unitpest //unit code for total pesticides used, first planting season (kg = 1, litres = 2)
@@ -1081,7 +1042,7 @@ gen unitanmlexp = .
 gen unitanmlimp = .
 gen valanmlexp = .
 gen valanmlimp = .
-tostring HHID, format(%18.0f) replace
+tostring hhid, format(%18.0f) replace
 tempfile pestherb
 save `pestherb', replace
 *************************    MACHINERY INPUTS   ********************************
@@ -1090,40 +1051,40 @@ use "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_all_plots.dta", clear
 //JHG 6_14_22: Information was collected on machinery inputs for crop expenses in section 10, but was only done at the household level. Other inputs are at the plot level. Ask Didier about machinery that is owned.
 preserve //This section creates raw data on value of machinery/tools
 use "${Uganda_NPS_W4_raw_data}/AGSEC10.dta", clear
-rename HHID Hhid
-rename hh HHID
+drop HHID
+ren hh hhid
 drop if  Farm_Implement == 2 //2 = no farm implement owned, rented, or used (separated by implement)
 ren a10q1 qtymechimp //number of owned machinery/tools
 ren a10q2 valmechimp //total value of owned machinery/tools, not per-item
 ren a10q7 qtymechexp //number of rented machinery/tools
 ren a10q8 valmechexp //total value of rented machinery/tools, not per-item
-collapse (sum) valmechimp valmechexp, by(HHID) //combine values for all tools, don't combine quantities since there are many varying types of tools 
-isid HHID //check for duplicate hhids, which there shouldn't be after the collapse
-*tostring HHID, format(%18.0f) replace
+collapse (sum) valmechimp valmechexp, by(hhid) //combine values for all tools, don't combine quantities since there are many varying types of tools 
+ //check for duplicate hhids, which there shouldn't be after the collapse
+*tostring hhid, format(%18.0f) replace
 tempfile rawmechexpense
 save `rawmechexpense', replace
 restore
 
-collapse (sum) ha_planted, by(HHID parcel_id plot_id season)
-bys HHID : egen ha_planted_total = sum(ha_planted)
+collapse (sum) ha_planted, by(hhid parcel_id plot_id season)
+bys hhid : egen ha_planted_total = sum(ha_planted)
 gen planted_percent = ha_planted/ha_planted_total
-merge m:1 HHID using `rawmechexpense', nogen keep (1 3)
-merge 1:m HHID parcel_id plot_id season using `pestherb', nogen keep (1 3)
+merge m:1 hhid using `rawmechexpense', nogen keep (1 3)
+merge 1:m hhid parcel_id plot_id season using `pestherb', nogen keep (1 3)
 replace valmechexp = valmechexp * planted_percent //replace total with plot and season specific value of rented machinery/tools
 
 //Now to reshape long and get all the medians at once.
-keep HHID parcel_id plot_id season qty* val* unit*
+keep hhid parcel_id plot_id season qty* val* unit*
 unab vars : *exp //create a local macro called vars out of every variable that ends with exp
 local stubs : subinstr local vars "exp" "", all //create another local called stubs with exp at the end, with "exp" removed. This is for the reshape below
-duplicates drop HHID parcel_id plot_id season, force // we need to  drop 3 duplicates so reshape can run
+duplicates drop hhid parcel_id plot_id season, force // we need to  drop 3 duplicates so reshape can run
 *rename qtypest qtypesticide
-reshape long `stubs', i(HHID parcel_id plot_id season) j(exp) string
-reshape long val qty unit, i(HHID parcel_id plot_id season exp) j(input) string
+reshape long `stubs', i(hhid parcel_id plot_id season) j(exp) string
+reshape long val qty unit, i(hhid parcel_id plot_id season exp) j(input) string
 gen itemcode=1
 tempfile plot_inputs
-tostring HHID, format(%18.0f) replace
+tostring hhid, format(%18.0f) replace
 
-merge m:1 HHID using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_hhids.dta", nogen keep(1 3)
+merge m:1 hhid using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_hhids.dta", nogen keep(1 3)
 save `plot_inputs'
 
 ******************************************************************************
@@ -1134,11 +1095,125 @@ use "${Uganda_NPS_W4_raw_data}/AGSEC3A.dta", clear
 gen season = 1
 append using "${Uganda_NPS_W4_raw_data}/AGSEC3B.dta"
 replace season = 2 if season == .
-rename HHID Hhid
-rename hh HHID
+drop HHID
+ren hh hhid
 ren plotID plot_id
 ren parcelID parcel_id
 
+
+* NEE 1/21/2024 referencing Ethiopia W5 - issue#442
+	
+********** Inorganic Fertilizer ********** 
+
+// Nitrate
+gen usefertexp1 = 1 if a3bq14 == 1 | a3bq14 == 1
+gen qtyferttotal1 = a3bq15 if a3bq14 == 1
+replace qtyferttotal1 = a3bq15 if qtyferttotal1 == . & a3bq14 == 1
+gen unitfertexp1 = 1 if a3bq14 == 1 | a3bq14 == 1 // quantity in Kg 
+gen qtyfertexp1 = a3aq17 if a3bq14 == 1 // purchased in Kg
+replace qtyfertexp1 = a3bq17 if qtyfertexp1 == . & a3bq14 == 1
+gen valfertexp1 = a3aq18 if a3bq14 == 1 // purchased in UShs
+replace valfertexp1 = a3bq18 if valfertexp1 == . & a3bq14 == 1
+gen qtyfertimp1 = qtyferttotal1 - qtyfertexp1 // imputed Kg
+
+// Phosphate
+gen usefertexp2 = 1 if a3bq14 == 2 | a3bq14 == 2
+gen qtyferttotal2 = a3bq15 if a3bq14 == 2
+replace qtyferttotal2 = a3bq15 if qtyferttotal2 == . & a3bq14 == 2
+gen unitfertexp2 = 1 if a3bq14 == 2 | a3bq14 == 2
+gen qtyfertexp2 = a3aq17 if a3bq14 == 2
+replace qtyfertexp2 = a3bq17 if qtyfertexp2 == . & a3bq14 == 2
+gen valfertexp2 = a3aq18 if a3bq14 == 2
+replace valfertexp2 = a3bq18 if valfertexp2 == . & a3bq14 == 2
+gen qtyfertimp2 = qtyferttotal2 - qtyfertexp2
+
+// Potash
+gen usefertexp3 = 1 if a3bq14 == 3 | a3bq14 == 3
+gen qtyferttotal3 = a3bq15 if a3bq14 == 3
+replace qtyferttotal3 = a3bq15 if qtyferttotal3 == . & a3bq14 == 3
+gen unitfertexp3 = 1 if a3bq14 == 3 | a3bq14 == 3
+gen qtyfertexp3 = a3aq17 if a3bq14 == 3
+replace qtyfertexp3 = a3bq17 if qtyfertexp3 == . & a3bq14 == 3
+gen valfertexp3 = a3aq18 if a3bq14 == 3
+replace valfertexp3 = a3bq18 if valfertexp3 == . & a3bq14 == 3
+gen qtyfertimp3 = qtyferttotal3 - qtyfertexp3
+
+// Mixed
+gen usefertexp4 = 1 if a3bq14 == 4 | a3bq14 == 4
+gen qtyferttotal4 = a3bq15 if a3bq14 == 4
+replace qtyferttotal4 = a3bq15 if qtyferttotal4 == . & a3bq14 == 4
+gen unitfertexp4 = 1 if a3bq14 == 4 | a3bq14 == 4
+gen qtyfertexp4 = a3aq17 if a3bq14 == 4
+replace qtyfertexp4 = a3bq17 if qtyfertexp4 == . & a3bq14 == 4
+gen valfertexp4 = a3aq18 if a3bq14 == 4
+replace valfertexp4 = a3bq18 if valfertexp4 == . & a3bq14 == 4
+gen qtyfertimp4 = qtyferttotal4 - qtyfertexp4
+
+
+********** Organic Fertilizer ********** 
+
+// Organic fertilizer for two seasons
+gen usefertexp5 = 1 if a3aq5 != . | a3bq5 != .
+gen qtyfertexp5 = a3aq5 if a3aq5 != .
+replace qtyfertexp5 = a3bq5 if qtyfertexp5 == . & a3bq5 != .
+gen unitfertexp5 = 1 if a3aq5 != . | a3bq5 != .
+gen valfertexp5 = a3aq8 if a3aq5 != .
+replace valfertexp5 = a3bq8 if valfertexp5 == . & a3bq5 != .
+
+********** Labels & Grouping ********** 
+
+gen itemcode = .
+replace itemcode = 1 if usefertexp1 == 1 // Nitrate 	- n_kg
+replace itemcode = 2 if usefertexp2 == 1 // Phosphate 	- p_kg
+replace itemcode = 3 if usefertexp3 == 1 // Potash		- k_kg
+replace itemcode = 4 if usefertexp4 == 1 // Mixed
+replace itemcode = 5 if usefertexp5 == 1 // Organic
+
+label define itemcodefert 1 "Nitrate" 2 "Phosphate" 3 "Potash" 4 "Mixed" 5 "Organic"
+label values itemcode itemcodefert
+
+keep use* qty* unit* val* hhid parcel_id plot_id season
+unab vars : *1
+local stubs : subinstr local vars "1" "", all
+display "`stubs'"
+reshape long `stubs', i(hhid parcel_id plot_id season) j(itemcode)
+
+unab vars2 : *exp*
+local stubs2 : subinstr local vars2 "exp" "", all
+display "`stubs2'"
+reshape long `stubs2', i(hhid parcel_id plot_id season itemcode) j(exp) string 
+
+reshape long use qty unit val, i(hhid parcel_id plot_id season itemcode exp) j(input) string
+collapse (sum) qty* val*, by(hhid parcel_id plot_id season exp itemcode use)
+
+gen input = ""
+replace input = "inorg" if  itemcode>=1 & itemcode<=4 
+replace input = "orgfert" if itemcode == 5 
+/*
+label define inputgroup 1 "inorg" 2 "orgfert" 
+*label define inputgroup "inorg" = 1 "orgfert" = 2
+*replace input = "inorg" if itemcode <= 4
+*replace input = "orgfert" if itemcode == 5
+replace input = 1 if itemcode <= 4 
+replace input = 2 if itemcode == 5 
+label values input inputgroup 
+
+
+********** Clean-Up Data **********
+drop if missing(itemcode)
+drop if missing(exp)
+drop if missing(input)
+*duplicates drop hhid parcel_id plot_id season itemcode, force
+recode qty (. = 0)
+recode val (. = 0)
+collapse (sum) qty val, by(hhid parcel_id plot_id season itemcode exp input)
+*/
+
+duplicates drop hhid parcel_id plot_id season itemcode, force
+tempfile phys_inputs
+save `phys_inputs'	
+
+/*
 ************************    INORGANIC FERTILIZER   ****************************** 
 //(all variables have "1" suffix) 7.1.22 SAW Not sure why the 1 suffix? might create trouble in the reshape code (if theres any)
 ren a3aq14 itemcodefert //what type of inorganic fertilizer (1 = nitrate, 2 = phosphate, 3 = potash, 4 = mixed); this can be used for purchased and non-purchased amounts
@@ -1162,7 +1237,7 @@ label values itemcodefert fertcode //apply organic label to itemcodefert
 ren a3aq8 valfertexp2 //value of purchased organic fertilizer, not all fertilizer
 replace valfertexp2 = a3bq8 if valfertexp2 == . //add second season 
 gen qtyfertimp2 = qtyferttotal2 - qtyfertexp2
-tostring HHID, format(%18.0f) replace
+tostring hhid, format(%18.0f) replace
 //JHG 6_15_22: no transportation costs are given; no subsidized fertilizer
 
 //Clean-up data
@@ -1171,24 +1246,25 @@ drop if itemcodefert == .
 gen dummya = 1
 gen dummyb = sum(dummya) //dummy id for duplicates
 drop dummya
-duplicates drop HHID parcel_id plot_id season, force // we need to  drop 3 duplicates so reshape can run
+duplicates drop hhid parcel_id plot_id season, force // we need to  drop 3 duplicates so reshape can run
 unab vars : *2 
 local stubs : subinstr local vars "2" "", all
-reshape long `stubs', i(HHID parcel_id plot_id season) j(entry_no) string //JHG 6_15_22: Nigeria code had regional variables here (zone, state, etc.) but they aren't included in the raw data we used here for Uganda. We would need to append them in. Is that necessary? If so, apply to reshapes and collapse below also - don't need now, include later when calculating geographic medians
+reshape long `stubs', i(hhid parcel_id plot_id season) j(entry_no) string //JHG 6_15_22: Nigeria code had regional variables here (zone, state, etc.) but they aren't included in the raw data we used here for Uganda. We would need to append them in. Is that necessary? If so, apply to reshapes and collapse below also - don't need now, include later when calculating geographic medians
 drop entry_no
 drop if (qtyferttotal == . & qtyfertexp == .)
 unab vars2 : *exp
 local stubs2 : subinstr local vars2 "exp" "", all
 gen dummyc = sum(dummyb) //This process of creating dummies and summing them was done to create individual IDs for each row (can just use _n command, but we weren't aware at the time)
 drop dummyb
-reshape long `stubs2', i(HHID parcel_id plot_id season dummyc) j(exp) string
+reshape long `stubs2', i(hhid parcel_id plot_id season dummyc) j(exp) string
 gen dummyd = sum(dummyc)
 drop dummyc
-reshape long qty val itemcode, i(HHID parcel_id plot_id season exp dummyd) j(input) string
+reshape long qty val itemcode, i(hhid parcel_id plot_id season exp dummyd) j(input) string
 recode qty val (. = 0)
-collapse (sum) qty* val*, by(HHID parcel_id plot_id season exp input itemcode)
+collapse (sum) qty* val*, by(hhid parcel_id plot_id season exp input itemcode)
 tempfile phys_inputs
 save `phys_inputs'
+*/
 
 ******************************************************************************
 ****************************     LAND RENTAL   ********************************** 
@@ -1196,15 +1272,15 @@ save `phys_inputs'
 //Get parcel rent data
 use "${Uganda_NPS_W4_raw_data}/AGSEC2B.dta", clear
 ren parcelID parcel_id
-rename HHID Hhid
-rename hh HHID
+drop HHID
+ren hh hhid
 ren a2bq9 valparcelrentexp //rent paid for PARCELS (not plots) for BOTH cropping seasons (so total rent, inclusive of both seasons, at a parcel level)
-tostring HHID, format(%18.0f) replace
+tostring hhid, format(%18.0f) replace
 save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_plot_rental.dta", replace
 
 //Calculate rented parcel area (in ha)
 use "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_plot_areas.dta", replace
-merge m:1 HHID parcel_id using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_plot_rental.dta", nogen keep (3)
+merge m:1 hhid parcel_id using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_plot_rental.dta", nogen keep (3)
 gen qtyparcelrentexp = parcel_ha if valparcelrentexp > 0 & valparcelrentexp != .
 gen qtyparcelrentimp = parcel_ha if qtyparcelrentexp == . //this land does not have an agreement with owner, but is rented
 
@@ -1216,21 +1292,21 @@ gen qtyplotrentexp = qtyparcelrentexp * plot_percent
 gen qtyplotrentimp = qtyparcelrentimp * plot_percent //quantity of "imp" land is that which is not rented
 
 //Clean-up data
-keep HHID parcel_id plot_id season valparcelrent* qtyparcelrent* valplotrent* qtyplotrent* 
+keep hhid parcel_id plot_id season valparcelrent* qtyparcelrent* valplotrent* qtyplotrent* 
 
 	preserve //this section creates a variable, duplicate, which can tell if a plot was rented over two seasons. This way, rent is disaggregated by plot and by season.
-	collapse (sum) plot_id, by(HHID parcel_id season)
-	duplicates tag HHID parcel_id, generate(duplicate) 
+	collapse (sum) plot_id, by(hhid parcel_id season)
+	duplicates tag hhid parcel_id, generate(duplicate) 
 	drop plot_id
-	collapse (max) duplicate, by(HHID parcel_id)
+	collapse (max) duplicate, by(hhid parcel_id)
 	tempfile parcel_rent
 	save `parcel_rent'
 	restore
 
-merge m:1 HHID parcel_id using `parcel_rent', nogen 
-sort HHID parcel_id plot_id
-reshape long valparcelrent qtyparcelrent valplotrent qtyplotrent, i(HHID parcel_id plot_id season) j(exp) string
-reshape long val qty, i(HHID parcel_id plot_id season exp) j(input) string
+merge m:1 hhid parcel_id using `parcel_rent', nogen 
+sort hhid parcel_id plot_id
+reshape long valparcelrent qtyparcelrent valplotrent qtyplotrent, i(hhid parcel_id plot_id season) j(exp) string
+reshape long val qty, i(hhid parcel_id plot_id season exp) j(input) string
 gen valseason = val / 2 if duplicate == 1
 drop duplicate
 gen unit = 1 //dummy var
@@ -1246,8 +1322,8 @@ use "${Uganda_NPS_W4_raw_data}/AGSEC4A.dta", clear
 gen season=1 
 append using "${Uganda_NPS_W4_raw_data}/AGSEC4B.dta"
 replace season=2 if season==.
-rename HHID hhid2
-rename hh HHID
+drop HHID
+ren hh hhid
 rename plotID plot_id
 rename parcelID parcel_id
 ren cropID crop_code
@@ -1260,12 +1336,12 @@ replace unitseeds = a4bq11b if unitseeds == . //add second season
 ren a4aq15	valseeds //only value for purchased seeds. There is no quantity for purchased seeds, so one cannot calculate per kg value of seeds.
 replace valseeds = a4bq15 if valseeds == . //add second season
 
-keep unit* qty* val* purestand HHID parcel_id plot_id crop_code season
+keep unit* qty* val* purestand hhid parcel_id plot_id crop_code season
 gen dummya = 1
 gen dummyb = sum(dummya) //dummy id for duplicates, similar process as above for fertilizers
 drop dummya
-reshape long qty unit val, i(HHID parcel_id plot_id season dummyb) j(input) string
-collapse (sum) val qty, by(HHID parcel_id plot_id season unit input crop_code purestand)
+reshape long qty unit val, i(hhid parcel_id plot_id season dummyb) j(input) string
+collapse (sum) val qty, by(hhid parcel_id plot_id season unit input crop_code purestand)
 ren unit unit_code
 drop if qty == 0
 *drop input //there is only purchased value, none of it is implicit (free, left over, etc.)
@@ -1299,26 +1375,26 @@ replace unit = 2 if unit == .
 replace unit = 0 if inlist(unit_code, 20, 21, 22, 66, 85, 99) //the units above that could not be converted will not be useful for price calculations
 
 ren crop_code itemcode
-collapse (sum) val qty, by(HHID parcel_id plot_id season input itemcode unit) //Andrew's note from Nigeria code: Eventually, quantity won't matter for things we don't have units for. JHG 7_5_22: all this code does is drop variables, it doesn't actually collapse anything
+collapse (sum) val qty, by(hhid parcel_id plot_id season input itemcode unit) //Andrew's note from Nigeria code: Eventually, quantity won't matter for things we don't have units for. JHG 7_5_22: all this code does is drop variables, it doesn't actually collapse anything
 gen exp = "exp"
 
 //Combining and getting prices.
 append using `plotrents'
-*tostring HHID, format(%18.0f) replace
+*tostring hhid, format(%18.0f) replace
 append using `plot_inputs'
 *destring HHID, replace
 append using `phys_inputs'
-*tostring HHID, format(%18.0f) replace
-merge m:1 HHID using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_weights.dta", nogen keep(1 3) keepusing(weight)
+*tostring hhid, format(%18.0f) replace
+merge m:1 hhid using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_weights.dta", nogen keep(1 3) keepusing(weight)
 
 *destring HHID, replace
-merge m:1 HHID parcel_id plot_id season using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_plot_areas.dta", nogen keep(1 3) keepusing(field_size)
+merge m:1 hhid parcel_id plot_id season using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_plot_areas.dta", nogen keep(1 3) keepusing(field_size)
 
-*tostring HHID, format(%18.0f) replace
-merge m:1 HHID parcel_id plot_id season using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_plot_decision_makers.dta", nogen keep(1 3) keepusing(dm_gender)
+*tostring hhid, format(%18.0f) replace
+merge m:1 hhid parcel_id plot_id season using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_plot_decision_makers.dta", nogen keep(1 3) keepusing(dm_gender)
 
 drop region sregion district county county_name parish parish_name ea weight rural
-merge m:1 HHID using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_hhids.dta", nogen keep(1 3) //merge in regional data (districts, etc.)
+merge m:1 hhid using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_hhids.dta", nogen keep(1 3) //merge in regional data (districts, etc.)
 
 tempfile all_plot_inputs
 save `all_plot_inputs' //Woo, now we can estimate values.
@@ -1333,7 +1409,7 @@ gen obs = 1
 gen plotweight = weight*field_size
 
 *drop rural plotweight parish subcounty district
-foreach i in region /*sregion*/ district county parish ea HHID {
+foreach i in region /*sregion*/ district county parish ea hhid {
 preserve
 	bys `i' input unit itemcode : egen obs_`i' = sum(obs)
 	collapse (median) price_`i' = price [aw = plotweight], by (`i' input unit itemcode obs_`i')
@@ -1351,19 +1427,19 @@ restore
 
 //Combine all price information into one variable, using household level prices where available in enough quantities but replacing with the medians from larger and larger geographic areas to fill in gaps, up to the national level
 use `all_plot_inputs', clear
-merge m:1 HHID using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_hhids.dta", nogen keep(1 3) //merge in regional data (districts, etc.)
+merge m:1 hhid using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_hhids.dta", nogen keep(1 3) //merge in regional data (districts, etc.)
 *drop strataid clusterid rural pweight parish_code scounty_code district_name
-foreach i in region district county parish ea HHID {
+foreach i in region district county parish ea hhid {
 	merge m:1 `i' input unit itemcode using `price_`i'_median', nogen keep(1 3) 
 }
 	merge m:1 input unit itemcode using `price_country_median', nogen keep(1 3)
-	recode price_HHID (. = 0)
-	gen price = price_HHID
+	recode price_hhid (. = 0)
+	gen price = price_hhid
 foreach i in country region district county parish ea {
 	replace price = price_`i' if obs_`i' > 9 & obs_`i' != .
 }
 
-replace price = price_HHID if price_HHID > 0
+replace price = price_hhid if price_hhid > 0
 replace qty = 0 if qty < 0 //2 households reporting negative quantities
 recode val qty (. = 0)
 drop if val == 0 & qty == 0 //Dropping unnecessary observations.
@@ -1374,48 +1450,66 @@ replace input = "inorg" if strmatch(input,"fert")
 //Need this for quantities and not sure where it should go.
 preserve 
 keep if strmatch(input,"orgfert") | strmatch(input,"inorg") | strmatch(input,"pest") //would also have herbicide here if Uganda tracked herbicide separately of pesticides
-collapse (sum) qty_ = qty, by(HHID parcel_id plot_id season input)
-reshape wide qty_, i(HHID parcel_id plot_id season) j(input) string
+
+		gen n_kg =qty*itemcode==1
+		gen p_kg = qty*itemcode==2
+		gen k_kg = qty*itemcode==3
+		gen pest_kg = qty*strmatch(input, "pest")
+		gen inorg_fert_kg = qty*strmatch(input, "inorg")
+		gen org_fert_kg = qty if itemcode >=5 & itemcode!=.
+		collapse (sum) qty (sum) *kg, by(hhid parcel_id plot_id season input)
+		//reshape wide *kg, i(hhid parcel_id plot_id season) j(input) string
+		la var inorg_fert_kg "Kg inorganic fertilizer used"
+		la var org_fert_kg "Kg organic fertilizer used"
+		la var n_kg "Kg of nitrogen applied"
+		la var p_kg "Kg of phosphorus applied"
+		la var k_kg "Kg of potassium applied"	
+
+/*
+collapse (sum) qty_ = qty, by(hhid parcel_id plot_id season input)
+reshape wide qty_, i(hhid parcel_id plot_id season) j(input) string
 ren qty_inorg inorg_fert_rate
 ren qty_orgfert org_fert_rate
 ren qty_pest pest_rate
 la var inorg_fert_rate "Qty inorganic fertilizer used (kg)"
 la var org_fert_rate "Qty organic fertilizer used (kg)"
 la var pest_rate "Qty of pesticide used (kg)"
+*/
+
 save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_input_quantities.dta", replace 
 restore
 
 append using  "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_plot_labor.dta"
 
-collapse (sum) val, by (HHID parcel_id plot_id season exp input dm_gender)
+collapse (sum) val, by (hhid parcel_id plot_id season exp input dm_gender)
 save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_plot_cost_inputs_long.dta", replace 
 
 preserve
-collapse (sum) val, by(HHID exp input) //JHG 7_5_22: includes both seasons, is that okay?
+collapse (sum) val, by(hhid exp input) //JHG 7_5_22: includes both seasons, is that okay?
 save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_hh_cost_inputs_long.dta", replace 
 
 restore
 
 preserve
-collapse (sum) val_ = val, by(HHID parcel_id plot_id season exp dm_gender)
-reshape wide val_, i(HHID parcel_id plot_id season dm_gender) j(exp) string
+collapse (sum) val_ = val, by(hhid parcel_id plot_id season exp dm_gender)
+reshape wide val_, i(hhid parcel_id plot_id season dm_gender) j(exp) string
 save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_plot_cost_inputs.dta", replace //This gets used below.
 restore
 
 //This version of the code retains identities for all inputs; not strictly necessary for later analyses.
 ren val val_ 
-reshape wide val_, i(HHID parcel_id plot_id season exp dm_gender) j(input) string
+reshape wide val_, i(hhid parcel_id plot_id season exp dm_gender) j(input) string
 ren val* val*_
-reshape wide val*, i(HHID parcel_id plot_id season dm_gender) j(exp) string
+reshape wide val*, i(hhid parcel_id plot_id season dm_gender) j(exp) string
 gen dm_gender2 = "male" if dm_gender == 1
 replace dm_gender2 = "female" if dm_gender == 2
 replace dm_gender2 = "mixed" if dm_gender == 3
 replace dm_gender2 = "unknown" if dm_gender == .
 drop dm_gender
 ren val* val*_
-reshape wide val*, i(HHID parcel_id plot_id season) j(dm_gender2) string
+reshape wide val*, i(hhid parcel_id plot_id season) j(dm_gender2) string
 save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_plot_cost_inputs_wide.dta", replace //Used for monocropped plots, this is important for that section
-collapse (sum) val*, by(HHID)
+collapse (sum) val*, by(hhid)
 
 unab vars3 : *_exp_male //just get stubs from one
 local stubs3 : subinstr local vars3 "_exp_male" "", all
@@ -1431,7 +1525,7 @@ save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_hh_cost_inputs_verbose.dta", r
 //Create area planted tempfile for use at the end of the crop expenses section
 use "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_all_plots.dta", replace 
 
-collapse (sum) ha_planted, by(HHID parcel_id plot_id season)
+collapse (sum) ha_planted, by(hhid parcel_id plot_id season)
 tempfile planted_area
 save `planted_area' 
 
@@ -1440,22 +1534,22 @@ use "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_plot_cost_inputs_long.dta", cle
 
 //back to wide
 drop input
-collapse (sum) val, by(HHID parcel_id plot_id season exp dm_gender)
+collapse (sum) val, by(hhid parcel_id plot_id season exp dm_gender)
 gen dm_gender2 = "male" if dm_gender == 1
 replace dm_gender2 = "female" if dm_gender == 2
 replace dm_gender2 = "mixed" if dm_gender == 3
 replace dm_gender2 = "unknown" if dm_gender == . 
 drop dm_gender
 ren val* val*_
-reshape wide val*, i(HHID parcel_id plot_id season dm_gender2) j(exp) string
+reshape wide val*, i(hhid parcel_id plot_id season dm_gender2) j(exp) string
 ren val* val*_
 *destring HHID, replace
-merge m:1 HHID parcel_id plot_id season using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_plot_areas.dta", nogen keep(1 3) keepusing(field_size) //do per-ha expenses at the same time
+merge m:1 hhid parcel_id plot_id season using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_plot_areas.dta", nogen keep(1 3) keepusing(field_size) //do per-ha expenses at the same time
 
-*tostring HHID, format(%18.0f) replace
-merge m:1 HHID parcel_id plot_id season using `planted_area', nogen keep(1 3)
-reshape wide val*, i(HHID parcel_id plot_id season) j(dm_gender2) string
-collapse (sum) val* field_size* ha_planted*, by(HHID) //JHG 7_5_22: double-check this section to make sure there is now weirdness with summing up to household level when there are multiple seasons - was too tired when coding this to go back and check
+*tostring hhid, format(%18.0f) replace
+merge m:1 hhid parcel_id plot_id season using `planted_area', nogen keep(1 3)
+reshape wide val*, i(hhid parcel_id plot_id season) j(dm_gender2) string
+collapse (sum) val* field_size* ha_planted*, by(hhid) //JHG 7_5_22: double-check this section to make sure there is now weirdness with summing up to household level when there are multiple seasons - was too tired when coding this to go back and check
 //Renaming variables to plug into later steps
 foreach i in male female mixed {
 gen cost_expli_`i' = val_exp_`i'
@@ -1480,7 +1574,7 @@ save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_hh_monocrop_plots.dta", replac
 use "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_all_plots.dta", replace 
 keep if purestand == 1 //1 = monocropped //File now has 6801 unique entries - it should be noted that some these were grown in mixed plots.
 
-*merge 1:1 HHID parcel_id plot_id season using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_plot_decision_makers.dta", nogen keep(1 3) keepusing(dm_gender)
+*merge 1:1 hhid parcel_id plot_id season using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_plot_decision_makers.dta", nogen keep(1 3) keepusing(dm_gender)
 ren crop_code cropcode
 ren ha_planted monocrop_ha
 ren quant_harv_kg kgs_harv_mono // SAW: We use Kilogram harvested using standard units table (across all waves) and price per kg methodology
@@ -1522,7 +1616,7 @@ la var kgs_harv_mono_`cn'_`g' "Total kilograms of `cn' harvested on `g' managed 
 la var val_harv_mono_`cn'_`g' "Total value of `cn' harvested on `g' managed plots - Household"
 }
 
-collapse (sum) *monocrop* kgs_harv* val_harv* (max) dm*, by(HHID /*season*/)
+collapse (sum) *monocrop* kgs_harv* val_harv* (max) dm*, by(hhid /*season*/)
 
 foreach i in kgs_harv_mono_`cn' val_harv_mono_`cn' {
 foreach j in male female mixed {
@@ -1544,16 +1638,16 @@ preserve
 	drop exp
 	levelsof input, clean l(input_names)
 	ren val val_
-	reshape wide val_, i(HHID parcel_id plot_id dm_gender season) j(input) string
+	reshape wide val_, i(hhid parcel_id plot_id dm_gender season) j(input) string
 	ren val* val*_`cn'_
 	gen dm_gender2 = "male" if dm_gender==1
 	replace dm_gender2 = "female" if dm_gender==2
 	replace dm_gender2 = "mixed" if dm_gender==3
 	drop dm_gender
 	drop if dm_gender2 =="" // SAW 1.5.23 drop close to 200 observations with no gender information so reshape runs
-	reshape wide val*, i(HHID parcel_id plot_id season) j(dm_gender2) string
-	merge 1:1 HHID parcel_id plot_id season using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_`cn'_monocrop.dta", nogen keep(3)
-	collapse (sum) val*, by(HHID)
+	reshape wide val*, i(hhid parcel_id plot_id season) j(dm_gender2) string
+	merge 1:1 hhid parcel_id plot_id season using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_`cn'_monocrop.dta", nogen keep(3)
+	collapse (sum) val*, by(hhid)
 	foreach i in `input_names' {
 		egen val_`i'_`cn'_hh = rowtotal(val_`i'_`cn'_male val_`i'_`cn'_female val_`i'_`cn'_mixed)
 	}
@@ -1625,8 +1719,8 @@ save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_tlu_all_animals.dta", replace
 use "${Uganda_NPS_W4_raw_data}/AGSEC6A.dta", clear
 append using "${Uganda_NPS_W4_raw_data}/AGSEC6B.dta"
 append using "${Uganda_NPS_W4_raw_data}/AGSEC6C.dta"
-rename HHID hhid2
-rename hh HHID
+drop HHID
+ren hh hhid
 gen livestockid = LiveStockID
 replace livestockid = ALiveStock_Small_ID if livestockid==.
 replace livestockid = APCode if livestockid==.
@@ -1697,7 +1791,7 @@ replace nb_totalvalue = po_avgvalue * nb_po_sold if nb_totalvalue == .
 recode nb_* (. = 0) //replace all null values for number variables with 0
 
 //Step 4: Aggregate to household level. Clean up and save data
-collapse (sum) nb*, by (HHID)
+collapse (sum) nb*, by (hhid)
 foreach i in ls sa po {
 lab var nb_`i'_sold "Number of animals sold alive (`i')"
 }
@@ -1717,17 +1811,17 @@ save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_TLU_Coefficients.dta", replace
 
 use "${Uganda_NPS_W4_raw_data}/AGSEC7.dta", clear
 *append using "${Uganda_NPS_W4_raw_data}/AGSEC7B.dta"
-rename HHID hhid2
-rename hh HHID
+drop HHID
+ren hh hhid
 rename a7bq2e cost_fodder_livestock
 rename a7bq3f cost_water_livestock
 rename a7bq5d cost_vaccines_livestock
 rename a7bq6c cost_deworm_livestock
 rename a7bq7c cost_ticks_livestock
 rename a7bq8c cost_hired_labor_livestock
-collapse (sum) cost*, by(HHID)
+collapse (sum) cost*, by(hhid)
 save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_livestock_expenses.dta", replace
-reshape long cost_, i(HHID) j(input) string
+reshape long cost_, i(hhid) j(input) string
 rename cost_ val_total
 save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_livestock_expenses_long.dta", replace // SAW In case is needed for AgQuery
 
@@ -1741,8 +1835,8 @@ SW: Decided to use Uganda wave 7 as reference since the questionnaires are simil
 We still need to figure out the unit of some variables that might be reported as (liters/days) in the questionnaire but might be liters/year). This will substantially change results.
 */
 use "${Uganda_NPS_W4_raw_data}/AGSEC8B.dta", clear
-rename HHID hhid2
-rename hh HHID
+drop HHID
+ren hh hhid
 rename AGroup_ID livestock_code
 gen livestock_code2="1. Milk"
 keep if livestock_code==101 | livestock_code==102 //Exotic+Indigenous large ruminants. Leaving out small ruminants because small ruminant milk accounts only for 0.04% of total production, and there's no price information
@@ -1764,7 +1858,7 @@ gen price_per_unit = price_per_liter
 gen quantity_produced = milk_liters_produced
 recode price_per_liter price_per_unit (0=.) 
 gen earnings_sales = earnings_per_day_milk*months_milked*30		
-keep HHID livestock_code livestock_code2 milk_liters_produced price_per_liter price_per_unit quantity_produced earnings_sales
+keep hhid livestock_code livestock_code2 milk_liters_produced price_per_liter price_per_unit quantity_produced earnings_sales
 lab var price_per_liter "Price of milk per liter sold"
 lab var price_per_unit "Price of milk per unit sold"
 lab var quantity_produced "Quantity of milk produced"
@@ -1773,8 +1867,8 @@ save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_livestock_products_milk.dta", 
 
 *2. Eggs
 use "${Uganda_NPS_W4_raw_data}/AGSEC8C.dta", clear
-rename HHID hhid2
-rename hh HHID
+drop HHID
+ren hh hhid
 ren AGroup_ID livestock_code 
 rename a8cq1 months_produced
 rename a8cq2 quantity_month
@@ -1785,7 +1879,7 @@ rename a8cq3 sales_quantity
 rename a8cq5 earnings_sales
 recode sales_quantity months_produced quantity_month earnings_sales (.=0)
 gen price_per_unit = earnings_sales / sales_quantity
-keep HHID livestock_code quantity_produced price_per_unit earnings_sales
+keep hhid livestock_code quantity_produced price_per_unit earnings_sales
 bys livestock_code: sum price_per_unit
 gen price_per_unit_hh = price_per_unit
 lab var price_per_unit "Price of egg per unit sold"
@@ -1798,7 +1892,7 @@ append using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_livestock_products_mil
 save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_livestock_products.dta", replace 
 
 use "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_livestock_products.dta", replace 
-merge m:1 HHID using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_weights.dta", keep(1 3) nogen
+merge m:1 hhid using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_weights.dta", keep(1 3) nogen
 
 collapse (median) price_per_unit [aw=weight], by (livestock_code2 livestock_code) //Nigeria also uses by quantity_sol_season_unit but UGanda does not have that information, though units should be the same within livestock_code2 (product type). Also, we could include by livestock_code (type of animal)
 ren price_per_unit price_unit_median_country
@@ -1824,7 +1918,7 @@ gen sales_livestock_products = earnings_sales
 gen sales_milk = earnings_sales if livestock_code2=="1. Milk"
 gen sales_eggs = earnings_sales if livestock_code2=="2. Eggs"
 *gen sales_meat = earnings_sales if livestock_code2=="3. Meat"
-collapse (sum) value_milk_produced value_eggs_produced /*value_meat_produced*/ sales_livestock_products /*agquery*/ sales_milk sales_eggs /*sales_meat*/, by (HHID)
+collapse (sum) value_milk_produced value_eggs_produced /*value_meat_produced*/ sales_livestock_products /*agquery*/ sales_milk sales_eggs /*sales_meat*/, by (hhid)
 *Share of production sold
 *First, constructing total value
 egen value_livestock_products = rowtotal(value_milk_produced value_eggs_produced /*value_meat_produced*/)
@@ -1848,7 +1942,7 @@ append using  "${Uganda_NPS_W4_raw_data}/AGSEC6B.dta"
 append using  "${Uganda_NPS_W4_raw_data}/AGSEC6C.dta"
 //Making sure value labels for 6B and 6C get carried over. Just in case.
 rename HHID hhid2
-rename hh HHID
+ren hh hhid
 label define LiveStockID 13 "Exotic/Cross - Male Goats"/*
 						*/ 14 "Exotic/Cross - Female Goats"/*
 						*/ 15 "Exotic/Cross - Male Sheep"/*
@@ -1898,8 +1992,8 @@ recode number_sold income_live_sales number_slaughtered value_livestock_purchase
 gen price_per_animal = value_sold
 lab var price_per_animal "Price of live animal sold" //ALT: Not sure why we wouldn't include prices of animals bought also
 recode price_per_animal (0=.)
-merge m:1 HHID using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_hhids.dta", nogen keep(1 3) //106 missing from master
-keep HHID region sregion rural weight district county county_name parish parish_name ea price_per_animal number_sold income_live_sales number_slaughtered value_livestock_purchases livestock_code
+merge m:1 hhid using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_hhids.dta", nogen keep(1 3) //106 missing from master
+keep hhid region sregion rural weight district county county_name parish parish_name ea price_per_animal number_sold income_live_sales number_slaughtered value_livestock_purchases livestock_code
 save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_hh_livestock_sales.dta", replace
 
 
@@ -1931,7 +2025,7 @@ gen value_lvstck_sold = price_per_animal * number_sold
 gen value_slaughtered = price_per_animal * number_slaughtered
 *gen value_slaughtered_sold = price_per_animal * number_slaughtered_sold 
 gen value_livestock_sales = value_lvstck_sold + value_slaughtered // SAW Not sure about this, just following methodology of older UG w3 version (in this case,this inlclues the value of slaughtered animals for sales and own consumption)
-collapse (sum) value_livestock_sales value_livestock_purchases value_lvstck_sold value_slaughtered /*AgQuery 12.01value_slaughtered_sold*/, by (HHID)
+collapse (sum) value_livestock_sales value_livestock_purchases value_lvstck_sold value_slaughtered /*AgQuery 12.01value_slaughtered_sold*/, by (hhid)
 lab var value_livestock_sales "Value of livestock sold (live and slaughtered)"
 lab var value_livestock_purchases "Value of livestock purchases (seems to span only the agricutlural season, not the year)"
 lab var value_slaughtered "Value of livestock slaughtered (with slaughtered livestock that weren't sold valued at local median prices for live animal sales)"
@@ -1947,7 +2041,7 @@ append using  "${Uganda_NPS_W4_raw_data}/AGSEC6B.dta"
 append using  "${Uganda_NPS_W4_raw_data}/AGSEC6C.dta"
 //Making sure value labels for 6B and 6C get carried over. Just in case.
 rename HHID hhid2
-rename hh HHID
+ren hh hhid
 label define LiveStockID 13 "Exotic/Cross - Male Goats"/*
 						*/ 14 "Exotic/Cross - Female Goats"/*
 						*/ 15 "Exotic/Cross - Male Sheep"/*
@@ -2020,7 +2114,7 @@ rename income_live_sales price_per_animal // The variable it is already per anim
 recode price_per_animal (0=.)
 
 merge m:1 livestock_code using `livestock_prices_country', nogen keep(1 3)
-merge m:1 HHID using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_hhids.dta", nogen keep(1 3) //106 missing from master
+merge m:1 hhid using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_hhids.dta", nogen keep(1 3) //106 missing from master
 foreach i in region district county /*subcounty*/ parish ea {
 	merge m:1 `i' livestock_code using  `livestock_prices_`i'', nogen keep(1 3)
 	replace price_per_animal = price_median_`i' if obs_`i' > 9 & price_per_animal==.
@@ -2028,18 +2122,18 @@ foreach i in region district county /*subcounty*/ parish ea {
 
 gen value_today = number_today_all * price_per_animal
 gen value_1yearago = number_1yearago * price_per_animal
-collapse (sum) number_today_all number_today_exotic number_1yearago lost_theft lost_other lost_disease animals_lost lvstck_holding=number_today_all value* tlu*, by(HHID species)
+collapse (sum) number_today_all number_today_exotic number_1yearago lost_theft lost_other lost_disease animals_lost lvstck_holding=number_today_all value* tlu*, by(hhid species)
 egen mean_12months=rowmean(number_today_all number_1yearago)
 gen 	animals_lost12months	= animals_lost	
 save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_herd_characteristics_long.dta", replace //AgQuery
 
 preserve
-keep HHID species number_today_exotic number_today_all animals_lost12months number_1yearago /*animals_lost*/ lost_disease lost_other lost_theft  lvstck_holding mean_12months
+keep hhid species number_today_exotic number_today_all animals_lost12months number_1yearago /*animals_lost*/ lost_disease lost_other lost_theft  lvstck_holding mean_12months
 global lvstck_vars number_today_all number_today_exotic animals_lost12months number_1yearago lost_other lost_theft lost_disease lvstck_holding mean_12months
 foreach i in $lvstck_vars {
 	ren `i' `i'_
 }
-reshape wide $lvstck_vars, i(HHID) j(species) string
+reshape wide $lvstck_vars, i(hhid) j(species) string
 gen lvstck_holding_all = lvstck_holding_lrum + lvstck_holding_srum + lvstck_holding_poultry
 la var lvstck_holding_all "Total number of livestock holdings (# of animals) - large ruminants, small ruminants, poultry"
 save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_herd_characteristics.dta", replace 
@@ -2055,7 +2149,7 @@ foreach i in animals_lost12months mean_12months any_imp_herd lvstck_holding lost
 	gen `i'_equine = `i' if species=="equine"
 	gen `i'_poultry = `i' if species=="poultry"
 }
-collapse (sum)  mean_12months lvstck_holding animals_lost12months number_today_all number_today_exotic lost_disease (firstnm) *lrum *srum *pigs *equine *poultry any_imp_herd, by(HHID)
+collapse (sum)  mean_12months lvstck_holding animals_lost12months number_today_all number_today_exotic lost_disease (firstnm) *lrum *srum *pigs *equine *poultry any_imp_herd, by(hhid)
 la var lvstck_holding "Total number of livestock holdings (# of animals)"
 la var any_imp_herd "At least one improved animal in herd"
 *la var share_imp_herd_cows "Share of improved animals in total herd - Cows only"
@@ -2064,7 +2158,7 @@ lab var  mean_12months  "Average number of livestock  today and 1  year ago"
 lab var lost_disease "Total number of livestock lost to disease"
 restore
 
-collapse (sum) tlu_1yearago tlu_today value_1yearago value_today, by (HHID)
+collapse (sum) tlu_1yearago tlu_today value_1yearago value_today, by (hhid)
 lab var tlu_1yearago "Tropical Livestock Units as of one year ago"
 lab var tlu_today "Tropical Livestock Units as of the time of survey"
 gen lvstck_holding_tlu = tlu_today
@@ -2084,7 +2178,6 @@ save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_TLU.dta", replace
 //Purpose: This section is meant to calculate the value of all activities the household undertakes that would be classified as self-employment. This includes profit from business... SAW Check for other sources of self-employment income
 *Generate profit from business activities (revenue net of operating costs)
 use "${Uganda_NPS_W4_raw_data}/gsec12.dta", clear
-rename hhid HHID
 *use "${Uganda_NPS_W4_raw_data}/GSEC12_1.dta", clear
 ren h12q12 months_activ // how many months did the business operate
 ren h12q13 monthly_revenue //  avg monthly gross revenues when active
@@ -2095,7 +2188,7 @@ recode monthly_revenue wage_expense materials_expense operating_expense (. = 0)
 gen monthly_profit = monthly_revenue - (wage_expense + materials_expense + operating_expense)
 count if monthly_profit < 0 & monthly_profit != . // W3 has some hhs with negative profit (56)
 gen annual_selfemp_profit = monthly_profit * months_activ
-collapse (sum) annual_selfemp_profit, by (HHID)
+collapse (sum) annual_selfemp_profit, by (hhid)
 lab var annual_selfemp_profit "Estimated annual net profit from self-employment over previous 12 months"
 save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_self_employment_income.dta", replace 
 
@@ -2110,13 +2203,14 @@ save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_self_employment_income.dta", r
 ********************************************************************************
 //Purpose: This indicator is meant to create variables related to the amount of hours per-week (based on the 7 days prior to the survey) that household members individually worked at primary and secondary income-generating activities (i.e., jobs).
 use "${Uganda_NPS_W4_raw_data}/GSEC8_1.dta", clear
+ren HHID hhid
 *Use ISIC codes for non-farm activities (For wave 3 we have a 1 digit ISCO variable ~ [0,9] that we can use, same as wave 7)
 egen primary_hours = rowtotal (h8q36a h8q36b h8q36c h8q36d h8q36e h8q36f h8q36g) if (h8q4==1 | h8q6==1 | h8q8==1 | h8q10==1) & h8q22!=6 // includes work for someone else, work without payment for the house, apprentice etc. for all work MAIN JOB excluding "Working on the household farm or with household livestock.." Last 7 days total hours worked per person
 gen secondary_hours =  h8q43 if  h8q41!=6 &  h8q41!=.
 egen off_farm_hours = rowtotal(primary_hours secondary_hours) if (primary_hours!=. | secondary_hours!=.)
 gen off_farm_any_count = off_farm_hours!=0 if off_farm_hours!=.
 gen member_count = 1
-collapse (sum) off_farm_hours off_farm_any_count member_count, by(HHID)
+collapse (sum) off_farm_hours off_farm_any_count member_count, by(hhid)
 la var member_count "Number of HH members age 5 or above"
 la var off_farm_any_count "Number of HH members with positive off-farm hours"
 la var off_farm_hours "Total household off-farm hours, for the past 7 days"
@@ -2128,6 +2222,7 @@ save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_off_farm_hours.dta", replace
 ********************************************************************************
 *Notes: There's no need to estimate the average number of weeks worked per months since that information is provided - in contrast to wave 3. Also, we combined Wage income Ag and Non-ag sections into only one section to reduce lines of code. Numbers differ widely to wave 3. Must be checked. 
 use "${Uganda_NPS_W4_raw_data}/GSEC8_1.dta", clear
+ren HHID hhid
 gen wage_yesno = h8q5==1 // did any wage work in the last 12 months y/n
 ren h8q30a number_months // months worked for main job
 ren h8q30b number_weeks_per_month //weeks per month worked for main job
@@ -2175,7 +2270,7 @@ preserve
 recode annual_salary_cash  annual_salary_in_kind (nonmissing=0) if main_job_ag==1
 recode second_salary_cash  second_salary_in_kind (nonmissing=0) if sec_job_ag==1
 gen annual_salary = annual_salary_cash + second_salary_cash + annual_salary_in_kind + second_salary_in_kind
-collapse (sum) annual_salary, by (HHID)
+collapse (sum) annual_salary, by (hhid)
 lab var annual_salary "Annual earnings from non-agricultural wage (both Main and Secondary Job)"
 save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_wage_income.dta", replace
 restore
@@ -2183,7 +2278,7 @@ restore
 recode annual_salary_cash  annual_salary_in_kind (nonmissing=0) if main_job_ag==0
 recode second_salary_cash  second_salary_in_kind (nonmissing=0) if sec_job_ag==0
 gen annual_salary = annual_salary_cash + second_salary_cash + annual_salary_in_kind + second_salary_in_kind
-collapse (sum) annual_salary, by (HHID)
+collapse (sum) annual_salary, by (hhid)
 lab var annual_salary "Annual earnings from agricultural wage (both Main and Secondary Job)"
 rename annual_salary annual_salary_agwage
 save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_agwage_income.dta", replace
@@ -2193,6 +2288,7 @@ save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_agwage_income.dta", replace
 ********************************************************************************
 use "${Uganda_NPS_W4_raw_data}/GSEC11A.dta", clear
 append using "${Uganda_NPS_W4_raw_data}/GSEC11B.dta"
+ren HHID hhid
 gen rental_income_cash = h11q5 if ( h11q2==21 |  h11q2==22 |  h11q2==23) // SAW 9.19.22 Includes "Net actual rents received from building..", " Net rent received from land", and  Royalties.
 gen rental_income_inkind = h11q6 if ( h11q2==21 |  h11q2==22 |  h11q2==23)
 gen pension_income_cash = h11q5 if h11q2==41 // SAW Pension and life insurance annuity benefits
@@ -2206,7 +2302,7 @@ gen remittance_income = assistance_cash + assistance_inkind // NKF 9.30.19 would
 gen pension_income = pension_income_cash + pension_income_inkind
 gen rental_income = rental_income_cash + rental_income_inkind
 gen other_income = other_income_cash + other_income_inkind
-collapse (sum) remittance_income pension_income rental_income other_income, by(HHID)
+collapse (sum) remittance_income pension_income rental_income other_income, by(hhid)
 lab var rental_income "Estimated income from rentals of buildings, tools, land, transport animals over previous 12 months"
 lab var pension_income "Estimated income from a pension over previous 12 months" 
 lab var other_income "Estimated income from any OTHER source over previous 12 months"
@@ -2218,11 +2314,11 @@ save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_other_income.dta", replace
 **                           LAND RENTAL INCOME        	    	              **
 ********************************************************************************
 use "${Uganda_NPS_W4_raw_data}/AGSEC2A.dta", clear
-rename HHID hhid2
-rename hh HHID
+drop HHID
+ren hh hhid
 rename a2aq14 land_rental_income
 recode land_rental_income (.=0)
-collapse(sum) land_rental_income, by(HHID)
+collapse(sum) land_rental_income, by(hhid)
 lab var land_rental_income "Estimated income from renting out land over previous 12 months"
 save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_land_rental_income.dta", replace
 
@@ -2234,8 +2330,8 @@ use "${Uganda_NPS_W4_raw_data}/AGSEC4A.dta", clear
 gen season=1
 append using "${Uganda_NPS_W4_raw_data}/AGSEC4B.dta"
 replace season =2 if season == . 
-ren HHID hhid
-    ren hh HHID
+drop HHID
+    ren hh hhid
    
 ren parcelID parcel_id
 ren plotID plot_id
@@ -2244,20 +2340,20 @@ ren ACropCode crop_code
 replace crop_code= ACrop2_ID if crop_code==.
 drop if crop_code==.
 gen crop_grown = 1 
-collapse (max) crop_grown, by(HHID parcel_id)
+collapse (max) crop_grown, by(hhid parcel_id)
 save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_crops_grown.dta", replace
 
 use "${Uganda_NPS_W4_raw_data}/AGSEC2A.dta", clear
 gen season=1
 append using "${Uganda_NPS_W4_raw_data}/AGSEC2B.dta"
 replace season =2 if season == . 
-ren HHID hhid
-ren hh HHID
+drop HHID
+ren hh hhid
 ren parcelID parcel_id
 gen cultivated = (a2aq11a==1 | a2aq11a==2 | a2aq11b==1 | a2aq11b==2)
 replace cultivated= (a2bq12a==1 | a2bq12a==2 | a2bq12b==1 | a2bq12b==2) if cultivated==.
 replace cultivated=. if cultivated==0 & (a2aq11a==. & a2aq11b==. & a2bq12a==. & a2bq12b==.)
-collapse (max) cultivated, by (HHID parcel_id)
+collapse (max) cultivated, by (hhid parcel_id)
 lab var cultivated "1= Parcel was cultivated in this data set"
 save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_parcels_cultivated.dta", replace
 
@@ -2265,8 +2361,8 @@ use "${Uganda_NPS_W4_raw_data}/AGSEC2A.dta", clear
 gen season=1
 append using "${Uganda_NPS_W4_raw_data}/AGSEC2B.dta"
 replace season =2 if season == . 
-ren HHID hhid
-ren hh HHID 
+drop HHID
+ren hh hhid 
 ren parcelID parcel_id
 gen cultivated = (a2aq11a==1 | a2aq11a==2 | a2aq11b==1 | a2aq11b==2)
 replace cultivated = (a2bq12a==1 | a2bq12a==2 | a2bq12b==1 | a2bq12b==2) if (a2aq11a==. & a2aq11b==.)
@@ -2278,7 +2374,7 @@ gen area_acres_meas = a2aq4
 replace area_acres_meas = a2bq4 if area_acres_meas==. & (a2bq4!=. | a2bq4!=0)
 replace area_acres_meas = a2aq5 if area_acres_meas==. & (a2aq5!=. | a2aq5!=0)
 replace area_acres_meas =  a2bq5 if area_acres_meas==. & (a2bq5!=. | a2bq5!=0)
-collapse (sum) area_acres_meas, by (HHID)
+collapse (sum) area_acres_meas, by (hhid)
 ren area_acres_meas farm_area
 replace farm_area = farm_area * (1/2.47105) /* Convert to hectares */
 lab var farm_area "Land size (denominator for land productivitiy), in hectares" 
@@ -2289,16 +2385,16 @@ save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_land_size.dta", replace
 use "${Uganda_NPS_W4_raw_data}/AGSEC2A.dta", clear
 gen season=1
 append using "${Uganda_NPS_W4_raw_data}/AGSEC2B.dta"
-ren HHID hhid
-ren hh HHID
+drop HHID
+ren hh hhid
 replace season = 2 if season == .
 ren parcelID parcel_id
 drop if parcel_id==.
-merge 1:1 HHID parcel_id using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_crops_grown.dta", nogen
+merge 1:1 hhid parcel_id using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_crops_grown.dta", nogen
 /*
 gen rented_out = (a2aq11a==3 | a2bq12a==3) 
 gen cultivated_short = (a2aq11b==1 | a2aq11b==2 | a2bq12b==1 | a2bq12b==2) //own cultivated annual and perennial crops
-bys HHID parcel_id: egen parcel_cult_short = max(cultivated_short)
+bys hhid parcel_id: egen parcel_cult_short = max(cultivated_short)
 replace rented_out = 0 if parcel_cult_short==1 // If cultivated in short season, not considered rented out in long season.
 drop if rented_out==1 & crop_grown!=1
 gen agland = a2aq11a==1 | a2aq11a==2 | a2aq11a==5 | a2aq11a==6| a2bq12a==1 | a2bq12a==2 | a2bq12a==5 | a2bq12a==6 // includes cultivated, fallow, pasture
@@ -2317,12 +2413,12 @@ replace area_acres_meas = a2aq5 if area_acres_meas==. & (a2aq5!=. | a2aq5!=0)
 replace area_acres_meas =  a2bq5 if area_acres_meas==. & (a2bq5!=. | a2bq5!=0)
 ren area_acres_meas farm_area
 replace farm_area = farm_area * (1/2.47105) /* Convert to hectares */
-collapse (max) agland (sum) farm_area, by (HHID parcel_id)
+collapse (max) agland (sum) farm_area, by (hhid parcel_id)
 lab var agland "1= Parcel was used for crop cultivation or pasture or left fallow in this past year (forestland and other uses excluded)"
 save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_parcels_agland.dta", replace
 
 use "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_parcels_agland.dta", replace
-collapse (sum) farm_area, by (HHID)
+collapse (sum) farm_area, by (hhid)
 ren farm_area farm_size_agland
 lab var farm_size_agland "Land size in hectares, including all plots cultivated or left fallow" 
 save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_farmsize_all_agland.dta", replace
@@ -2330,22 +2426,22 @@ save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_farmsize_all_agland.dta", repl
 use "${Uganda_NPS_W4_raw_data}/AGSEC2A.dta", clear
 gen season=1
 append using "${Uganda_NPS_W4_raw_data}/AGSEC2B.dta"
-ren HHID hhid
-ren hh HHID
+drop HHID
+ren hh hhid
 ren parcelID parcel_id
 drop if parcel_id==.
 replace season = 2 if season == .
 /*
 gen rented_out = (a2aq11a==3 | a2bq12a==3) 
 gen cultivated_short = (a2aq11b==1 | a2aq11b==2 | a2bq12b==1 | a2bq12b==2) 
-bys HHID parcel_id: egen parcel_cult_short = max(cultivated_short)
+bys hhid parcel_id: egen parcel_cult_short = max(cultivated_short)
 replace rented_out = 0 if parcel_cult_short==1
 */
 gen rented_out = (a2aq11a==3 | a2aq11b==3 | a2bq12a==3 | a2bq12b==3)
 replace rented_out=. if rented_out==0 & (a2aq11a==. | a2aq11b==. | a2bq12a==. | a2bq12b==.)
 drop if rented_out==1 
 gen parcel_held = 1  
-collapse (max) parcel_held, by (HHID parcel_id)
+collapse (max) parcel_held, by (hhid parcel_id)
 lab var parcel_held "1= Parcel was NOT rented out in the main season"
 save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_parcels_held.dta", replace
 
@@ -2353,8 +2449,8 @@ use "${Uganda_NPS_W4_raw_data}/AGSEC2A.dta", clear
 gen season=1
 append using "${Uganda_NPS_W4_raw_data}/AGSEC2B.dta"
 replace season =2 if season == . 
-ren HHID hhid
-ren hh HHID 
+drop HHID
+ren hh hhid 
 ren parcelID parcel_id
 gen rented_out = (a2aq11a==3 | a2aq11b==3 | a2bq12a==3 | a2bq12b==3)
 replace rented_out=. if rented_out==0 & (a2aq11a==. | a2aq11b==. | a2bq12a==. | a2bq12b==.)
@@ -2365,7 +2461,7 @@ replace area_acres_meas = a2aq5 if area_acres_meas==. & (a2aq5!=. | a2aq5!=0)
 replace area_acres_meas =  a2bq5 if area_acres_meas==. & (a2bq5!=. | a2bq5!=0)
 ren area_acres_meas land_size
 replace land_size = land_size * (1/2.47105) /* Convert to hectares */
-collapse (sum) land_size, by (HHID)
+collapse (sum) land_size, by (hhid)
 lab var land_size "Land size in hectares, including all plots listed by the household except those rented out"
 save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_land_size_all.dta", replace
 
@@ -2373,8 +2469,8 @@ save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_land_size_all.dta", replace
 use "${Uganda_NPS_W4_raw_data}/AGSEC2A.dta", clear
 gen season=1
 append using "${Uganda_NPS_W4_raw_data}/AGSEC2B.dta"
-ren HHID hhid
-ren hh HHID
+drop HHID
+ren hh hhid
 ren parcelID parcel_id
 /*
 drop if parcel_id==.
@@ -2385,7 +2481,7 @@ gen area_acres_meas = a2aq4 if (a2aq4!=. & a2aq4!=0)
 replace area_acres_meas = a2bq4 if area_acres_meas==. & (a2bq4!=. | a2bq4!=0)
 replace area_acres_meas = a2aq5 if area_acres_meas==. & (a2aq5!=. | a2aq5!=0)
 replace area_acres_meas =  a2bq5 if area_acres_meas==. & (a2bq5!=. | a2bq5!=0)
-collapse (sum) area_acres_meas, by (HHID)
+collapse (sum) area_acres_meas, by (hhid)
 ren area_acres_meas land_size_total
 replace land_size_total = land_size_total * (1/2.47105) /* Convert to hectares */
 lab var land_size_total "Total land size in hectares, including rented in and rented out plots"
@@ -2396,8 +2492,8 @@ use "${Uganda_NPS_W4_raw_data}/AGSEC2A.dta", clear
 gen season=1
 append using "${Uganda_NPS_W4_raw_data}/AGSEC2B.dta"
 replace season =2 if season == . 
-ren HHID hhid
-ren hh HHID
+drop HHID
+ren hh hhid
 ren parcelID parcel_id
 gen cultivated = (a2aq11a==1 | a2aq11a==2 | a2aq11b==1 | a2aq11b==2)
 replace cultivated= (a2bq12a==1 | a2bq12a==2 | a2bq12b==1 | a2bq12b==2) if cultivated==.
@@ -2406,7 +2502,7 @@ gen area_acres_meas = a2aq4
 replace area_acres_meas=a2bq4 if area_acres_meas==.
 replace area_acres_meas=. if area_acres_meas<0 
 *replace area_acres_meas = area_acres_est if area_acres_meas==. 
-collapse (sum) area_acres_meas, by (HHID)
+collapse (sum) area_acres_meas, by (hhid)
 ren area_acres_meas farm_area
 replace farm_area = farm_area * (1/2.47105) /* Convert to hectares */
 lab var farm_area "Land size (denominator for land productivitiy), in hectares" 
@@ -2415,54 +2511,54 @@ save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_land_size.dta", replace
 *All agricultural land
 use "${Uganda_NPS_W4_raw_data}/AGSEC2A.dta", clear
 append using "${Uganda_NPS_W4_raw_data}/AGSEC2B.dta"
-ren HHID hhid
-ren hh HHID
+drop HHID
+ren hh hhid
 ren parcelID parcel_id
 drop if parcel_id==.
-merge 1:1 HHID parcel_id using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_crops_grown.dta", nogen
+merge 1:1 hhid parcel_id using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_crops_grown.dta", nogen
 
 
 gen rented_out = (a2aq11a==3 | a2bq12a==3) 
 gen cultivated_short = (a2aq11b==1 | a2aq11b==2 | a2bq12b==1 | a2bq12b==2) //own cultivated annual and perennial crops
-bys HHID parcel_id: egen parcel_cult_short = max(cultivated_short)
+bys hhid parcel_id: egen parcel_cult_short = max(cultivated_short)
 replace rented_out = 0 if parcel_cult_short==1 // If cultivated in short season, not considered rented out in long season.
 drop if rented_out==1 & crop_grown!=1
 gen agland = a2aq11a==1 | a2aq11a==2 | a2aq11a==5 | a2aq11a==6| a2bq12a==1 | a2bq12a==2 | a2bq12a==5 | a2bq12a==6 // includes cultivated, fallow, pasture
 drop if agland!=1 & crop_grown==.
-collapse (max) agland, by (HHID parcel_id)
+collapse (max) agland, by (hhid parcel_id)
 lab var agland "1= Parcel was used for crop cultivation or pasture or left fallow in this past year (forestland and other uses excluded)"
 save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_parcels_agland.dta", replace
 
 use "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_parcels_agland.dta", clear
-merge m:1 HHID using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_land_size.dta", nogen keep(1 3)
+merge m:1 hhid using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_land_size.dta", nogen keep(1 3)
 replace farm_area=. if farm_area<0 
-collapse (mean) farm_area, by(HHID)
+collapse (mean) farm_area, by(hhid)
 rename farm_area farm_size_agland
 lab var farm_size_agland "Land size in hectares, including all plots cultivated or left fallow" 
 save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_farmsize_all_agland.dta", replace
 
 use "${Uganda_NPS_W4_raw_data}/AGSEC2A.dta", clear
 append using "${Uganda_NPS_W4_raw_data}/AGSEC2B.dta"
-ren HHID hhid
-ren hh HHID
+drop HHID
+ren hh hhid
 ren parcelID parcel_id
 drop if parcel_id==.
 gen rented_out = (a2aq11a==3 | a2bq12a==3) 
 gen cultivated_short = (a2aq11b==1 | a2aq11b==2 | a2bq12b==1 | a2bq12b==2) 
-bys HHID parcel_id: egen parcel_cult_short = max(cultivated_short)
+bys hhid parcel_id: egen parcel_cult_short = max(cultivated_short)
 replace rented_out = 0 if parcel_cult_short==1
 drop if rented_out==1
 gen parcel_held = 1
-collapse (max) parcel_held, by (HHID parcel_id)
+collapse (max) parcel_held, by (hhid parcel_id)
 lab var parcel_held "1= Parcel was NOT rented out in the main season"
 save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_parcels_held.dta", replace
 
 /*
 use "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_parcels_held.dta", clear
-merge 1:1 HHID parcel_id using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_parcel_areas.dta", nogen keep(1 3)
+merge 1:1 hhid parcel_id using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_parcel_areas.dta", nogen keep(1 3)
 replace area_acres_meas=. if area_acres_meas<0
 *replace area_acres_meas = area_acres_est if area_acres_meas==. 
-collapse (sum) area_acres_meas, by (HHID)
+collapse (sum) area_acres_meas, by (hhid)
 ren area_acres_meas land_size
 replace land_size = land_size * (1/2.47105) /* Convert to hectares */
 lab var land_size "Land size in hectares, including all parcels listed by the household except those rented out" 
@@ -2475,8 +2571,8 @@ gen season =1
 append using "${Uganda_NPS_W4_raw_data}/AGSEC2B.dta"
 replace season = 2 if season == .
 ren parcelID parcel_id
-duplicates drop HHID parcel_id, force // just 2 repeats
-ren HHID hhid
+duplicates drop hhid parcel_id, force // just 2 repeats
+drop HHID
 replace season = 2 if season == .
 gen area_acres_meas = a2aq4 if (a2aq4!=. & a2aq4!=0)
 replace area_acres_meas = a2bq4 if area_acres_meas==. & (a2bq4!=. | a2bq4!=0)
@@ -2487,19 +2583,19 @@ ren area_acres_meas land_size_total
 replace land_size_total = land_size_total * (1/2.47105) /* Convert to hectares */
 lab var land_size_total "Total land size in hectares, including rented in and rented out plots"
 tostring hhid, format(%18.0f) replace
-ren hhid HHID
+drop HHID
 /*
-ren HHID hhid
-ren hh HHID
+drop HHID
+ren hh hhid
 ren parcelID parcel_id
 drop if parcel_id==.
-merge 1:1 HHID parcel_id using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_parcel_areas.dta", nogen keep(1 3)
+merge 1:1 hhid parcel_id using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_parcel_areas.dta", nogen keep(1 3)
 replace area_acres_meas=. if area_acres_meas<0
 *replace area_acres_meas = area_acres_est if area_acres_meas==. 
 *replace area_acres_meas = area_acres_est if area_acres_meas==0 & (area_acres_est>0 & area_acres_est!=.)
-collapse (max) area_acres_meas, by(HHID parcel_id)
+collapse (max) area_acres_meas, by(hhid parcel_id)
 ren area_acres_meas land_size_total
-collapse (sum) land_size_total, by(HHID)
+collapse (sum) land_size_total, by(hhid)
 replace land_size_total = land_size_total * (1/2.47105) /* Convert to hectares */
 lab var land_size_total "Total land size in hectares, including rented in and rented out plots" 
 */
@@ -2510,8 +2606,8 @@ save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_land_size_total.dta", replace
 ********************************************************************************
 *Long Season
 use "${Uganda_NPS_W4_raw_data}/AGSEC3A.dta", clear
-ren HHID hhid
-ren hh HHID
+drop HHID
+ren hh hhid
 ren parcelID parcel_id
 ren plotID plot_id
 drop if parcel_id==. | plot_id==.
@@ -2522,15 +2618,15 @@ recode days_hired_women days_hired_men days_hired_child (.=0)
 egen days_hired_mainseason = rowtotal(days_hired_women days_hired_men days_hired_child) 
 recode a3aq33a_1 a3aq33b_1 a3aq33c_1 a3aq33d_1 a3aq33e_1 (.=0)
 egen days_famlabor_mainseason = rowtotal (a3aq33a_1 a3aq33b_1 a3aq33c_1 a3aq33d_1 a3aq33e_1)
-collapse (sum) days_hired_mainseason days_famlabor_mainseason, by (HHID plot_id)
+collapse (sum) days_hired_mainseason days_famlabor_mainseason, by (hhid plot_id)
 lab var days_hired_mainseason  "Workdays for hired labor (crops) in main growing season"
 lab var days_famlabor_mainseason  "Workdays for family labor (crops) in main growing season"
 save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_plot_farmlabor_mainseason.dta", replace
 
 *Short Season
 use "${Uganda_NPS_W4_raw_data}/AGSEC3B.dta", clear
-ren HHID hhid
-ren hh HHID
+drop HHID
+ren hh hhid
 ren parcelID parcel_id
 ren plotID plot_id
 drop if parcel_id==. | plot_id==.
@@ -2541,16 +2637,16 @@ recode days_hired_women days_hired_men days_hired_child (.=0)
 egen days_hired_shortseason = rowtotal(days_hired_women days_hired_men days_hired_child) 
 recode a3bq33a_1 a3bq33b_1 a3bq33c_1 a3bq33d_1 a3bq33e_1 (.=0)
 egen days_famlabor_shortseason = rowtotal (a3bq33a_1 a3bq33b_1 a3bq33c_1 a3bq33d_1 a3bq33e_1)
-collapse (sum) days_hired_shortseason days_famlabor_shortseason, by (HHID plot_id)
+collapse (sum) days_hired_shortseason days_famlabor_shortseason, by (hhid plot_id)
 lab var days_hired_shortseason  "Workdays for hired labor (crops) in short growing season"
 lab var days_famlabor_shortseason  "Workdays for family labor (crops) in short growing season"
 save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_plot_farmlabor_shortseason.dta", replace
 
 *Hired Labor and Family Labor
 use "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_plot_farmlabor_mainseason.dta", clear
-merge 1:1 HHID plot_id using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_plot_farmlabor_shortseason.dta", nogen
+merge 1:1 hhid plot_id using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_plot_farmlabor_shortseason.dta", nogen
 recode days*  (.=0)
-collapse (sum) days*, by(HHID plot_id)
+collapse (sum) days*, by(hhid plot_id)
 egen labor_hired =rowtotal(days_hired_mainseason days_hired_shortseason)
 egen labor_family=rowtotal(days_famlabor_mainseason  days_famlabor_shortseason)
 egen labor_total = rowtotal(days_hired_mainseason days_famlabor_mainseason days_hired_shortseason days_famlabor_shortseason)
@@ -2559,7 +2655,7 @@ lab var labor_hired "Total labor days (hired) allocated to the farm"
 lab var labor_family "Total labor days (family) allocated to the farm"
 lab var labor_total "Total labor days allocated to the farm"
 save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_plot_family_hired_labor.dta", replace
-collapse (sum) labor_*, by(HHID)
+collapse (sum) labor_*, by(hhid)
 lab var labor_total "Total labor days (family, hired, or other) allocated to the farm"
 lab var labor_hired "Total labor days (hired) allocated to the farm"
 lab var labor_family "Total labor days (family) allocated to the farm"
@@ -2570,8 +2666,8 @@ save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_family_hired_labor.dta", repla
 *							VACCINE USAGE									   *
 ********************************************************************************
 use "${Uganda_NPS_W4_raw_data}/AGSEC7.dta", clear
-ren HHID hhid
-    ren hh HHID
+drop HHID
+    ren hh hhid
 gen vac_animal=a7abq5a==1 | a7abq5a==2
 replace vac_animal = . if a7abq5a==. //missing if the household did not own any of these types of animals 
 
@@ -2590,7 +2686,7 @@ foreach i in vac_animal {
 	gen `i'_equine = `i' if species==4
 	gen `i'_poultry = `i' if species==5
 }
-collapse (max) vac_animal*, by (HHID)
+collapse (max) vac_animal*, by (hhid)
 lab var vac_animal "1= Household has an animal vaccinated"
 foreach i in vac_animal {
 	local l`i' : var lab `i'
@@ -2605,8 +2701,8 @@ save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_vaccine.dta", replace
 *Individual farmers listed as farmer keeper that use vaccines SAW This is a crude attempt since it hasn't been done for Uganda before. (using NGA w3 as reference)
 use "${Uganda_NPS_W4_raw_data}/AGSEC7.dta", clear
 preserve
-ren HHID hhid
-    ren hh HHID
+drop HHID
+    ren hh hhid
 ren AGroup_ID livestock_code
 gen species = (inlist(livestock_code,101,105)) + 2*(inlist(livestock_code,102,106)) + 3*(inlist(livestock_code,104,108)) + 4*(inlist(livestock_code,109,110)) + 5*(inlist(livestock_code,103,107))
 recode species (0=.)
@@ -2614,7 +2710,7 @@ la def species 1 "Large ruminants (largerum, buffalos)" 2 "Small ruminants (shee
 la val species species
 gen vac_animal=a7abq5a==1 | a7abq5a==2
 gen all_vac_animal=a7abq5a<=2
-keep HHID species vac_animal  all_vac_animal
+keep hhid species vac_animal  all_vac_animal
 tempfile vaccines
 save `vaccines'
 restore
@@ -2623,11 +2719,10 @@ use "${Uganda_NPS_W4_raw_data}/AGSEC6A.dta", clear
 append using "${Uganda_NPS_W4_raw_data}/AGSEC6B.dta"
 append using "${Uganda_NPS_W4_raw_data}/AGSEC6C.dta"
 gen double farmerid = a6aq3d // SAW: When creating PID variable we need to add double because before it was saving it as float and the PID where being modified which affected the later mege (farmeid example 3604033)
-rename HHID hhid
-rename hh HHID
+ren hh hhid
 replace farmerid = a6bq3d if farmerid==.
 replace farmerid = a6cq3d if farmerid==.
-keep HHID farmerid LiveStockID
+keep hhid farmerid LiveStockID
 tempfile farmer1
 save `farmer1'
 restore
@@ -2635,25 +2730,24 @@ preserve
 use "${Uganda_NPS_W4_raw_data}/AGSEC6A.dta", clear
 append using "${Uganda_NPS_W4_raw_data}/AGSEC6B.dta"
 append using "${Uganda_NPS_W4_raw_data}/AGSEC6C.dta"
-rename HHID hhid
-rename hh HHID
+ren hh hhid
 gen double farmerid = a6aq3e
 replace farmerid = a6bq3e if farmerid==.
 replace farmerid = a6cq3e if farmerid==.
-keep HHID farmerid LiveStockID
+keep hhid farmerid LiveStockID
 tempfile farmer2
 save `farmer2'
 restore
 use   `farmer1', replace
 append using  `farmer2'
 gen species = (inlist(LiveStockID,1,2,3,4,5,6,7,8,9,10,11,12)) + 2*(inlist(LiveStockID,13,14,15,16,18,19,20,21)) + 3*(inlist(LiveStockID,17,22)) + 4*(inlist(LiveStockID,23,24,25,26,27,28))
-merge m:m HHID species using `vaccines' 
-collapse (max) vac_animal all_vac_animal , by(HHID farmerid)
+merge m:m hhid species using `vaccines' 
+collapse (max) vac_animal all_vac_animal , by(hhid farmerid)
 gen double  indiv=farmerid // SAW again using gen double so PID values do not get different values 
 drop if indiv==.
-tostring HHID, format(%18.0f) replace
-merge 1:1 HHID indiv using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_person_ids.dta", nogen // SAW 9.26.23 The only difference with UG wave 3 is the keep(1 3)
-keep HHID farmerid vac_animal age female hh_head indiv all_vac_animal
+tostring hhid, format(%18.0f) replace
+merge 1:1 hhid indiv using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_person_ids.dta", nogen // SAW 9.26.23 The only difference with UG wave 3 is the keep(1 3)
+keep hhid farmerid vac_animal age female hh_head indiv all_vac_animal
 lab var vac_animal "1 = Individual farmer (livestock keeper) uses vaccines"
 gen livestock_keeper=1 if farmerid!=.
 recode livestock_keeper (.=0)
@@ -2669,8 +2763,7 @@ save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_farmer_vaccine.dta", replace
 *					LIVESTOCK WATER, FEEDING, AND HOUSING 					   *
 ********************************************************************************
 use "${Uganda_NPS_W4_raw_data}/AGSEC7.dta", clear
-rename HHID hhid
-rename hh HHID
+ren hh hhid
 keep if a7aq1==1
 gen feed_grazing = ( a7bq2a==1 |  a7bq2a==2 |  a7bq2b==1 |  a7bq2b==2) 
 * Difference between Uganda wave 3 and Wave 4 is that the latter ask about the 2 main feeding practices while wave 3 only ask for 1 main practice.
@@ -2697,7 +2790,7 @@ foreach i in feed_grazing water_source_nat water_source_const water_source_cover
 	gen `i'_pigs = `i' if species==3
 	gen `i'_poultry = `i' if species==4
 }
-collapse (max) feed_grazing* water_source* lvstck_housed*, by (HHID)
+collapse (max) feed_grazing* water_source* lvstck_housed*, by (hhid)
 lab var feed_grazing "1=HH feeds only or mainly by grazing"
 lab var water_source_nat "1=HH water livestock using natural source"
 lab var water_source_const "1=HH water livestock using constructed source"
@@ -2719,12 +2812,11 @@ use "${Uganda_NPS_W4_raw_data}/AGSEC3A.dta", clear
 gen season =1
 append using "${Uganda_NPS_W4_raw_data}/AGSEC3B.dta"
 replace season=2 if season==.
-rename HHID hhid
-rename hh HHID
+ren hh hhid
 rename parcelID parcel_id
 rename plotID plot_id
 gen use_inorg_fert=(a3aq13==1 | a3bq13==1) if (a3aq13!=. | a3bq13!=.)
-collapse (max) use_inorg_fert, by (HHID /*season*/)
+collapse (max) use_inorg_fert, by (hhid /*season*/)
 lab var use_inorg_fert "1 = Household uses inorganic fertilizer"
 save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_fert_use.dta", replace
 
@@ -2733,8 +2825,7 @@ use "${Uganda_NPS_W4_raw_data}/AGSEC3A.dta", clear
 gen season =1
 append using "${Uganda_NPS_W4_raw_data}/AGSEC3B.dta"
 replace season=2 if season==.
-rename HHID hhid
-rename hh HHID
+ren hh hhid
 rename parcelID parcel_id
 rename plotID plot_id
 gen all_use_inorg_fert=(a3aq13==1 | a3bq13==1) if (a3aq13!=. | a3bq13!=.)
@@ -2744,23 +2835,23 @@ gen double farmerid = a3aq3_3 if a3aq3_2==1 // only single decision-makers
 replace farmerid = a3aq3_4a if a3aq3_2==2 & farmerid==.
 replace farmerid = a3bq3_3 if a3bq3_2==1 & farmerid==.
 replace farmerid = a3bq3_4a if a3bq3_2==2 & farmerid==.
-keep HHID farmerid all_use_inorg_fert
+keep hhid farmerid all_use_inorg_fert
 save `farmer1'
 restore
 preserve
 tempfile farmer2
 gen double farmerid = a3aq3_4b if a3aq3_2==2
 replace farmerid =  a3bq3_4b if a3bq3_2==2
-keep HHID farmerid all_use_inorg_fert
+keep hhid farmerid all_use_inorg_fert
 save `farmer2'
 restore
 use   `farmer1', replace
 append using  `farmer2'
-collapse (max) all_use_inorg_fert, by(HHID farmerid)
+collapse (max) all_use_inorg_fert, by(hhid farmerid)
 gen double  indiv=farmerid // SAW again using gen double so individ values do not get different values 
 drop if indiv==.
-merge 1:1 HHID indiv using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_person_ids.dta", keep(1 3) nogen
-keep HHID indiv all_use_inorg_fert
+merge 1:1 hhid indiv using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_person_ids.dta", keep(1 3) nogen
+keep hhid indiv all_use_inorg_fert
 lab var all_use_inorg_fert "1 = Individual farmer (plot manager) uses inorganic fertilizer"
 gen farm_manager=1 if indiv!=.
 recode farm_manager (.=0)
@@ -2771,77 +2862,43 @@ save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_farmer_fert_use.dta", replace
 ********************************************************************************
 *						USE OF IMPROVED SEED								   *
 ********************************************************************************
-use "${Uganda_NPS_W4_raw_data}/AGSEC4A.dta", clear
-gen season =1
-append using "${Uganda_NPS_W4_raw_data}/AGSEC4B.dta"
-replace season=2 if season==.
-rename HHID hhid
-rename hh HHID
-rename parcelID parcel_id
-rename plotID plot_id
-gen imprv_seed_use = (a4aq13==2) if a4aq13!=.
-replace imprv_seed_use= (a4bq13==2) if imprv_seed_use==. & a4bq13!=.
-recode cropID (811 812 = 810) (741 742 744 = 740) (224 = 223)  //  Same for bananas (740)
-label define cropID 740 "Bananas", modify //need to add new codes to the value label, cropID
-label values cropID cropID //apply crop labels to crop_code_master
+use "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_all_plots.dta"
 
 *Use of seed by type of crop
 forvalues k=1/$nb_topcrops {
 	local c : word `k' of $topcrop_area
 	local cn : word `k' of $topcropname_area
 	
-	gen imprv_seed_`cn'=imprv_seed_use if cropID==`c'
+	gen imprv_seed_`cn'= use_imprv_seed==1 & crop_code==`c'
 	gen hybrid_seed_`cn'=.
 }
-collapse (max) imprv_seed_* /*hybrid_seed_**/, by(HHID)
-lab var imprv_seed_use "1 = Household uses improved seed"
+preserve
+collapse (max) *imprv* /*hybrid_seed_**/, by(hhid)
+lab var use_imprv_seed "1 = Household uses improved seed"
 foreach v in $topcropname_area {
 	lab var imprv_seed_`v' "1= Household uses improved `v' seed"
 	*lab var hybrid_seed_`v' "1= Household uses improved `v' seed"
 }
-*SAW No information found on hybrid seeds.
-*replace imprv_seed_cassav = . // not sure why?
-*replace imprv_seed_banana = . // This might be due to the need to regroup distinct banana crops into one umbrella term. Righ (need to update this to wave 3)
+restore
+
 save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_improvedseed_use.dta", replace
-
-*Seed adoption by farmers ( a farmer is an individual listed as plot manager)
-use "${Uganda_NPS_W4_raw_data}/AGSEC4A.dta", clear
-gen season =1
-append using "${Uganda_NPS_W4_raw_data}/AGSEC4B.dta"
-replace season=2 if season==.
-rename HHID hhid
-rename hh HHID
-rename parcelID parcel_id
-rename plotID plot_id
-recode cropID (811 812 = 810) (741 742 744 = 740) (224 = 223)  //  Same for bananas (740)
-label define cropID 740 "Bananas", modify //need to add new codes to the value label, cropID
-label values cropID cropID //apply crop labels to crop_code_master
-gen all_imprv_seed_use = (a4aq13==2) if a4aq13!=.
-replace all_imprv_seed_use= (a4bq13==2) if all_imprv_seed_use==. & a4bq13!=.
-save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_farmer_improvedseed_use_temp.dta", replace
-
-*Use of seed by crops
+merge m:m hhid plot_id parcel_id using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_dm_ids.dta"
 forvalues k=1/$nb_topcrops {
-	use "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_farmer_improvedseed_use_temp.dta", clear
 	local c : word `k' of $topcrop_area
 	local cn : word `k' of $topcropname_area
 	*Adding adoption of improved maize seeds
-	gen all_imprv_seed_`cn'=all_imprv_seed_use if cropID==`c'  
+	gen all_imprv_seed_`cn'=use_imprv_seed if crop_code==`c'  
 	*gen all_hybrid_seed_`cn' =. 
 	*We also need a variable that indicates if farmer (plot manager) grows crop
-	gen `cn'_farmer= cropID==`c' 
-	gen double indiv = a4aq6_1
-	replace indiv= a4bq6_1 if indiv==.
-	collapse (max) all_imprv_seed_use  all_imprv_seed_`cn' /*all_hybrid_seed_`cn'*/  `cn'_farmer, by (HHID indiv)
+	gen `cn'_farmer= crop_code==`c' 
+	
 	save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_farmer_improvedseed_use_temp_`cn'.dta", replace // Would it be helpful to save this as tempfile? 
 }
 
-*Combining all crop disaggregated files together
-foreach v in $topcropname_area {
-	merge 1:1 HHID indiv all_imprv_seed_use using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_farmer_improvedseed_use_temp_`v'.dta", nogen 
-}	 
-drop if indiv==.
-merge 1:1 HHID indiv using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_person_ids.dta", nogen
+collapse (max) all_imprv_seed_use=use_imprv_seed  all_imprv_seed_*  *_farmer, by (hhid indiv)
+gen farm_manager=1 if indiv!=.
+merge 1:1 hhid indiv using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_person_ids.dta", nogen
+recode farm_manager (.=0)
 lab var all_imprv_seed_use "1 = Individual farmer (plot manager) uses improved seeds"
 foreach v in $topcropname_area {
 	lab var all_imprv_seed_`v' "1 = Individual farmer (plot manager) uses improved seeds - `v'"
@@ -2849,10 +2906,7 @@ foreach v in $topcropname_area {
 	lab var `v'_farmer "1 = Individual farmer (plot manager) grows `v'"
 }
 
-gen farm_manager=1 if indiv!=.
-recode farm_manager (.=0)
-lab var farm_manager "1=Indvidual is listed as a manager for at least one plot" // 
-*Replacing permanent crop seed information with missing because this section does not ask about permanent crops
+lab var farm_manager "1=Indvidual is listed as a manager for at least one plot" 
 save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_farmer_improvedseed_use.dta", replace 
 
 ********************************************************************************
@@ -2866,78 +2920,58 @@ gen season=1
 append using "${Uganda_NPS_W4_raw_data}/AGSEC4B.dta"
 replace season = 2 if season == .
 rename HHID hhid2
-rename hh HHID
+ren hh hhid
 recode cropID (811 812 = 810) (741 742 744 = 740) (224 = 223) //  Same for bananas (740)
 label define cropID 740 "Bananas", modify //need to add new codes to the value label, cropID
 label values cropID cropID //apply crop labels to crop_code_master
 gen use_imprv_seed = (a4aq13==2) if a4aq13!=.
 replace use_imprv_seed= (a4bq13==2) if use_imprv_seed==. & a4bq13!=.
 *Crop Recode (Must check if applies for Uganda)
-collapse (max) use_imprv_seed, by(HHID parcelID plotID cropID) //SAW Potentially we could do it by season. 
+collapse (max) use_imprv_seed, by(hhid parcelID plotID cropID season) //SAW Potentially we could do it by season. 
 rename parcelID parcel_id
 rename plotID plot_id
 rename cropID crop_code
 tempfile imprv_seed
 save `imprv_seed'
 
-use "${Uganda_NPS_W4_raw_data}/AGSEC3A.dta", clear
-gen season=1
-append using "${Uganda_NPS_W4_raw_data}/AGSEC3B.dta"
-replace season = 2 if season == .
-rename HHID hhid2
-rename hh HHID
-clonevar PID1 = a3aq3_3
-replace PID1 = a3aq3_4a if a3aq3_2==2
-replace PID1 = a3bq3_3 if PID1==.
-replace PID1 = a3bq3_4a if PID1==. & a3bq3_2==2
-clonevar PID2 = a3aq3_4b
-replace PID2 = a3bq3_4b if PID2==. & a3bq3_2==2
-keep HHID parcelID plotID PID* season
-duplicates drop HHID parcelID plotID season, force // 3 obs deleted
-reshape long PID, i(HHID parcelID plotID season) j(pidno)
-drop pidno
-drop if PID==.
-clonevar individ = PID
-merge m:1 HHID individ using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_gender_merge.dta", nogen keep(1 3)
-rename plotID plot_id
-rename parcelID parcel_id
-tempfile personids
-save `personids'
-
 use "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_input_quantities.dta", clear
 foreach i in inorg_fert org_fert pest /*herb*/ {
-	recode `i'_rate (.=0)
+	recode `i'_kg (.=0)
+	replace `i'_kg=1 if `i'_kg >0 
+	ren `i'_kg use_`i'
+	/*recode `i'_rate (.=0)
 	replace `i'_rate=1 if `i'_rate >0 
-	ren `i'_rate use_`i'
+	ren `i'_rate use_`i'*/
 }
-collapse (max) use_*, by(HHID parcel_id plot_id) // SAW If in at least one season it used any of i it is coded as 1. 
-merge 1:m HHID parcel_id plot_id using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_all_plots.dta", nogen keep(1 3) keepusing(crop_code)
+ 
+collapse (max) use_*, by(hhid parcel_id plot_id season) // SAW If in at least one season it used any of i it is coded as 1. 
+merge 1:m hhid parcel_id plot_id season using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_all_plots.dta", nogen keep(1 3) keepusing(crop_code)
 *ren crop_code_master crop_code
-collapse (max) use*, by(HHID parcel_id plot_id crop_code)
-merge 1:1 HHID parcel_id plot_id crop_code using `imprv_seed',nogen keep(1 3)
+collapse (max) use*, by(hhid parcel_id plot_id crop_code season)
+merge 1:1 hhid parcel_id plot_id crop_code season using `imprv_seed',nogen keep(1 3)
 recode use* (.=0)
 preserve 
-keep HHID parcel_id plot_id crop_code use_imprv_seed
+keep hhid parcel_id plot_id crop_code use_imprv_seed
 ren use_imprv_seed imprv_seed_
 gen hybrid_seed_ = .
-collapse (max) imprv_seed_ hybrid_seed_, by(HHID crop_code)
+collapse (max) imprv_seed_ hybrid_seed_, by(hhid crop_code)
 merge m:1 crop_code using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_cropname_table.dta", nogen keep(3)
 drop crop_code	
-reshape wide imprv_seed_ hybrid_seed_, i(HHID) j(crop_name) string
+reshape wide imprv_seed_ hybrid_seed_, i(hhid) j(crop_name) string
 save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_imprvseed_crop.dta", replace //ALT: this is slowly devolving into a kludgy mess as I try to keep continuity up in the hh_vars section.
 restore
 
-merge m:m HHID parcel_id plot_id using `personids', nogen keep(1 3) // SAW personids is at the plot season level while input quantities at the plot level
+merge m:m hhid parcel_id plot_id using  "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_dm_ids.dta", nogen keep(1 3) // SAW personids is at the plot season level while input quantities at the plot level
 preserve
 ren use_imprv_seed all_imprv_seed_
 gen all_hybrid_seed_ =.
-collapse (max) all*, by(HHID individ female crop_code)
+collapse (max) all*, by(hhid individ female crop_code)
 merge m:1 crop_code using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_cropname_table.dta", nogen keep(3)
 *decode crop_code, gen(crop_name)
 drop crop_code
 gen farmer_=1
 ren individ personid
-reshape wide all_imprv_seed_ all_hybrid_seed_ farmer_, i(HHID personid female) j(crop_name) string
+reshape wide all_imprv_seed_ all_hybrid_seed_ farmer_, i(hhid personid female) j(crop_name) string
 recode farmer_* (.=0)
 ren farmer_* *_farmer
 clonevar indiv = personid 
@@ -2945,11 +2979,11 @@ save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_farmer_improvedseed_use.dta", 
 restore
 
 ren individ personid 
-collapse (max) use_*, by(HHID personid female)
+collapse (max) use_*, by(hhid personid female)
 gen all_imprv_seed_use = use_imprv_seed //Legacy
 
 preserve
-	collapse (max) use_inorg_fert use_imprv_seed use_org_fert use_pest /*use_herb*/, by (HHID)
+	collapse (max) use_inorg_fert use_imprv_seed use_org_fert use_pest /*use_herb*/, by (hhid)
 	la var use_inorg_fert "1= Household uses inorganic fertilizer"
 	la var use_pest "1 = household uses pesticide"
 	*la var use_herb "1 = household uses herbicide"
@@ -2974,8 +3008,8 @@ restore
 *							REACHED BY AG EXTENSION							   *
 ********************************************************************************
 use "${Uganda_NPS_W4_raw_data}/AGSEC9.dta", clear
-rename HHID hhid
-ren hh HHID
+drop HHID
+ren hh hhid
 *Governmet Extension
 gen advice_gov = (a9q3==1) if a9q2==1
 *Input Supplier
@@ -2996,7 +3030,7 @@ gen ext_reach_private=(advice_ngo==1 | advice_coop==1 | advice_input_sup==1 | ad
 gen ext_reach_unspecified=(advice_other==1)
 *gen ext_reach_ict=(advice_radio==1)
 gen ext_reach_all=(ext_reach_public==1 | ext_reach_private==1 | ext_reach_unspecified==1)
-collapse (max) ext_reach_* , by (HHID)
+collapse (max) ext_reach_* , by (hhid)
 lab var ext_reach_all "1 = Household reached by extensition services - all sources"
 lab var ext_reach_public "1 = Household reached by extensition services - public sources"
 lab var ext_reach_private "1 = Household reached by extensition services - private sources"
@@ -3008,12 +3042,13 @@ save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_any_ext.dta", replace
 **                         MOBILE PHONE OWNERSHIP                             **
 ********************************************************************************
 use "${Uganda_NPS_W4_raw_data}/GSEC14A.dta", clear
+ren HHID hhid
 *append using "${Uganda_NPS_W4_raw_data}/GSEC14B.dta"
 recode h14q4 (.=0)
 gen hh_number_mobile_owned=h14q4 if h14q2==16 // number mobile phones owned by household today
 recode hh_number_mobile_owned (.=0)
 gen mobile_owned=hh_number_mobile_owned>0
-collapse (max) mobile_owned, by(HHID)
+collapse (max) mobile_owned, by(hhid)
 save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_mobile_own.dta", replace 
 
 ********************************************************************************
@@ -3025,8 +3060,8 @@ save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_mobile_own.dta", replace
 *								MILK PRODUCTIVITY			   *
 ********************************************************************************
 use "${Uganda_NPS_W4_raw_data}/AGSEC8B.dta", clear
-rename HHID hhid
-rename hh HHID
+drop HHID
+ren hh hhid
 ren AGroup_ID livestock_code 
 keep if livestock_code==101 | livestock_code==105 
 gen milk_animals = a8bq1
@@ -3036,37 +3071,37 @@ gen months_milked = days_milked/30.5
 gen liters_day = a8bq3 
 gen liters_per_largerruminant = days_milked*liters_day
 gen liters_milk_produced = (milk_animals*365*(months_milked/12)*liters_day)
-collapse (sum) milk_animals liters_milk_produced (mean) days_milked months_milked liters_day liters_per_largerruminant, by(HHID)
+collapse (sum) milk_animals liters_milk_produced (mean) days_milked months_milked liters_day liters_per_largerruminant, by(hhid)
 lab var liters_milk_produced "Total quantity (liters) of milk per year (household)"
-keep HHID milk_animals months_milked liters_milk_produced days_milked liters_per_largerruminant liters_day
+keep hhid milk_animals months_milked liters_milk_produced days_milked liters_per_largerruminant liters_day
 label variable milk_animals "Number of large ruminants that was milk (household)"
 label variable days_milked "Average days milked in last year (household)"
 label variable months_milked "Average months milked in last year (household)"
 label variable  liters_day "Average milk production  (liters) per day per milked animal"
 label variable liters_per_largerruminant "Average quantity (liters) per year per milked animal (household)"
-tostring HHID, format(%18.0f) replace
+tostring hhid, format(%18.0f) replace
 save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_milk_animals.dta", replace 
 
 ********************************************************************************
 *								EGG PRODUCTIVITY							   *
 ********************************************************************************
 use "${Uganda_NPS_W4_raw_data}/AGSEC6C.dta", clear
-rename HHID hhid
-rename hh HHID
+drop HHID
+ren hh hhid
 gen poultry_owned = a6cq3a if (APCode==23 | APCode==24 | APCode==25 | APCode==26) // SAW It includes   Indigenous dual-purpose chicken, Layers (exotic/cross chicken),   Broilers (exotic/cross chicken), ther poultry and birds (turkeys/ducks)
-collapse (sum) poultry_owned, by(HHID)
+collapse (sum) poultry_owned, by(hhid)
 tempfile eggs_animals_hh 
 save `eggs_animals_hh'
 
 use "${Uganda_NPS_W4_raw_data}/AGSEC8C.dta", clear
-rename HHID hhid
-rename hh HHID
+drop HHID
+ren hh hhid
 gen eggs_months = a8cq1/3	// number of layers was reported for the last three months thus the need to divide by 3 to get monthly total				
 gen eggs_per_month = a8cq2/3	// number of eggs laid was reported for the last three months thus the need to divide by 3 to get monthly total			
-collapse (sum) eggs_months eggs_per_month, by(HHID)
+collapse (sum) eggs_months eggs_per_month, by(hhid)
 gen eggs_total_year = eggs_month*eggs_per_month*12 // multiply by 12 to get the annual total 
-merge 1:1 HHID using  `eggs_animals_hh', nogen keep(1 3)			
-keep HHID eggs_months eggs_per_month eggs_total_year poultry_owned 
+merge 1:1 hhid using  `eggs_animals_hh', nogen keep(1 3)			
+keep hhid eggs_months eggs_per_month eggs_total_year poultry_owned 
 lab var eggs_months "Number of months eggs were produced (household)"
 lab var eggs_per_month "Number of months eggs that were produced per month (household)"
 lab var eggs_total_year "Total number of eggs that was produced (household)"
@@ -3080,32 +3115,32 @@ save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_eggs_animals.dta", replace
 ********************************************************************************
 use "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_all_plots.dta", replace 
 replace dm_gender = 3 if dm_gender==.
-collapse (sum) ha_planted /*ha_harvest*/, by(HHID parcel_id plot_id /*season*/ purestand field_size) // SAW All plots section is unable to construct ha harvest variable (no information available), might want to "predict" it just as we did for ha planted at the plot level. (Also, har harvest might be available at the parcel level like plot size?)
-duplicates drop HHID parcel_id plot_id /*season*/, force
-reshape long ha_, i(HHID parcel_id plot_id /*season*/ purestand field_size) j(area_type) string
+collapse (sum) ha_planted /*ha_harvest*/, by(hhid parcel_id plot_id /*season*/ purestand field_size) // SAW All plots section is unable to construct ha harvest variable (no information available), might want to "predict" it just as we did for ha planted at the plot level. (Also, har harvest might be available at the parcel level like plot size?)
+duplicates drop hhid parcel_id plot_id /*season*/, force
+reshape long ha_, i(hhid parcel_id plot_id /*season*/ purestand field_size) j(area_type) string
 tempfile plot_areas
 save `plot_areas'
 
 use "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_plot_cost_inputs_long.dta", replace 
 replace dm_gender = 3 if dm_gender==.
-collapse (sum) cost_=val, by(HHID parcel_id plot_id /*season*/ dm_gender exp)
-reshape wide cost_, i(HHID parcel_id plot_id  /*season*/ dm_gender) j(exp) string
+collapse (sum) cost_=val, by(hhid parcel_id plot_id /*season*/ dm_gender exp)
+reshape wide cost_, i(hhid parcel_id plot_id  /*season*/ dm_gender) j(exp) string
 recode cost_exp cost_imp (.=0)
-drop cost_total
+*drop cost_total
 gen cost_total=cost_imp+cost_exp
 drop cost_imp
-merge m:1 HHID parcel_id plot_id /*season*/ using `plot_areas', nogen keep(3)
+merge m:1 hhid parcel_id plot_id /*season*/ using `plot_areas', nogen keep(3)
 gen cost_exp_ha_ = cost_exp/ha_ 
 gen cost_total_ha_ = cost_total/ha_
-collapse (mean) cost*ha_ [aw=field_size], by(HHID /*season*/ dm_gender area_type)
+collapse (mean) cost*ha_ [aw=field_size], by(hhid /*season*/ dm_gender area_type)
 gen dm_gender2 = "male" if dm_gender==1
 replace dm_gender2 = "female" if dm_gender==2
 replace dm_gender2 = "mixed" if dm_gender==3
 drop dm_gender
 *replace area_type = "harvested" if strmatch(area_type,"harvest")
-reshape wide cost*_, i(HHID /*season*/ dm_gender2) j(area_type) string
+reshape wide cost*_, i(hhid /*season*/ dm_gender2) j(area_type) string
 ren cost* cost*_
-reshape wide cost*, i(HHID /*season*/) j(dm_gender2) string
+reshape wide cost*, i(hhid /*season*/) j(dm_gender2) string
 
 foreach i in male female mixed {
 	foreach j in planted /*harvested*/ {
@@ -3121,26 +3156,84 @@ save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_cropcosts.dta", replace
                     * RATE OF FERTILIZER APPLICATION *
 ********************************************************************************
 use "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_all_plots.dta", replace 
-collapse (sum) ha_planted /*ha_harvest*/, by(HHID parcel_id plot_id season/*season*/ dm_gender) // SAW All plots section is unable to construct ha harvest variable (no information available), might want to "predict" it just as we did for ha planted at the plot level. (Also, har harvest might be available at the parcel level like plot size?)
-merge 1:1 HHID parcel_id plot_id season using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_input_quantities.dta", keep(1 3) nogen
-collapse (sum) ha_planted /*ha_harvest*/ inorg_fert_rate org_fert_rate pest_rate, by(HHID parcel_id plot_id /*season*/ dm_gender) // at the plot level for both seasons
+collapse (sum) ha_planted /*ha_harvest*/, by(hhid parcel_id plot_id season/*season*/ dm_gender) // SAW All plots section is unable to construct ha harvest variable (no information available), might want to "predict" it just as we did for ha planted at the plot level. (Also, har harvest might be available at the parcel level like plot size?)
+merge 1:m hhid parcel_id plot_id season using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_input_quantities.dta", keep(1 3) nogen
+*collapse (sum) ha_planted /*ha_harvest*/ /*inorg_fert_rate org_fert_rate pest_rate*/ inorg_fert_kg org_fert_kg pest_kg, by(hhid parcel_id plot_id /*season*/ dm_gender) // at the plot level for both seasons
+
+
+collapse (sum) ha_planted /*ha_harvest*/ /*inorg_fert_rate org_fert_rate pest_rate*/ inorg_fert_kg org_fert_kg pest_kg n_kg p_kg k_kg, by(hhid parcel_id plot_id /*season*/ dm_gender) // at the plot level for both seasons
+
+drop if ha_planted==0
+unab vars : *kg 
+local vars `vars' /*ha_irr*/ ha_planted
+recode *kg (.=0)
+
+
 gen dm_gender2 = "male" if dm_gender==1
 replace dm_gender2 = "female" if dm_gender==2
 replace dm_gender2 = "mixed" if dm_gender==3
 drop dm_gender
 ren ha_planted ha_planted_
+
+ren *kg *kg_
+
+drop if dm_gender2=="" 
+
+reshape wide *_, i(hhid parcel_id plot_id) j(dm_gender2) string
+collapse (sum) *male *mixed /*ha_planted_* *kg**/, by(hhid)
+recode ha_planted* (0=.)
+foreach i in `vars' {
+	egen `i' = rowtotal(`i'_*)
+}
+merge m:1 hhid using  "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_hhids.dta", keep (1 3) nogen
+_pctile ha_planted [aw=weight]  if ha_planted!=0 , p($wins_lower_thres $wins_upper_thres)
+foreach x of varlist ha_planted ha_planted_male ha_planted_female ha_planted_mixed {
+		replace `x' =r(r1) if `x' < r(r1)   & `x' !=. &  `x' !=0 
+		replace `x' = r(r2) if  `x' > r(r2) & `x' !=.    
+}
+lab var inorg_fert_kg "Inorganic fertilizer (kgs) for household"
+lab var org_fert_kg "Organic fertilizer (kgs) for household"
+*lab var fert_inorg_kg "Inorganic fertilizer (kgs) for household"
+*lab var fert_org_kg "Organic fertilizer (kgs) for household" 
+lab var pest_kg "Pesticide (kgs) for household"
+*lab var herb_kg "Herbicide (kgs) for household"
+lab var ha_planted "Area planted (ha), all crops, for household"
+la var n_kg "Nitrogen from inorganic fertilizers (kg) for hh"
+la var p_kg "Phosphorus from inorganic fertilizers (kg) for hh"
+la var k_kg "Potassium from inorganic fertilizers (kg) for hh"
+
+foreach i in male female mixed {
+lab var inorg_fert_kg_`i' "Inorganic fertilizer (kgs) for `i'-managed plots"
+lab var org_fert_kg_`i' "Organic fertilizer (kgs) for `i'-managed plots" 
+*lab var fert_inorg_kg_`i' "Inorganic fertilizer (kgs) for `i'-managed plots"
+*lab var fert_org_kg_`i' "Organic fertilizer (kgs) for `i'-managed plots" 
+lab var pest_kg_`i' "Pesticide (kgs) for `i'-managed plots"
+*lab var herb_kg_`i' "Herbicide (kgs) for `i'-managed plots"
+lab var ha_planted_`i' "Area planted (ha), all crops, `i'-managed plots"
+la var n_kg_`i' "Inorganic N (kg) for `i'-managed plots"
+la var p_kg_`i' "Inorganic P (kg) for `i'-managed plots"
+la var k_kg_`i' "Inorganic K (kg) for `i'-managed plots"
+}
+
+
+/*
+ren inorg_fert_kg fert_inorg_kg_ 
+ren org_fert_kg fert_org_kg_ 
+ren pest_kg pest_kg_
+/*
 ren inorg_fert_rate fert_inorg_kg_ 
 ren org_fert_rate fert_org_kg_ 
 ren pest_rate pest_kg_
+*/
 *ren herb_rate herb_kg_ // SAW no herb information
 drop if dm_gender2=="" // SAW might be a better way to allow reshape work without losing this info. 
-reshape wide ha_planted_ fert_inorg_kg_ fert_org_kg_ pest_kg_ /*herb_kg_*/, i(HHID parcel_id plot_id) j(dm_gender2) string
-collapse (sum) *male *mixed, by(HHID)
+reshape wide ha_planted_ fert_inorg_kg_ fert_org_kg_ pest_kg_ /*herb_kg_*/, i(hhid parcel_id plot_id) j(dm_gender2) string
+collapse (sum) *male *mixed, by(hhid)
 recode ha_planted* (0=.)
 foreach i in ha_planted fert_inorg_kg fert_org_kg pest_kg /*herb_kg*/ {
 	egen `i' = rowtotal(`i'_*)
 }
-merge m:1 HHID using  "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_hhids.dta", keep (1 3) nogen
+merge m:1 hhid using  "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_hhids.dta", keep (1 3) nogen
 _pctile ha_planted [aw=weight]  if ha_planted!=0 , p($wins_lower_thres $wins_upper_thres)
 foreach x of varlist ha_planted ha_planted_male ha_planted_female ha_planted_mixed {
 		replace `x' =r(r1) if `x' < r(r1)   & `x' !=. &  `x' !=0 
@@ -3156,7 +3249,7 @@ lab var fert_inorg_kg_`i' "Inorganic fertilizer (kgs) for `i'-managed plots"
 lab var fert_org_kg_`i' "Organic fertilizer (kgs) for `i'-managed plots" 
 lab var pest_kg_`i' "Pesticide (kgs) for `i'-managed plots"
 lab var ha_planted_`i' "Area planted (ha), all crops, `i'-managed plots"
-}
+}*/
 save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_fertilizer_application.dta", replace 
 
 ********************************************************************************
@@ -3169,11 +3262,70 @@ save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_fertilizer_application.dta", r
 ********************************************************************************
 *						HOUSEHOLD'S DIET DIVERSITY SCORE					   *
 ********************************************************************************
+
+
 * Uganda Wave 4 does not report individual consumption but instead household level consumption of various food items.
 * Thus, only the proportion of households eating nutritious food can be estimated
+*No available data to construct rCSI module.
+*Constructing FCS
+
+
 use "${Uganda_NPS_W4_raw_data}/GSEC15B.dta", clear
 ren HHID hhid
-rename hh HHID
+ren h15bq3b days
+recode days (8=7)
+recode days (.=0)
+
+recode itmcd 		(110/116 190/191 					=1	"CEREALS" )  								//// A
+					(101/109 180/182    				=2	"WHITE ROOTS,TUBERS AND OTHER STARCHES"	) 	//// B
+					(140/146 162/163					=3	"LEGUMES, NUTS AND SEEDS" ) 				//// C
+					(135/139 164/168	 				=4	"VEGETABLES"	)  							//// D
+					(117/124 							=5	"MEAT, EGGS, FISH"	)                       //// E
+					(130/134 169/174					=6	"FRUITS"	)  							    //// F
+					(125/126							=7	"MILK AND MILK PRODUCTS" )					//// G
+					(127/129   							=8	"OILS AND FATS"	)							//// H
+					(147 /*151 154*/ 					=9	"SWEETS"	) 								//// I
+					(148/154 160 175					=10 "SPICES, CONDIMENTS, BEVERAGES"	)			//// J
+					,generate(foodgroup)
+keep if foodgroup<10
+
+keep foodgroup hhid days
+collapse (sum) days, by(hhid foodgroup)
+reshape wide days, i(hhid) j(foodgroup)
+gen max_days = max(days1, days2)
+gen min_days = min(days1, days2)
+gen sum_days = days1+days2
+gen fcs_a =.
+replace fcs_a =7 if max_days==7
+replace fcs_a=max_days if min_days==0
+replace fcs_a=((max_days+min_days)/2) if sum_days>7
+drop days1 days2 /*days10*/ *_days
+ren fcs_a days1
+reshape long days, i(hhid) j(foodgroup)
+gen weight = .
+replace weight = 2 if foodgroup==1 							// max of A and B 
+replace weight = 3 if foodgroup == 3 						// C
+replace weight = 1 if foodgroup == 4 | foodgroup == 6 		// D & F
+replace weight = 4 if foodgroup == 5 | foodgroup == 7   	// E & G
+replace weight = 0.5 if foodgroup == 8 | foodgroup == 9 	// H & I
+gen fcs =. 
+replace fcs = days*weight
+collapse (sum) fcs, by (hhid)
+label var fcs "Food Consumption Score"
+gen fcs_poor = (fcs <= 21)
+gen fcs_borderline = (fcs > 21 & fcs <= 35)
+gen fcs_acceptable = (fcs > 35)
+label var fcs_poor "1 = Household has poor Food Consumption Score (0-21)"
+label var fcs_borderline "1 = Household has borderline Food Consumption Score (21.5 - 35)"
+label var fcs_acceptable "1 = Household has acceptable Food Consumption Score (> 35)"
+*rename hhid HHID
+*merge 1:1 hhid using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_household_diet.dta", nogen 
+save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_fcs.dta", replace
+
+
+
+use "${Uganda_NPS_W4_raw_data}/GSEC15B.dta", clear
+ren HHID hhid
 * recode food items to map HDDS food categories
 recode itmcd 		(110/116 190/191				=1	"CEREALS" )  //// 
 					(101/109 180/182   				=2	"WHITE ROOTS,TUBERS AND OTHER STARCHES"	)  //// NKF 12.18.19 Including "matooke" (starchy banana) here - is this right? Or is it fruit?
@@ -3192,11 +3344,53 @@ keep if Diet_ID<15
 gen adiet_yes=(h15bq3a==1)
 ta Diet_ID
 ** Now, collapse to food group level; household consumes a food group if it consumes at least one item
-collapse (max) adiet_yes, by(HHID Diet_ID) 
+collapse (max) adiet_yes, by(hhid Diet_ID) 
 label define YesNo 1 "Yes" 0 "No"
 label val adiet_yes YesNo
 * Now, estimate the number of food groups eaten by each individual
-collapse (sum) adiet_yes, by(HHID)
+collapse (sum) adiet_yes, by(hhid)
+ren adiet_yes number_foodgroup 
+sum number_foodgroup 
+local cut_off1=6
+local cut_off2=round(r(mean))
+gen household_diet_cut_off1=(number_foodgroup>=`cut_off1')
+gen household_diet_cut_off2=(number_foodgroup>=`cut_off2')
+lab var household_diet_cut_off1 "1= houseold consumed at least `cut_off1' of the 12 food groups last week" 
+lab var household_diet_cut_off2 "1= houseold consumed at least `cut_off2' of the 12 food groups last week" 
+label var number_foodgroup "Number of food groups individual consumed last week HDDS"
+
+merge 1:1 hhid using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_fcs.dta", nogen 
+save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_household_diet.dta", replace
+
+/*
+* Uganda Wave 4 does not report individual consumption but instead household level consumption of various food items.
+* Thus, only the proportion of households eating nutritious food can be estimated
+use "${Uganda_NPS_W4_raw_data}/GSEC15B.dta", clear
+drop HHID
+ren hh hhid
+* recode food items to map HDDS food categories
+recode itmcd 		(110/116 190/191				=1	"CEREALS" )  //// 
+					(101/109 180/182   				=2	"WHITE ROOTS,TUBERS AND OTHER STARCHES"	)  //// NKF 12.18.19 Including "matooke" (starchy banana) here - is this right? Or is it fruit?
+					(135/139 164/168				=3	"VEGETABLES"	)  ////	
+					(130/134 169/174				=4	"FRUITS"	)  ////	
+					(117/121 						=5	"MEAT"	)  ////					
+					(124							=6	"EGGS"	)  ////
+					(122/123 						=7  "FISH") ///
+					(140/146 162/163				=8	"LEGUMES, NUTS AND SEEDS") ///
+					(125/126						=9	"MILK AND MILK PRODUCTS")  //// NKF 12.18.19 Including "Infant formula foods" here, is this right?
+					(127/129   						=10	"OILS AND FATS"	)  ////
+					(147					 		=11	"SWEETS"	)  //// 
+					(148/154 160 175				=14 "SPICES, CONDIMENTS, BEVERAGES"	)  //// SAW Excluded Other since its not included in other Uganda Waves.
+					,generate(Diet_ID)					
+keep if Diet_ID<15
+gen adiet_yes=(h15bq3a==1)
+ta Diet_ID
+** Now, collapse to food group level; household consumes a food group if it consumes at least one item
+collapse (max) adiet_yes, by(hhid Diet_ID) 
+label define YesNo 1 "Yes" 0 "No"
+label val adiet_yes YesNo
+* Now, estimate the number of food groups eaten by each individual
+collapse (sum) adiet_yes, by(hhid)
 ren adiet_yes number_foodgroup 
 sum number_foodgroup 
 local cut_off1=6
@@ -3207,7 +3401,7 @@ lab var household_diet_cut_off1 "1= houseold consumed at least `cut_off1' of the
 lab var household_diet_cut_off2 "1= houseold consumed at least `cut_off2' of the 12 food groups last week" 
 label var number_foodgroup "Number of food groups individual consumed last week HDDS"
 save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_household_diet.dta", replace
-
+*/
 
 ********************************************************************************
 *							WOMEN'S CONTROL OVER INCOME			(W3 VERSION)			   *
@@ -3239,12 +3433,12 @@ append using "${Uganda_NPS_W4_raw_data}/AGSEC5B.dta"
 append using "${Uganda_NPS_W4_raw_data}/AGSEC8A.dta"
 append using "${Uganda_NPS_W4_raw_data}/AGSEC8B.dta"
 append using "${Uganda_NPS_W4_raw_data}/AGSEC8C.dta"
-rename HHID hhid
-rename hh HHID
+drop HHID
+ren hh HHID
 
 append using "${Uganda_NPS_W4_raw_data}/GSEC12_1.dta" // OR
 *append using "${Uganda_NPS_W4_raw_data}/gsec12.dta"
-
+ren HHID hhid
 gen type_decision="" 
 gen controller_income1=.
 gen controller_income2=. 
@@ -3290,13 +3484,13 @@ replace controller_income1=a8cq6a if controller_income1==.
 replace controller_income2=a8cq6b if controller_income2==.
 
 preserve
-keep HHID type_decision controller_income2
+keep hhid type_decision controller_income2
 drop if controller_income2==.
 ren controller_income2 controller_income
 tempfile controller_income2
 save `controller_income2'
 restore
-keep HHID type_decision controller_income1
+keep hhid type_decision controller_income1
 drop if controller_income1==.
 ren controller_income1 controller_income
 append using `controller_income2'
@@ -3320,12 +3514,12 @@ gen control_nonfarmincome=1 if  type_decision=="control_remittance" ///
 							  | type_decision=="control_assistance" ///
 							  | control_businessincome== 1 
 recode 	control_nonfarmincome (.=0)																		
-collapse (max) control_* , by(HHID controller_income)  //any decision
+collapse (max) control_* , by(hhid controller_income)  //any decision
 gen control_all_income=1 if  control_farmincome== 1 | control_nonfarmincome==1
 recode 	control_all_income (.=0)															
 ren controller_income indiv
 *	Now merge with member characteristics
-merge 1:1 HHID indiv using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_person_ids.dta", nogen
+merge 1:1 hhid indiv using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_person_ids.dta", nogen
 recode control_* (.=0)
 lab var control_cropincome "1=invidual has control over crop income"
 lab var control_livestockincome "1=invidual has control over livestock income"
@@ -3352,7 +3546,7 @@ append using "${Uganda_NPS_W4_raw_data}/AGSEC6A" 	//owns cattle & pack animals -
 append using "${Uganda_NPS_W4_raw_data}/AGSEC6B" 	//owns small animals - s6bq03b s6bq03c
 append using "${Uganda_NPS_W4_raw_data}/AGSEC6C" 	//owns poultry - s6cq03b s6cq03c
 rename HHID hhid2
-rename hh  HHID
+rename hh  hhid
 gen type_decision="" 
 gen double decision_maker1=. // SW: The double is very important, otherwise it is created as float, thus many individ are lost and later merge becomes inaccurate.
 gen double decision_maker2=.
@@ -3393,20 +3587,20 @@ replace type_decision="livestockowners" if  !missing(a6cq3b) | !missing(a6cq3c)
 replace decision_maker1=a6cq3b if decision_maker1==.
 replace decision_maker2 = a6cq3c if decision_maker2==.
 
-keep HHID type_decision decision_maker1 decision_maker2 /*decision_maker3*/
+keep hhid type_decision decision_maker1 decision_maker2 /*decision_maker3*/
 preserve
-keep HHID type_decision decision_maker2
+keep hhid type_decision decision_maker2
 drop if decision_maker2==.
 ren decision_maker2 decision_maker
 tempfile decision_maker2
 save `decision_maker2'
 restore
-keep HHID type_decision decision_maker1
+keep hhid type_decision decision_maker1
 drop if decision_maker1==.
 ren decision_maker1 decision_maker
 append using `decision_maker2'
 * number of time appears as decision maker
-bysort HHID decision_maker : egen nb_decision_participation=count(decision_maker)
+bysort hhid decision_maker : egen nb_decision_participation=count(decision_maker)
 drop if nb_decision_participation==1
 gen make_decision_crop=1 if  type_decision=="planting_input" | type_decision=="harvest" 
 
@@ -3415,10 +3609,10 @@ gen make_decision_livestock=1 if  type_decision=="livestockowners"
 recode 	make_decision_livestock (.=0)
 gen make_decision_ag=1 if make_decision_crop==1 | make_decision_livestock==1
 recode 	make_decision_ag (.=0)
-collapse (max) make_decision_* , by(HHID decision_maker )  //any decision
+collapse (max) make_decision_* , by(hhid decision_maker )  //any decision
 ren decision_maker indiv
 *Now merge with member characteristics
-merge 1:1 HHID indiv using  "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_person_ids.dta", nogen
+merge 1:1 hhid indiv using  "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_person_ids.dta", nogen
 recode make_decision_* (.=0)
 lab var make_decision_crop "1=invidual makes decision about crop production activities"
 lab var make_decision_livestock "1=invidual makes decision about livestock production activities"
@@ -3433,9 +3627,10 @@ use "${Uganda_NPS_W4_raw_data}/AGSEC2A", clear // land ownership
 append using "${Uganda_NPS_W4_raw_data}/AGSEC6A" 	//owns cattle & pack animals - s6aq03b s6aq03c
 append using "${Uganda_NPS_W4_raw_data}/AGSEC6B" 	//owns small animals - s6bq03b s6bq03c
 append using "${Uganda_NPS_W4_raw_data}/AGSEC6C" 	//owns poultry - s6cq03b s6cq03c
-rename HHID hhid2
-rename hh HHID
+drop HHID
+ren hh HHID
 append using "${Uganda_NPS_W4_raw_data}/GSEC14A"
+ren HHID hhid
 *append using "${Uganda_NPS_W4_raw_data}/GSEC14B"
 
 gen type_asset=""
@@ -3454,7 +3649,7 @@ replace asset_owner1=a2aq27a if asset_owner1==.
 replace asset_owner2=a2aq27b if asset_owner2==.
 * no hss right to sell or use recoded in season 2
 keep if type_asset=="landowners"
-keep HHID type_asset asset_owner*
+keep hhid type_asset asset_owner*
 tempfile land2
 save `land2'
 restore
@@ -3476,10 +3671,10 @@ destring asset_owner1_1, replace
 gen asset_owner1_2= substr(h14q3B,-1,1)
 destring asset_owner1_2, replace
 
-keep HHID type_asset asset_owner*
+keep hhid type_asset asset_owner*
 *  2nd Owner *
 preserve
-keep HHID type_asset asset_owner2
+keep hhid type_asset asset_owner2
 drop if asset_owner2==.
 ren asset_owner2 asset_owner
 tempfile asset_owner2
@@ -3487,7 +3682,7 @@ save `asset_owner2'
 restore
 * 1st Owner *
 preserve
-keep HHID type_asset asset_owner1
+keep hhid type_asset asset_owner1
 drop if asset_owner1==.
 ren asset_owner1 asset_owner
 tempfile asset_owner1
@@ -3495,14 +3690,14 @@ save `asset_owner1'
 restore 
 * We create dataset with 2nd Owners (PID style different) *
 preserve 
-keep HHID type_asset asset_owner1_2
+keep hhid type_asset asset_owner1_2
 drop if asset_owner1_2==.
 ren asset_owner1_2 asset_owner
 tempfile asset_owner1_2
 save `asset_owner1_2'
 restore 
 * We create dataset with 1nd decision makers (PID style different)
-keep HHID type_asset asset_owner1_1
+keep hhid type_asset asset_owner1_1
 drop if asset_owner1_1==.
 ren asset_owner1_1 asset_owner
 append using `asset_owner2'
@@ -3514,15 +3709,15 @@ clonevar individ = asset_owner
 
 *Now merge with member characteristics
 preserve
-merge m:1 HHID individ using  "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_person_ids.dta", nogen keep(3) // asset_owner as individ style
+merge m:1 hhid individ using  "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_person_ids.dta", nogen keep(3) // asset_owner as individ style
 tempfile individ_data
 save `individ_data'
 restore
 clonevar  indiv = asset_owner 
-merge m:1 HHID indiv using  "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_person_ids.dta", nogen keep(3) // asset_owner as indiv style (from HH Datasets)
+merge m:1 hhid indiv using  "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_person_ids.dta", nogen keep(3) // asset_owner as indiv style (from HH Datasets)
 append using `individ_data'
-collapse (max) own_asset , by(HHID indiv)  //any decision
-merge 1:1 HHID indiv using  "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_person_ids.dta", nogen // Controller_income as indiv style
+collapse (max) own_asset , by(hhid indiv)  //any decision
+merge 1:1 hhid indiv using  "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_person_ids.dta", nogen // Controller_income as indiv style
 recode own_asset (.=0)
 lab var own_asset "1=invidual owns an assets (land or livestock)"
 save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_ownasset.dta", replace
@@ -3532,8 +3727,8 @@ save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_ownasset.dta", replace
 ********************************************************************************
 use "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_plot_labor_long.dta", replace // at the plot season level
 keep if strmatch(labor_type,"hired") & (strmatch(gender,"male") | strmatch(gender,"female"))
-collapse (sum) wage_paid_aglabor_=val hired_=days, by(HHID gender)
-reshape wide wage_paid_aglabor_ hired_, i(HHID) j(gender) string
+collapse (sum) wage_paid_aglabor_=val hired_=days, by(hhid gender)
+reshape wide wage_paid_aglabor_ hired_, i(hhid) j(gender) string
 egen wage_paid_aglabor = rowtotal(wage*)
 egen hired_all = rowtotal(hired*)
 lab var wage_paid_aglabor "Daily agricultural wage paid for hired labor (local currency)"
@@ -3547,21 +3742,75 @@ save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_ag_wage.dta", replace
 ********************************************************************************
                           * CROP YIELDS *
 ********************************************************************************
+use "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_all_plots.dta", clear
+
+replace dm_gender = 3 if dm_gender == .
+
+gen no_harvest = ha_harvest == .
+gen area_plan = ha_planted
+gen area_harv = ha_harvest
+gen harvest = quant_harv_kg  
+
+gen mixed = "inter"
+replace mixed = "pure" if purestand == 1
+
+gen dm_gender2 = "unknown"
+replace dm_gender2 = "male" if dm_gender == 1
+replace dm_gender2 = "female" if dm_gender == 2
+replace dm_gender2 = "mixed" if dm_gender == 3
+
+foreach i in harvest area_plan area_harv {
+	foreach j in inter pure {
+		gen `i'_`j' = `i' if mixed == "`j'"
+		foreach k in male female mixed {
+			gen `i'_`j'_`k' = `i' if mixed == "`j'" & dm_gender2 == "`k'"
+			capture confirm var `i'_`k'
+			if _rc {
+				gen `i'_`k' = `i' if dm_gender2 == "`k'"
+			}
+		}
+	}
+}
+
+collapse (sum) harvest* area* (max) no_harvest, by(hhid crop_code)
+
+unab vars : harvest* area*
+foreach var in `vars' {
+	replace `var' = . if `var' == 0 & no_harvest == 1
+}
+
+replace area_plan = . if area_plan == 0
+replace area_harv = . if area_plan == . | (area_harv == 0 & no_harvest == 1)
+
+unab vars2 : area_plan_*
+local suffix : subinstr local vars2 "area_plan_" "", all
+foreach var in `suffix' {
+	replace area_plan_`var' = . if area_plan_`var' == 0
+	replace harvest_`var' = . if area_plan_`var' == . | (harvest_`var' == 0 & no_harvest == 1)
+	replace area_harv_`var' = . if area_plan_`var' == . | (area_harv_`var' == 0 & no_harvest == 1)
+}
+
+drop no_harvest
+
+save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_hh_crop_area_plan.dta", replace
+
+
+/* 
 use "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_all_plots.dta", replace // at the plot season level
 //Legacy stuff- agquery gets handled above.
 replace dm_gender = 3 if dm_gender==.
 gen ha_harvest=ha_planted
-collapse (sum) area_harv_=ha_harvest area_plan_=ha_planted harvest_=quant_harv_kg, by(HHID dm_gender purestand crop_code) // SAW 10.9.23 I use s_quant_harv_kg instead of quant_harv_kg
+collapse (sum) area_harv_=ha_harvest area_plan_=ha_planted harvest_=quant_harv_kg, by(hhid dm_gender purestand crop_code) // SAW 10.9.23 I use s_quant_harv_kg instead of quant_harv_kg
 gen mixed = "inter" if purestand==0
 replace mixed="pure" if purestand==1
 gen dm_gender2="male"
 replace dm_gender2="female" if dm_gender==2
 replace dm_gender2="mixed" if dm_gender==3
 drop dm_gender purestand
-reshape wide harvest_ area_harv_ area_plan_, i(HHID dm_gender2 crop_code) j(mixed) string
+reshape wide harvest_ area_harv_ area_plan_, i(hhid dm_gender2 crop_code) j(mixed) string
 ren area* area*_
 ren harvest* harvest*_
-reshape wide harvest* area*, i(HHID crop_code) j(dm_gender2) string
+reshape wide harvest* area*, i(hhid crop_code) j(dm_gender2) string
 foreach i in harvest area_plan area_harv {
 	egen `i' = rowtotal (`i'_*)
 	foreach j in inter pure {
@@ -3573,10 +3822,10 @@ foreach i in harvest area_plan area_harv {
 	
 }
 save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_hh_crop_area_plan.dta", replace
-
+*/
 *Total planted and harvested area summed accross all plots, crops, and seasons.
 preserve
-collapse (sum) all_area_harvested=area_harv all_area_planted=area_plan, by(HHID)
+collapse (sum) all_area_harvested=area_harv all_area_planted=area_plan, by(hhid)
 replace all_area_harvested=all_area_planted if all_area_harvested>all_area_planted & all_area_harvested!=.
 save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_hh_area_planted_harvested_allcrops.dta", replace
 restore
@@ -3587,7 +3836,7 @@ save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_crop_harvest_area_yield.dta", 
 use "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_crop_harvest_area_yield.dta", clear
 *Value of crop production
 merge m:1 crop_code using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_cropname_table.dta", nogen keep(1 3)
-merge 1:1 HHID crop_code using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_hh_crop_values_production.dta", nogen keep(1 3)
+merge 1:1 hhid crop_code using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_hh_crop_values_production.dta", nogen keep(1 3)
 ren value_crop_production value_harv_
 ren value_crop_sales value_sold_
 foreach i in harvest area {
@@ -3598,9 +3847,9 @@ gen total_harv_area_ = area_harv_
 gen kgs_harvest_ = harvest_
 drop crop_code kgs_sold quant_harv_kg  // need to drop this 2 vars to make reshape possible
 unab vars : *_
-reshape wide `vars', i(HHID) j(crop_name) string
-*merge 1:1 HHID using "${Nigeria_GHS_W3_created_data}/Nigeria_GHS_W3_trees.dta"
-collapse (sum) harvest* area_harv*  area_plan* total_planted_area* total_harv_area* kgs_harvest* value_harv* value_sold* /*number_trees_planted**/  , by(HHID) 
+reshape wide `vars', i(hhid) j(crop_name) string
+*merge 1:1 hhid using "${Nigeria_GHS_W3_created_data}/Nigeria_GHS_W3_trees.dta"
+collapse (sum) harvest* area_harv*  area_plan* total_planted_area* total_harv_area* kgs_harvest* value_harv* value_sold* /*number_trees_planted**/  , by(hhid) 
 recode harvest*   area_harv* area_plan* kgs_harvest* total_planted_area*  total_harv_area* value_harv* value_sold* (0=.)
 egen kgs_harvest = rowtotal(kgs_harvest_*)
 la var kgs_harvest "Quantity harvested of all crops (kgs) (household) (summed accross all seasons)" 
@@ -3704,7 +3953,7 @@ replace type_commodity = "Out" if inlist(commodity, 3, 11, 19)
 * wheat tea vanilla sunflower simsim tobacco Need to add to type of commodity revising commodity high/low classification and 811 812 and 840 
 
 preserve
-collapse (sum) value_crop_production value_crop_sales, by(HHID commodity) 
+collapse (sum) value_crop_production value_crop_sales, by(hhid commodity) 
 ren value_crop_production value_pro
 ren value_crop_sales value_sal
 separate value_pro, by(commodity)
@@ -3754,7 +4003,7 @@ qui recode value_* (.=0)
 foreach x of varlist value_* {
 	local l`x':var label `x'
 }
-collapse (sum) value_*, by(HHID)
+collapse (sum) value_*, by(hhid)
 foreach x of varlist value_* {
 	lab var `x' "`l`x''"
 }
@@ -3764,7 +4013,7 @@ save "${Uganda_NPS_W4_created_data}//Uganda_NPS_W4_hh_crop_values_production_gro
 restore
 
 *type of commodity
-collapse (sum) value_crop_production value_crop_sales, by(HHID type_commodity) 
+collapse (sum) value_crop_production value_crop_sales, by(hhid type_commodity) 
 ren value_crop_production value_pro
 ren value_crop_sales value_sal
 separate value_pro, by(type_commodity)
@@ -3791,7 +4040,7 @@ foreach x of varlist value_* {
 }
 
 qui recode value_* (.=0)
-collapse (sum) value_*, by(HHID)
+collapse (sum) value_*, by(hhid)
 foreach x of varlist value_* {
 	lab var `x' "`l`x''"
 }
@@ -3806,10 +4055,10 @@ use "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_hh_crop_area_plan.dta", replace
 drop if area_plan==0 
 *generating area planted of each crop as a proportion of the total area
 preserve 
-collapse (sum) area_plan_hh=area_plan area_plan_female_hh=area_plan_female area_plan_male_hh=area_plan_male area_plan_mixed_hh=area_plan_mixed, by(HHID)
+collapse (sum) area_plan_hh=area_plan area_plan_female_hh=area_plan_female area_plan_male_hh=area_plan_male area_plan_mixed_hh=area_plan_mixed, by(hhid)
 save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_hh_crop_area_plan_shannon.dta", replace
 restore
-merge m:1 HHID using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_hh_crop_area_plan_shannon.dta", nogen		//all matched
+merge m:1 hhid using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_hh_crop_area_plan_shannon.dta", nogen		//all matched
 recode area_plan_female area_plan_male area_plan_female_hh area_plan_male_hh area_plan_mixed area_plan_mixed_hh (0=.)
 gen prop_plan = area_plan/area_plan_hh
 gen prop_plan_female=area_plan_female/area_plan_female_hh
@@ -3821,15 +4070,15 @@ gen sdi_crop_male = prop_plan_male*ln(prop_plan_male)
 gen sdi_crop_mixed = prop_plan_mixed*ln(prop_plan_mixed)
 
 *tagging those that are missing all values
-bysort HHID (sdi_crop_female) : gen allmissing_female = mi(sdi_crop_female[1])
-bysort HHID (sdi_crop_male) : gen allmissing_male = mi(sdi_crop_male[1])
-bysort HHID (sdi_crop_mixed) : gen allmissing_mixed = mi(sdi_crop_mixed[1])
+bysort hhid (sdi_crop_female) : gen allmissing_female = mi(sdi_crop_female[1])
+bysort hhid (sdi_crop_male) : gen allmissing_male = mi(sdi_crop_male[1])
+bysort hhid (sdi_crop_mixed) : gen allmissing_mixed = mi(sdi_crop_mixed[1])
 *Generating number of crops per household
-bysort HHID crop_code : gen nvals_tot = _n==1
+bysort hhid crop_code : gen nvals_tot = _n==1
 gen nvals_female = nvals_tot if area_plan_female!=0 & area_plan_female!=.
 gen nvals_male = nvals_tot if area_plan_male!=0 & area_plan_male!=. 
 gen nvals_mixed = nvals_tot if area_plan_mixed!=0 & area_plan_mixed!=.
-collapse (sum) sdi=sdi_crop sdi_female=sdi_crop_female sdi_male=sdi_crop_male sdi_mixed=sdi_crop_mixed num_crops_hh=nvals_tot num_crops_female=nvals_female num_crops_male=nvals_male num_crops_mixed=nvals_mixed (max) allmissing_female allmissing_male allmissing_mixed, by(HHID)
+collapse (sum) sdi=sdi_crop sdi_female=sdi_crop_female sdi_male=sdi_crop_male sdi_mixed=sdi_crop_mixed num_crops_hh=nvals_tot num_crops_female=nvals_female num_crops_male=nvals_male num_crops_mixed=nvals_mixed (max) allmissing_female allmissing_male allmissing_mixed, by(hhid)
 la var sdi "Shannon diversity index"
 la var sdi_female "Shannon diversity index on female managed plots"
 la var sdi_male "Shannon diversity index on male managed plots"
@@ -3859,12 +4108,13 @@ save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_shannon_diversity_index.dta", 
 ********************************************************************************
 * This section is written using Uganda Wave 3  as reference. 
 use "${Uganda_NPS_W4_raw_data}/pov2013_14", clear 
-duplicates drop HHID, force // 1 observation deleted
+ren HHID hhid
+duplicates drop hhid, force // 1 observation deleted
 ren nrrexp  total_cons 
 *ren cpexp30  total_cons 
 ren equiv adulteq
 ren welfare peraeq_cons
-merge 1:1 HHID using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_hhsize.dta", nogen keep(1 3)
+merge 1:1 hhid using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_weights.dta", nogen keep(1 3)
 gen percapita_cons = (total_cons / hh_members)
 gen daily_peraeq_cons = peraeq_cons/30
 gen daily_percap_cons = percapita_cons/30  
@@ -3874,15 +4124,16 @@ lab var peraeq_cons "Consumption per adult equivalent, in 05/06 prices, spatiall
 lab var percapita_cons "Consumption per capita, in 05/06 prices, spatially and temporally adjusted in 13/14"
 lab var daily_peraeq_cons "Daily consumption per adult equivalent, in 05/06 prices, spatially and temporally adjusted in 13/14"
 lab var daily_percap_cons "Daily consumption per capita, in 05/06 prices, spatially and temporally adjusted in 13/14" 
-keep HHID total_cons peraeq_cons percapita_cons daily_peraeq_cons daily_percap_cons adulteq poor_13
+keep hhid total_cons peraeq_cons percapita_cons daily_peraeq_cons daily_percap_cons adulteq poor_13
 save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_consumption.dta", replace
 *SAW: There no Connsumption document to reference whether consumption measure were spatially and temporally deflated. 
 
 **We create an adulteq dataset for summary statistics sections
 use "${Uganda_NPS_W4_raw_data}/pov2013_14", clear 
-duplicates drop HHID, force // 1 observation deleted
+ren HHID hhid
+duplicates drop hhid, force // 1 observation deleted
 rename equiv adulteq
-keep HHID adulteq
+keep hhid adulteq
 save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_hh_adulteq.dta", replace
 
 
@@ -3896,11 +4147,12 @@ rename h15bq7 fd_awayhome
 rename h15bq9 fd_ownp
 rename h15bq11 fd_gift
 egen food_total = rowtotal(fd*) 
+ren HHID hhid
 * This includes food purchased at home, away from home, own production, and gifts.
-collapse (sum) fd* food_total, by(HHID)
-merge 1:1 HHID using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_hh_adulteq.dta", nogen keep(1 3)
-*merge 1:1 HHID using "${UGS_W3_raw_data}/UNPS 2011-12 Consumption Aggregate", nogen keep(1 3)
-merge 1:1 HHID using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_hhsize.dta", nogen keep(1 3)
+collapse (sum) fd* food_total, by(hhid)
+merge 1:1 hhid using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_hh_adulteq.dta", nogen keep(1 3)
+*merge 1:1 hhid using "${UGS_W3_raw_data}/UNPS 2011-12 Consumption Aggregate", nogen keep(1 3)
+merge 1:1 hhid using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_weights.dta", nogen keep(1 3)
 drop if adulteq ==.
 recode fd* food_total (0=.)
 gen daily_peraeq_fdcons = (food_total*52)/adulteq /365 
@@ -3912,9 +4164,10 @@ save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_hh_food_cons.dta", replace
                           * FOOD PROVISION *
 ********************************************************************************
 use "${Uganda_NPS_W4_raw_data}/GSEC17_2", clear 
+ren HHID hhid
 gen food_insecurity = 1 if h17q10a==1
 replace food_insecurity = 0 if food_insecurity==.
-collapse (sum) months_food_insec= food_insecurity, by(HHID)
+collapse (sum) months_food_insec= food_insecurity, by(hhid)
 lab var months_food_insec "Number of months where the household experienced any food insecurity" 
 save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_food_insecurity.dta", replace
 
@@ -3922,11 +4175,12 @@ save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_food_insecurity.dta", replace
                           *HOUSEHOLD ASSETS*
 ********************************************************************************
 use "${Uganda_NPS_W4_raw_data}/GSEC14A", clear 
+ren HHID hhid
 rename h14q5 value_today
 rename h14q4 nb_items
 *dropping items if hh doesnt report owning them 
 keep if h14q3==1
-collapse (sum) value_assets=value_today, by(HHID)
+collapse (sum) value_assets=value_today, by(hhid)
 la var value_assets "Value of household assets in Shs"
 format value_assets %20.0g
 save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_hh_assets.dta", replace
@@ -3943,17 +4197,17 @@ save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_hh_assets.dta", replace
 //setting up empty variable list: create these with a value of missing and then recode all of these to missing at the end of the HH section (some may be recoded to 0 in this section)
 global empty_vars ""
 use "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_hhids.dta", clear
-merge 1:1 HHID using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_hh_adulteq.dta", nogen keep(1 3)
+merge 1:1 hhid using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_hh_adulteq.dta", nogen keep(1 3)
 *Gross crop income
-merge 1:1 HHID using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_hh_crop_production.dta", nogen keep(1 3)
-merge 1:1 HHID using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_crop_losses.dta", nogen keep(1 3)
+merge 1:1 hhid using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_hh_crop_production.dta", nogen keep(1 3)
+merge 1:1 hhid using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_crop_losses.dta", nogen keep(1 3)
 recode value_crop_production crop_value_lost (.=0)
 
 * Production by group and type of crops
-merge 1:1 HHID using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_hh_crop_values_production_grouped.dta", nogen keep(1 3)
-merge 1:1 HHID using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_hh_crop_values_production_type_crop.dta", nogen keep(1 3)
+merge 1:1 hhid using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_hh_crop_values_production_grouped.dta", nogen keep(1 3)
+merge 1:1 hhid using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_hh_crop_values_production_type_crop.dta", nogen keep(1 3)
 recode value_pro* value_sal* (.=0)
-merge 1:1 HHID using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_hh_cost_inputs.dta", nogen keep(1 3)
+merge 1:1 hhid using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_hh_cost_inputs.dta", nogen keep(1 3)
 
 *Crop Costs
 //Merge in summarized crop costs:
@@ -3963,8 +4217,8 @@ lab var crop_production_expenses "Crop production expenditures (explicit)"
 lab var crop_income "Net crop revenue (value of production minus crop expenses)"
 *top crop costs by area planted
 foreach c in $topcropname_area {
-	merge 1:1 HHID using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_inputs_`c'.dta", nogen
-	merge 1:1 HHID using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_`c'_monocrop_hh_area.dta", nogen
+	merge 1:1 hhid using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_inputs_`c'.dta", nogen
+	merge 1:1 hhid using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_`c'_monocrop_hh_area.dta", nogen
 }
 
 //setting up empty variable list: create these with a value of missing and then recode all of these to missing at the end of the HH section (some may be recoded to 0 in this section)
@@ -3992,7 +4246,7 @@ foreach i in male female mixed{
 drop /*val_anml**/ val_mech* val_labor* /*val_herb**/ val_inorg* val_orgfert* val_plotrent* val_seeds* /*val_transfert* val_seedtrans**/ val_pest* val_parcelrent* //
 
 *Land rights
-merge 1:1 HHID using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_land_rights_hh.dta", nogen keep(1 3)
+merge 1:1 hhid using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_land_rights_hh.dta", nogen keep(1 3)
 la var formal_land_rights_hh "Household has documentation of land rights (at least one plot)"
 
 *Fish Income // SAW No fish income for Uganda wave 4
@@ -4007,12 +4261,12 @@ lab var fishing_income "Net fishing income (value of production and consumption 
 global empty_vars $empty_vars fish_income*
 
 *Livestock income
-merge 1:1 HHID using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_livestock_sales.dta", nogen keep(1 3)
-merge 1:1 HHID using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_livestock_expenses.dta", nogen keep(1 3)
-merge 1:1 HHID using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_livestock_products.dta", nogen keep(1 3)
-merge 1:1 HHID using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_TLU.dta", nogen keep(1 3)
-merge 1:1 HHID using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_herd_characteristics.dta", nogen keep(1 3)
-merge 1:1 HHID using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_TLU_Coefficients.dta", nogen keep(1 3)
+merge 1:1 hhid using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_livestock_sales.dta", nogen keep(1 3)
+merge 1:1 hhid using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_livestock_expenses.dta", nogen keep(1 3)
+merge 1:1 hhid using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_livestock_products.dta", nogen keep(1 3)
+merge 1:1 hhid using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_TLU.dta", nogen keep(1 3)
+merge 1:1 hhid using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_herd_characteristics.dta", nogen keep(1 3)
+merge 1:1 hhid using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_TLU_Coefficients.dta", nogen keep(1 3)
 lab var sales_livestock_products "Value of sales of livestock products"
 lab var value_livestock_products "Value of livestock products"
 recode value_livestock_sales value_livestock_purchases value_milk_produced  value_eggs_produced /*value_other_produced fish_income_fishfarm*/  cost_*livestock (.=0)
@@ -4046,25 +4300,25 @@ foreach i in lrum srum poultry {
 global empty_vars $empty_vars animals_lost12months mean_12months *ls_exp_vac_lrum* *ls_exp_vac_srum* *ls_exp_vac_poultry* any_imp_herd_*
 
 *Self-employment income
-merge 1:1 HHID using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_self_employment_income.dta", nogen keep(1 3)
-*merge 1:1 HHID using  "${UGS_W3_created_data}/Uganda_NPS_W3_agproducts_profits.dta", nogen keep(1 3)
+merge 1:1 hhid using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_self_employment_income.dta", nogen keep(1 3)
+*merge 1:1 hhid using  "${UGS_W3_created_data}/Uganda_NPS_W3_agproducts_profits.dta", nogen keep(1 3)
 *: This dataset it is not calculated in Uganda waves. Want to make sure the reason why (not available or it is already part of the self_employment_income dta)
 egen self_employment_income = rowtotal(/*profit_processed_crop_sold*/ annual_selfemp_profit)
 recode self_employment_income (.=0)
 lab var self_employment_income "Income from self-employment (business)"
 
 *Wage income
-merge 1:1 HHID using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_agwage_income.dta", nogen keep(1 3)
-merge 1:1 HHID using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_wage_income.dta", nogen keep(1 3)
+merge 1:1 hhid using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_agwage_income.dta", nogen keep(1 3)
+merge 1:1 hhid using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_wage_income.dta", nogen keep(1 3)
 recode annual_salary annual_salary_agwage (.=0)
 ren annual_salary nonagwage_income
 ren annual_salary_agwage agwage_income
 
 *Off-farm hours
-merge 1:1 HHID using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_off_farm_hours.dta", nogen keep(1 3)
+merge 1:1 hhid using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_off_farm_hours.dta", nogen keep(1 3)
 
 *Other income
-merge 1:1 HHID using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_other_income.dta", nogen keep(1 3)
+merge 1:1 hhid using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_other_income.dta", nogen keep(1 3)
 *SAW: Remittance income is already included in the other income dataset. (Need to check why)
 egen transfers_income = rowtotal (remittance_income pension_income)
 *SAW There is a confusion between remittance income and assistance income in the UGanda Other Income section that needs to be revised.
@@ -4074,10 +4328,10 @@ lab var all_other_income "Income from other revenue streams not captured elsewhe
 drop other_income
 
 *Farm Size
-merge 1:1 HHID using  "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_land_size.dta", nogen keep(1 3)
-merge 1:1 HHID using  "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_land_size_all.dta", nogen keep(1 3)
-merge 1:1 HHID using  "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_farmsize_all_agland.dta", nogen keep(1 3)
-merge 1:1 HHID using  "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_land_size_total.dta", nogen keep(1 3)
+merge 1:1 hhid using  "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_land_size.dta", nogen keep(1 3)
+merge 1:1 hhid using  "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_land_size_all.dta", nogen keep(1 3)
+merge 1:1 hhid using  "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_farmsize_all_agland.dta", nogen keep(1 3)
+merge 1:1 hhid using  "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_land_size_total.dta", nogen keep(1 3)
 recode land_size (.=0)
 recode farm_size_agland (.=0)
 gen  farm_size_0_0=farm_size_agland==0
@@ -4093,21 +4347,21 @@ lab var farm_size_4_more "1=Household farm size > 4 Ha"
 
 *Labor
 //Fix
-merge 1:1 HHID using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_family_hired_labor.dta", nogen keep(1 3)
+merge 1:1 hhid using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_family_hired_labor.dta", nogen keep(1 3)
 recode labor_hired labor_family (.=0) 
 
 *Household size
-merge 1:1 HHID using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_hhsize.dta", nogen keep(1 3)
+merge 1:1 hhid using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_weights.dta", nogen keep(1 3)
 
 *Rates of vaccine usage, improved seeds, etc.
-merge 1:1 HHID using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_vaccine.dta", nogen keep(1 3)
-*merge 1:1 HHID using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_fert_use.dta", nogen keep(1 3)
-*merge 1:1 HHID using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_improvedseed_use.dta", nogen keep(1 3)
-merge 1:1 HHID using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_input_use.dta", nogen keep(1 3)
+merge 1:1 hhid using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_vaccine.dta", nogen keep(1 3)
+*merge 1:1 hhid using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_fert_use.dta", nogen keep(1 3)
+*merge 1:1 hhid using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_improvedseed_use.dta", nogen keep(1 3)
+merge 1:1 hhid using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_input_use.dta", nogen keep(1 3)
 *SAW: This Input Use dataset comes from the Plot Manager section that is constructed in the Nigeria Wave 3 do file which includes fert use and improved seed use along pesticides and fertilizers into one single dataset. We might want to construct this section in Uganda for fewer lines of code in the future. (It comes adter the Fertilizer Use and Improved Seed sections in Uganda)
-merge 1:1 HHID using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_imprvseed_crop.dta", nogen keep(1 3)
-merge 1:1 HHID using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_any_ext.dta", nogen keep(1 3)
-*merge 1:1 HHID using  "${UGS_W3_created_data}/Uganda_NPS_W3_fin_serv.dta", nogen keep(1 3) // SAW Not Available for Uganda Wave 3 dta missing
+merge 1:1 hhid using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_imprvseed_crop.dta", nogen keep(1 3)
+merge 1:1 hhid using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_any_ext.dta", nogen keep(1 3)
+*merge 1:1 hhid using  "${UGS_W3_created_data}/Uganda_NPS_W3_fin_serv.dta", nogen keep(1 3) // SAW Not Available for Uganda Wave 3 dta missing
 ren use_imprv_seed imprv_seed_use //ALT 02.03.22: Should probably fix code to align this with other inputs.
 ren use_hybrid_seed hybrid_seed_use
 recode /*use_fin_serv**/ ext_reach* use_inorg_fert imprv_seed_use vac_animal (.=0)
@@ -4118,7 +4372,7 @@ replace imprv_seed_use=. if farm_area==.
 global empty_vars $empty_vars hybrid_seed*
 
 *Milk productivity
-merge 1:1 HHID using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_milk_animals.dta", nogen keep(1 3)
+merge 1:1 hhid using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_milk_animals.dta", nogen keep(1 3)
 gen costs_dairy = .
 gen costs_dairy_percow = .
 la var costs_dairy "Dairy production cost (explicit)"
@@ -4131,7 +4385,7 @@ lab var liters_milk_produced "Total quantity (liters) of milk per year (househol
 global empty_vars $empty_vars *costs_dairy* *costs_dairy_percow* share_imp_dairy  /*liters_per_cow */
 
 *Egg productivity
-merge 1:1 HHID using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_eggs_animals.dta", nogen keep(1 3) // eggs_months eggs_per_month eggs_total_year poultry_owned
+merge 1:1 hhid using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_eggs_animals.dta", nogen keep(1 3) // eggs_months eggs_per_month eggs_total_year poultry_owned
 *gen liters_milk_produced = milk_months_produced * milk_quantity_produced // SAW 2.20.23 Decided to produce this in the milk productivity section
 *lab var liters_milk_produced "Total quantity (liters) of milk per year (household)"
 *gen eggs_total_year =eggs_quantity_produced * eggs_months_produced
@@ -4141,31 +4395,31 @@ gen egg_poultry_year = .
 global empty_vars $empty_vars *egg_poultry_year
 
 *Costs of crop production per hectare
-merge 1:1 HHID using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_cropcosts.dta", nogen keep(1 3)
+merge 1:1 hhid using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_cropcosts.dta", nogen keep(1 3)
  
 *Rate of fertilizer application 
-merge 1:1 HHID using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_fertilizer_application.dta", nogen keep(1 3)
+merge 1:1 hhid using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_fertilizer_application.dta", nogen keep(1 3)
 
 *Agricultural wage rate
-merge 1:1 HHID using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_ag_wage.dta", nogen keep(1 3)
+merge 1:1 hhid using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_ag_wage.dta", nogen keep(1 3)
 
 *Crop yields 
-merge 1:1 HHID using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_yield_hh_crop_level.dta", nogen keep(1 3)
+merge 1:1 hhid using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_yield_hh_crop_level.dta", nogen keep(1 3)
 
 *Total area planted and harvested accross all crops, plots, and seasons
-merge 1:1 HHID using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_hh_area_planted_harvested_allcrops.dta", nogen keep(1 3)
+merge 1:1 hhid using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_hh_area_planted_harvested_allcrops.dta", nogen keep(1 3)
  
 *Household diet
-merge 1:1 HHID using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_household_diet.dta", nogen keep(1 3)
+merge 1:1 hhid using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_household_diet.dta", nogen keep(1 3)
 
 *consumption 
-merge 1:1 HHID using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_consumption.dta", nogen keep(1 3)
+merge 1:1 hhid using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_consumption.dta", nogen keep(1 3)
 
 *Household assets
-merge 1:1 HHID using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_hh_assets.dta", nogen keep(1 3)
+merge 1:1 hhid using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_hh_assets.dta", nogen keep(1 3)
 
 *Food insecurity
-merge 1:1 HHID using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_food_insecurity.dta", nogen keep(1 3)
+merge 1:1 hhid using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_food_insecurity.dta", nogen keep(1 3)
 gen hhs_little = . 
 gen hhs_moderate = . 
 gen hhs_severe = . 
@@ -4183,10 +4437,10 @@ gen disease_animal=.
 global empty_vars $empty_vars disease_animal* disease_*
 
 *livestock feeding, water, and housing
-merge 1:1 HHID using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_livestock_feed_water_house.dta", nogen keep(1 3)
+merge 1:1 hhid using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_livestock_feed_water_house.dta", nogen keep(1 3)
 
 *Shannon Diversity index
-merge 1:1 HHID using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_shannon_diversity_index.dta", nogen keep(1 3)
+merge 1:1 hhid using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_shannon_diversity_index.dta", nogen keep(1 3)
 
 *Farm Production 
 recode value_crop_production  value_livestock_products value_slaughtered  value_lvstck_sold (.=0)
@@ -4283,7 +4537,8 @@ foreach v in $topcropname_area {
 }
 gen cost_total = cost_total_hh
 gen cost_expli = cost_expli_hh //ALT 08.04.21: Kludge til I get names fully consistent
-global wins_var_top1_gender $wins_var_top1_gender cost_total cost_expli fert_inorg_kg wage_paid_aglabor
+global wins_var_top1_gender $wins_var_top1_gender cost_total cost_expli /*fert_inorg_kg*/ inorg_fert_kg org_fert_kg n_kg p_kg k_kg pest_kg wage_paid_aglabor
+*global wins_var_top1_gender $wins_var_top1_gender cost_total cost_expli /*fert_inorg_kg*/ inorg_fert_kg wage_paid_aglabor
 
 foreach v of varlist $wins_var_top1_gender {
 	_pctile `v' [aw=weight] , p($wins_upper_thres)  
@@ -4384,13 +4639,61 @@ foreach c of global topcropname_area {
 	}
 } */
 
+
 *generate inorg_fert_rate, costs_total_ha, and costs_explicit_ha using winsorized values
-gen inorg_fert_rate=w_fert_inorg_kg/w_ha_planted
+foreach v in inorg_fert org_fert n p k /*herb*/ pest /*urea npk*/ {
+	gen `v'_rate=w_`v'_kg/w_ha_planted
+	foreach g of global gender {
+		gen `v'_rate_`g'=w_`v'_kg_`g'/ w_ha_planted_`g'	
+	}
+}
+
+gen cost_total_ha=w_cost_total/w_ha_planted 
+gen cost_expli_ha=w_cost_expli/w_ha_planted				
+gen cost_explicit_hh_ha=w_cost_expli_hh/w_ha_planted
+foreach g of global gender {
+	gen cost_total_ha_`g'=w_cost_total_`g'/ w_ha_planted_`g' 
+	gen cost_expli_ha_`g'=w_cost_expli_`g'/ w_ha_planted_`g' 
+}
+
+lab var inorg_fert_rate "Rate of fertilizer application (kgs/ha) (household)"
+lab var org_fert_rate "Rate of organic fertilizer application (kgs/ha) (household)"
+lab var n_rate "Rate of nitrogen application (kgs/ha) (household)"
+lab var k_rate "Rate of postassium application (kgs/ha) (household)"
+lab var p_rate "Rate of phosphorus appliction (kgs/ha) (household)"
+lab var pest_rate "Rate of pesticide application (kgs/ha) (household)"
+*lab var herb_rate "Rate of herbicide application (kgs/ha) (household)"
+*lab var urea_rate "Rate of urea application (kgs/ha) (household)"
+*lab var npk_rate "Rate of NPK fertilizer application (kgs/ha) (household)" 
+
+foreach g in $gender {
+lab var inorg_fert_rate_`g' "Rate of fertilizer application (kgs/ha) (`g'-managed crops)"
+lab var cost_total_ha_`g' "Explicit  implicit costs (per ha) of crop production (`g'-managed plots)"
+lab var cost_expli_ha_`g' "Explicit costs (per ha) of crop production (`g'-managed plots)"
+lab var org_fert_rate_`g' "Rate of organic fertilizer application (kgs/ha) (`g'-managed plots)"
+lab var n_rate_`g' "Rate of nitrogen application (kgs/ha) (`g'-managed plots)"
+lab var k_rate_`g' "Rate of postassium application (kgs/ha) (`g'-managed plots)"
+lab var p_rate_`g' "Rate of phosphorus appliction (kgs/ha) (`g'-managed plots)"
+lab var pest_rate_`g' "Rate of pesticide application (kgs/ha) (`g'-managed plots)"
+*lab var herb_rate_`g' "Rate of herbicide application (kgs/ha) (`g'-managed plots)"
+*lab var urea_rate_`g' "Rate of urea application (kgs/ha) (`g'-managed plots)"
+*lab var npk_rate_`g' "Rate of NPK fertilizer application (kgs/ha) (`g'-managed plots)"
+}
+
+lab var cost_total_ha "Explicit  implicit costs (per ha) of crop production (household level)"		
+lab var cost_expli_ha "Explicit costs (per ha) of crop production (household level)"
+lab var cost_explicit_hh_ha "Explicit costs (per ha) of crop production (household level)"
+
+/*
+*generate inorg_fert_rate, costs_total_ha, and costs_explicit_ha using winsorized values
+gen inorg_fert_rate=w_inorg_fert_kg/w_ha_planted
+*gen inorg_fert_rate=w_fert_inorg_kg/w_ha_planted
 gen cost_total_ha = w_cost_total / w_ha_planted
 gen cost_expli_ha = w_cost_expli / w_ha_planted 
 
 foreach g of global gender {
-	gen inorg_fert_rate_`g'=w_fert_inorg_kg_`g'/ w_ha_planted_`g'
+	gen inorg_fert_rate_`g'=w_inorg_fert_kg_`g'/ w_ha_planted_`g'
+	*gen inorg_fert_rate_`g'=w_fert_inorg_kg_`g'/ w_ha_planted_`g'
 	gen cost_total_ha_`g'=w_cost_total_`g'/ w_ha_planted_`g' 
 	gen cost_expli_ha_`g'=w_cost_expli_`g'/ w_ha_planted_`g' 		
 }
@@ -4407,6 +4710,7 @@ lab var cost_expli_ha_male "Explicit costs (per ha) of crop production (male-man
 lab var cost_expli_ha_female "Explicit costs (per ha) of crop production (female-managed plots)"
 lab var cost_expli_ha_mixed "Explicit costs (per ha) of crop production (mixed-managed plots)"
 *SAW 3/13/23 Here we can include the label var into the loop above to reduce number of lines.
+*/
 
 *mortality rate // SAW Might Want to go back to Livestock Income section and see if needs to be calculated (I believe this indicator can be constructed.)
 global animal_species lrum srum pigs equine  poultry 
@@ -4500,8 +4804,11 @@ global empty_vars $empty_vars cost_per_lit_milk
 
 *****getting correct subpopulations***
 *all rural housseholds engaged in crop production 
-recode inorg_fert_rate cost_total_ha cost_expli_ha cost_expli_hh_ha land_productivity labor_productivity (.=0) if crop_hh==1
-recode inorg_fert_rate cost_total_ha cost_expli_ha cost_expli_hh_ha land_productivity labor_productivity (nonmissing=.) if crop_hh==0
+recode inorg_fert_rate org_fert_rate n_rate p_rate k_rate /*herb_rate*/ pest_rate /*urea_rate npk_rate*/ cost_total_ha cost_expli_ha cost_expli_hh_ha land_productivity labor_productivity (.=0) if crop_hh==1
+recode inorg_fert_rate org_fert_rate n_rate p_rate k_rate /*herb_rate*/ pest_rate /*urea_rate npk_rate*/ cost_total_ha cost_expli_ha cost_expli_hh_ha land_productivity labor_productivity (nonmissing=.) if crop_hh==0
+*recode inorg_fert_rate cost_total_ha cost_expli_ha cost_expli_hh_ha land_productivity labor_productivity (.=0) if crop_hh==1
+*recode inorg_fert_rate cost_total_ha cost_expli_ha cost_expli_hh_ha land_productivity labor_productivity (nonmissing=.) if crop_hh==0
+
 *all rural households engaged in livestcok production of a given species
 foreach i in lrum srum poultry{
 	recode mortality_rate_`i' (nonmissing=.) if lvstck_holding_`i'==0
@@ -4555,7 +4862,7 @@ recode costs_dairy_percow cost_per_lit_milk (.=0) if dairy_hh==1
 recode costs_dairy_percow cost_per_lit_milk (nonmissing=.) if dairy_hh==0		
 
 *now winsorize ratios only at top 1% 
-global wins_var_ratios_top1 inorg_fert_rate cost_total_ha cost_expli_ha cost_expli_hh_ha /*		
+global wins_var_ratios_top1 inorg_fert_rate org_fert_rate n_rate p_rate k_rate /*herb_rate*/ pest_rate /*urea_rate npk_rate*/ cost_total_ha cost_expli_ha cost_expli_hh_ha /*		
 */ land_productivity labor_productivity /*
 */ mortality_rate* liters_per_largeruminant liters_per_cow liters_per_buffalo egg_poultry_year costs_dairy_percow /*
 */ /*DYA.10.26.2020*/  hrs_*_pc_all hrs_*_pc_any cost_per_lit_milk 
@@ -4567,7 +4874,8 @@ foreach v of varlist $wins_var_ratios_top1 {
 	local l`v' : var lab `v'
 	lab var  w_`v'  "`l`v'' - Winzorized top 1%"
 	*some variables  are disaggreated by gender of plot manager. For these variables, we use the top 1% percentile to winsorize gender-disagregated variables
-	if "`v'" =="inorg_fert_rate" | "`v'" =="cost_total_ha"  | "`v'" =="cost_expli_ha" {
+	*if "`v'" =="inorg_fert_rate" | "`v'" =="cost_total_ha"  | "`v'" =="cost_expli_ha" {
+	if inlist("`v'", "inorg_fert_rate",   "cost_total_ha", "cost_expli_ha", "n_rate", "p_rate") | inlist("`v'", "k_rate", "pest_rate") {
 		foreach g of global gender {
 			gen w_`v'_`g'=`v'_`g'
 			replace  w_`v'_`g' = r(r1) if w_`v'_`g' > r(r1) & w_`v'_`g'!=.
@@ -4680,7 +4988,7 @@ drop w_total_income_s w_nonfarm_income_s
 //ALT 08.16.21: Kludge for imprv seed use - for consistency, it should really be use_imprv_seed 
 recode w_total_income w_percapita_income w_crop_income w_livestock_income /*w_fishing_income_s*/ w_nonagwage_income w_agwage_income w_self_employment_income w_transfers_income w_all_other_income /*
 */ w_share_crop w_share_livestock /*w_share_fishing*/ w_share_nonagwage w_share_agwage w_share_self_employment w_share_transfers w_share_all_other w_share_nonfarm /*
-*/ /*use_fin_serv*/ use_inorg_fert imprv_seed_use /*
+*/ /*use_fin_serv*/ use_inorg_fert use_org_fert use_pest imprv_seed_use /*
 */ formal_land_rights_hh  /*DYA.10.26.2020*/ *_hrs_*_pc_all  months_food_insec w_value_assets /*
 */ lvstck_holding_tlu lvstck_holding_all lvstck_holding_lrum lvstck_holding_srum lvstck_holding_poultry (.=0) if rural==1 
  
@@ -4694,7 +5002,21 @@ foreach i in lrum srum poultry{
 	recode vac_animal_`i' any_imp_herd_`i' w_lost_disease_`i' w_ls_exp_vac_`i' (nonmissing=.) if lvstck_holding_`i'==0
 	recode vac_animal_`i' any_imp_herd_`i' w_lost_disease_`i' w_ls_exp_vac_`i' (.=0) if lvstck_holding_`i'==1	
 }
- 
+
+*households engaged in crop production
+recode *proportion_cropvalue_sold *farm_size_agland *labor_family *labor_hired /*
+*/ imprv_seed_use use_inorg_fert use_org_fert use_pest /*use_herb*/ *labor_productivity *land_productivity /*
+*/ *inorg_fert_rate *org_fert_rate *n_rate p_rate k_rate /*herb_rate*/ pest_rate /*urea_rate npk_rate*/ /*
+*/ *cost_expli_hh *cost_expli_hh_ha *cost_expli_ha *cost_total_ha /*
+*/ *value_crop_production *value_crop_sales *all_area_planted *all_area_harvested (.=0) if crop_hh==1
+
+recode *proportion_cropvalue_sold *farm_size_agland *labor_family *labor_hired /*
+*/ imprv_seed_use use_inorg_fert use_org_fert use_pest /*use_herb*/ *labor_productivity *land_productivity /*
+*/ *inorg_fert_rate *org_fert_rate *n_rate p_rate k_rate /*herb_rate*/ pest_rate /*urea_rate npk_rate*/ /*
+*/ *cost_expli_hh *cost_expli_hh_ha *cost_expli_ha *cost_total_ha /*
+*/ *value_crop_production *value_crop_sales *all_area_planted *all_area_harvested (nonmissing= . ) if crop_hh==0
+
+/* 
 *households engaged in crop production
 recode w_proportion_cropvalue_sold w_farm_size_agland w_labor_family w_labor_hired /*
 */ imprv_seed_use use_inorg_fert w_labor_productivity w_land_productivity /*
@@ -4704,6 +5026,7 @@ recode w_proportion_cropvalue_sold w_farm_size_agland w_labor_family w_labor_hir
 */ imprv_seed_use use_inorg_fert w_labor_productivity w_land_productivity /*
 */ w_inorg_fert_rate w_cost_expli_hh w_cost_expli_hh_ha w_cost_expli_ha w_cost_total_ha /*
 */ w_value_crop_production w_value_crop_sales w_all_area_planted /*w_all_area_harvested*/ (nonmissing= . ) if crop_hh==0
+*/
 	
 *hh engaged in crop or livestock production
 recode ext_reach* (.=0) if (crop_hh==1 | livestock_hh==1)
@@ -4813,15 +5136,15 @@ gen ccf_2ppp = ccf_loc/$Uganda_NPS_W4_gdp_ppp_dollar
 lab var ccf_2ppp "currency conversion factor - 2017 $GDP PPP"
 
 *Poverty indicators 
-gen poverty_under_1_9 = (daily_percap_cons < $Uganda_NPS_W4_poverty_threshold)
-la var poverty_under_1_9 "Household per-capita conumption is below $1.90 in 2011 $ PPP"
-gen poverty_under_2_15 = (daily_percap_cons < $Uganda_NPS_W4_poverty_215)
-la var poverty_under_2_15 "Household per-capita consumption is below $2.15 in 2017 $ PPP"
+gen poverty_under_190 = (daily_percap_cons < $Uganda_NPS_W4_poverty_threshold)
+la var poverty_under_190 "Household per-capita conumption is below $1.90 in 2011 $ PPP"
+gen poverty_under_215 = (daily_percap_cons < $Uganda_NPS_W4_poverty_215)
+la var poverty_under_215 "Household per-capita consumption is below $2.15 in 2017 $ PPP"
 
 * Need to figure out National poverty lines for Uganda wave 4
 *We merge the national poverty line provided by the World bank "${UGS_W3_raw_data}/AGSEC9"
-*merge 1:1 HHID using "${Uganda_NPS_W4_raw_data}/pov2013_14", keep(1 3) nogen
-merge 1:1 HHID using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_consumption.dta", keep(1 3) nogen
+*merge 1:1 hhid using "${Uganda_NPS_W4_raw_data}/pov2013_14", keep(1 3) nogen
+merge 1:1 hhid using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_consumption.dta", keep(1 3) nogen
 *gen poverty_under_npl = daily_percap_cons < $Nigeria_GHS_W1_poverty_nbs
 rename poor_13 poverty_under_npl
 la var poverty_under_npl "Household per-capita consumption is below national poverty line in 05/06 PPP prices"
@@ -4840,7 +5163,7 @@ foreach v of varlist $empty_vars {
 }
 
 // Removing intermediate variables to get below 5,000 vars
-keep HHID fhh poverty* clusterid strataid *weight* *wgt* region region sregion district county county_name parish parish_name ea rural farm_size* *total_income* /*
+keep hhid fhh poverty* clusterid strataid *weight* *wgt* region region sregion district county county_name parish parish_name ea rural farm_size* *total_income* /*
 */ *percapita_income* *percapita_cons* *daily_percap_cons* *peraeq_cons* *daily_peraeq_cons* /*
 */ *income* *share* *proportion_cropvalue_sold *farm_size_agland hh_members adulteq *labor_family *labor_hired use_inorg_fert vac_* /*
 */ feed* water* lvstck_housed* ext_* /*use_fin_**/ lvstck_holding* *mortality_rate* *lost_disease* disease* any_imp* formal_land_rights_hh /*
@@ -4865,7 +5188,7 @@ la var weight "Weight adjusted to match rural/urban populations"
 
 //////////Identifier Variables ////////
 *Add variables and ren household id so dta file can be appended with dta files from other instruments
-ren HHID hhid
+//drop HHID
 gen hhid_panel = hhid 
 lab var hhid_panel "panel hh identifier" 
 gen geography = "Uganda"
@@ -4875,7 +5198,7 @@ gen instrument = 54
 //Only runs if label isn't already defined.
 capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2" 13 "Tanzania NPS Wave 3" 14 "Tanzania NPS Wave 4" 15 "Tanzania NPS SDD" 16 "Tanzania NPS Wave 5" /*
 	*/ 21 "Ethiopia ESS Wave 1" 22 "Ethiopia ESS Wave 2" 23 "Ethiopia ESS Wave 3" 24 "Ethiopia ESS Wave 4" 25 "Ethiopia ESS Wave 5" /*
-	*/ 31 "Nigeria GHS Wave 1" 32 "Nigeria GHS Wave 2" 33 "Nigeria GHS Wave 3" 34 "Nigeria GHS Wave 4"/*
+	*/ 31 "Nigeria GHS Wave 1" 32 "Nigeria GHS Wave 2" 33 "Nigeria GHS Wave 3" 34 "Nigeria GHS Wave 4" 35 "Nigeria GHS Wave 5"/*
 	*/ 41 "Malawi IHS/IHPS Wave 1" 42 "Malawi IHS/IHPS Wave 2" 43 "Malawi IHS/IHPS Wave 3" 44 "Malawi IHS/IHPS Wave 4" /*
     */ 51 "Uganda NPS Wave 1" 52 "Uganda NPS Wave 2" 53 "Uganda NPS Wave 3" 54 "Uganda NPS Wave 4" 55 "Uganda NPS Wave 5" /*W6 does not exist*/ 56 "Uganda NPS Wave 7" 57 "Uganda NPS Wave 8" /* 
 */ 61 "Burkina Faso EMC Wave 1" /* 
@@ -4889,17 +5212,17 @@ saveold "${Uganda_NPS_W4_final_data}/Uganda_NPS_W4_household_variables.dta", rep
 ********************************************************************************
 *SAW 9/29/23 This section uses Uganda Wave 3 as reference
 use "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_person_ids.dta", clear
-merge 1:1 HHID indiv using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_control_income.dta", keep(1 3) nogen
-merge 1:1 HHID indiv using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_make_ag_decision.dta", keep(1 3) nogen // How are we computing percentages? Do we include all individuals or only the ones that responded the survey section? 
-merge 1:1 HHID PID using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_ownasset.dta", keep(1 3) nogen
-merge m:1 HHID using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_hhsize.dta", keep(1 3) nogen
-merge 1:1 HHID indiv using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_farmer_fert_use.dta", keep(1 3) nogen
-merge 1:1 HHID indiv using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_farmer_improvedseed_use.dta", keep(1 3) nogen
-merge 1:1 HHID indiv using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_farmer_vaccine.dta", keep(1 3) nogen
-merge m:1 HHID using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_hhids.dta", keep(1 3) nogen
+merge 1:1 hhid indiv using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_control_income.dta", keep(1 3) nogen
+merge 1:1 hhid indiv using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_make_ag_decision.dta", keep(1 3) nogen // How are we computing percentages? Do we include all individuals or only the ones that responded the survey section? 
+merge 1:1 hhid PID using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_ownasset.dta", keep(1 3) nogen
+merge m:1 hhid using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_weights.dta", keep(1 3) nogen
+merge 1:1 hhid indiv using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_farmer_fert_use.dta", keep(1 3) nogen
+merge 1:1 hhid indiv using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_farmer_improvedseed_use.dta", keep(1 3) nogen
+merge 1:1 hhid indiv using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_farmer_vaccine.dta", keep(1 3) nogen
+merge m:1 hhid using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_hhids.dta", keep(1 3) nogen
 
 *Land rights
-merge 1:1 HHID indiv using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_land_rights_ind.dta", nogen keep(1 3)
+merge 1:1 hhid indiv using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_land_rights_ind.dta", nogen keep(1 3)
 recode formal_land_rights_f (.=0) if female==1	
 la var formal_land_rights_f "Individual has documentation of land rights (at least one plot) - Women only"
 
@@ -4907,7 +5230,7 @@ la var formal_land_rights_f "Individual has documentation of land rights (at lea
 recode control_all_income make_decision_ag own_asset formal_land_rights_f (.=0) if female==1 
 recode control_all_income make_decision_ag own_asset formal_land_rights_f (nonmissing=.) if female==0
 
-ren HHID hhid
+//drop HHID
 *merge in hh variable to determine ag household
 preserve
 use "${Uganda_NPS_W4_final_data}/Uganda_NPS_W4_household_variables.dta", clear
@@ -4985,7 +5308,7 @@ gen year = "2013-14"
 gen instrument = 54
 capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2" 13 "Tanzania NPS Wave 3" 14 "Tanzania NPS Wave 4" 15 "Tanzania NPS SDD" 16 "Tanzania NPS Wave 5" /*
 	*/ 21 "Ethiopia ESS Wave 1" 22 "Ethiopia ESS Wave 2" 23 "Ethiopia ESS Wave 3" 24 "Ethiopia ESS Wave 4" 25 "Ethiopia ESS Wave 5" /*
-	*/ 31 "Nigeria GHS Wave 1" 32 "Nigeria GHS Wave 2" 33 "Nigeria GHS Wave 3" 34 "Nigeria GHS Wave 4"/*
+	*/ 31 "Nigeria GHS Wave 1" 32 "Nigeria GHS Wave 2" 33 "Nigeria GHS Wave 3" 34 "Nigeria GHS Wave 4" 35 "Nigeria GHS Wave 5"/*
 	*/ 41 "Malawi IHS/IHPS Wave 1" 42 "Malawi IHS/IHPS Wave 2" 43 "Malawi IHS/IHPS Wave 3" 44 "Malawi IHS/IHPS Wave 4" /*
     */ 51 "Uganda NPS Wave 1" 52 "Uganda NPS Wave 2" 53 "Uganda NPS Wave 3" 54 "Uganda NPS Wave 4" 55 "Uganda NPS Wave 5" /*W6 does not exist*/ 56 "Uganda NPS Wave 7" 57 "Uganda NPS Wave 8" /* 
 */ 61 "Burkina Faso EMC Wave 1" /* 
@@ -5003,16 +5326,16 @@ saveold "${Uganda_NPS_W4_final_data}/Uganda_NPS_W4_individual_variables.dta", re
 *SAW 10/03/23 This section uses Uganda Wave 3 as reference.
 *GENDER PRODUCTIVITY GAP
 use "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_all_plots.dta", clear
-collapse (sum) plot_value_harvest = value_harvest, by(HHID parcel_id plot_id season)
+collapse (sum) plot_value_harvest = value_harvest, by(hhid parcel_id plot_id season)
 tempfile crop_values 
 save `crop_values' // season level
 
 use "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_plot_areas.dta", clear // plot-season level
-merge m:1 HHID using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_weights.dta", keep (1 3) nogen // hh level
-merge 1:1 HHID parcel_id plot_id season using `crop_values', keep (1 3) nogen //  plot-season level
-merge 1:1 HHID parcel_id plot_id season using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_plot_decision_makers.dta", keep (1 3) nogen //  plot-season level
-merge m:1 HHID parcel_id plot_id using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_plot_labor_days.dta", keep (1 3) nogen  // plot level
-ren HHID hhid 
+merge m:1 hhid using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_weights.dta", keep (1 3) nogen // hh level
+merge 1:1 hhid parcel_id plot_id season using `crop_values', keep (1 3) nogen //  plot-season level
+merge 1:1 hhid parcel_id plot_id season using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_plot_decision_makers.dta", keep (1 3) nogen //  plot-season level
+merge m:1 hhid parcel_id plot_id using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_plot_labor_days.dta", keep (1 3) nogen  // plot level
+//drop HHID 
 /*DYA.12.2.2020*/ merge m:1 hhid using  "${Uganda_NPS_W4_final_data}/Uganda_NPS_W4_household_variables.dta", nogen keep (1 3) keepusing(ag_hh fhh farm_size_agland region ea)
 recode farm_size_agland (.=0) 
 gen rural_ssp=(farm_size_agland<=4 & farm_size_agland!=0) & rural==1 
@@ -5215,8 +5538,8 @@ la var weight "Weight adjusted to match rural/urban populations"
 
 //////////Identifier Variables ////////
 *Add variables and ren household id so dta file can be appended with dta files from other instruments
-gen HHID_panel = hhid 
-lab var HHID_panel "panel hh identifier" 
+gen hhid_panel = hhid 
+lab var hhid_panel "panel hh identifier" 
 gen geography = "Uganda"
 gen survey = "LSMS-ISA" 
 gen year = "2013-14" 
@@ -5224,7 +5547,7 @@ gen instrument = 54
 //Only runs if label isn't already defined.
 capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2" 13 "Tanzania NPS Wave 3" 14 "Tanzania NPS Wave 4" 15 "Tanzania NPS SDD" 16 "Tanzania NPS Wave 5" /*
 	*/ 21 "Ethiopia ESS Wave 1" 22 "Ethiopia ESS Wave 2" 23 "Ethiopia ESS Wave 3" 24 "Ethiopia ESS Wave 4" 25 "Ethiopia ESS Wave 5" /*
-	*/ 31 "Nigeria GHS Wave 1" 32 "Nigeria GHS Wave 2" 33 "Nigeria GHS Wave 3" 34 "Nigeria GHS Wave 4"/*
+	*/ 31 "Nigeria GHS Wave 1" 32 "Nigeria GHS Wave 2" 33 "Nigeria GHS Wave 3" 34 "Nigeria GHS Wave 4" 35 "Nigeria GHS Wave 5"/*
 	*/ 41 "Malawi IHS/IHPS Wave 1" 42 "Malawi IHS/IHPS Wave 2" 43 "Malawi IHS/IHPS Wave 3" 44 "Malawi IHS/IHPS Wave 4" /*
     */ 51 "Uganda NPS Wave 1" 52 "Uganda NPS Wave 2" 53 "Uganda NPS Wave 3" 54 "Uganda NPS Wave 4" 55 "Uganda NPS Wave 5" /*W6 does not exist*/ 56 "Uganda NPS Wave 7" 57 "Uganda NPS Wave 8" /* 
 */ 61 "Burkina Faso EMC Wave 1" /* 
