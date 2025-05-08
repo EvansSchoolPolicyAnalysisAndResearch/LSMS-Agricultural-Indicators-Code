@@ -18,11 +18,11 @@ Code is currently available for five countries:
   * Wave 1 (2010/11) (original panel and cross-section)
 
 * Nigeria General Household Survey-Panel (GHS)
+  * Wave 5 (2023/24)
   * Wave 4 (2018/19)
   * Wave 3 (2015/16)
   * Wave 2 (2012/13)
   * Wave 1 (2010/11)
-  * Wave 5 is under development
 
 * Tanzania National Panel Survey (NPS)
   * Wave 5 (2020/21)
