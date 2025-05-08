@@ -37,6 +37,7 @@ Tanzania NPS W5 the successor to the NPS 2014-15 (Wave 4). The Wave 5 survey beg
 
  ### Plot Areas
  * Combines GPS-measured plot areas and farmer-estimated areas into a set of variables used for field size in subsequent modules
+ * We observed some very high GPS-measured areas given the reported units (>10,000 acres) and replace them with farmer-estimated area
 
  ### Plot Decisionmakers
  * Determines gender of person or people who make plot management decisions - 1: male, 2: female, or 3: mixed male and female
