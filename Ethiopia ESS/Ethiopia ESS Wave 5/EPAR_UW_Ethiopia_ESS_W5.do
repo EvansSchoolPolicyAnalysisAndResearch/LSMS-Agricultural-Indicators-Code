@@ -58,8 +58,7 @@ set maxvar 10000
 ssc install findname  // need this user-written ado file for some commands to work	
 
 *Set location of raw data and output
-//global directory 					"../.."
-global directory "\\netid.washington.edu\wfs\EvansEPAR\Project\EPAR\Working Files\00 - LSMS for MPACT\LSMS_dev_sandbox"
+global directory 					"../.."
 
 *Set directories
 global Ethiopia_ESS_W5_raw_data			"$directory/Ethiopia ESS/Ethiopia ESS Wave 5/Raw DTA Files"

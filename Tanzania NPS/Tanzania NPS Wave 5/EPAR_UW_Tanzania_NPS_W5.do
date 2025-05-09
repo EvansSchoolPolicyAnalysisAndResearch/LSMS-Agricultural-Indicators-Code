@@ -3052,10 +3052,9 @@ save "${Tanzania_NPS_W5_created_data}/Tanzania_NPS_W5_ownasset.dta", replace
 ********************************************************************************
 //ALT 07.20.21: Preprocessing taken care of in the all plots section. At this point, I have what I need for AgQuery and so this is purely for legacy file compatibility
 use "${Tanzania_NPS_W5_created_data}/Tanzania_NPS_W5_all_plots.dta", clear
-gen number_trees_planted_banana = number_trees_planted if crop_code==2030 
-gen number_trees_planted_cassava = number_trees_planted if crop_code==1020 
-gen number_trees_planted_cocoa = number_trees_planted if crop_code==3040
-recode number_trees_planted_banana number_trees_planted_cassava number_trees_planted_cocoa (.=0) 
+gen number_trees_planted_banana = number_trees_planted if crop_code==71
+gen number_trees_planted_cassava = number_trees_planted if crop_code==21 
+recode number_trees_planted_banana number_trees_planted_cassava (.=0) 
 collapse (sum) number_trees_planted*, by(y5_hhid)
 save "${Tanzania_NPS_W5_created_data}/Tanzania_NPS_W5_trees.dta", replace
 

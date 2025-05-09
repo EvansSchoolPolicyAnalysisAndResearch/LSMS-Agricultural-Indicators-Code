@@ -551,13 +551,13 @@ recode ha_planted_adj (0=.)
 replace ha_planted = ha_planted_adj if ha_planted_adj!=.
 
 //Harvest
-gen kg_harvest = ag4a_15
-replace kg_harvest = ag6a_08 if kg_harvest==.
-replace kg_harvest = ag6b_08 if kg_harvest==.
+gen kgs_harvest = ag4a_15
+replace kgs_harvest = ag6a_08 if kgs_harvest==.
+replace kgs_harvest = ag6b_08 if kgs_harvest==.
 //Only 3 obs are not finished with harvest
-replace kg_harvest = ag4b_15 if kg_harvest==.
-replace kg_harvest = kg_harvest/(1-ag4a_14/100) if ag4b_12==2 & ag4a_14 < 100 //There are several observations ranging from 200-9000
-replace kg_harvest = kg_harvest/(1-ag4b_14/100) if ag4b_12==2 & ag4b_14 < 100
+replace kgs_harvest = ag4b_15 if kgs_harvest==.
+replace kgs_harvest = kgs_harvest/(1-ag4a_14/100) if ag4b_12==2 & ag4a_14 < 100 //There are several observations ranging from 200-9000
+replace kgs_harvest = kgs_harvest/(1-ag4b_14/100) if ag4b_12==2 & ag4b_14 < 100
 	//Rescale harvest area 
 gen over_harvest = ha_harvest > ha_planted & ha_planted!=.
 gen lost_plants = ag4a_17==1 | ag6a_09==1 | ag4b_17==1 | ag6b_09==1
@@ -565,7 +565,7 @@ gen lost_plants = ag4a_17==1 | ag6a_09==1 | ag4b_17==1 | ag6b_09==1
 replace ha_harvest = ha_planted if over_harvest==1 & lost_plants==0 
 replace ha_harvest = ha_planted if ag4a_09==2 | ag4b_09==2 //"Was area harvested less than area planted? 2=no"
 replace ha_harvest = ha_planted if permcrop==1 & over_harvest==1 //Lack of information to deal with permanent crops, so rescaling to ha_planted
-replace ha_harvest = 0 if kg_harvest==. 
+replace ha_harvest = 0 if kgs_harvest==. 
 //Remaining observations at this point have (a) recorded preharvest losses (b) have still harvested some crop, and (c) have area harvested greater than area planted, likely because estimated area > GPS-measured area. We can conclude that the area_harvested should be less than the area planted; one possible scaling factor could be area_harvested over estimated area planted.
 gen ha_harvest_adj = ha_harvest/est_ha_planted * ha_planted if over_harvest==1 & lost_plants==1 
 replace ha_harvest = ha_harvest_adj if ha_harvest_adj !=. & ha_harvest_adj<= ha_harvest
@@ -574,13 +574,13 @@ replace ha_harvest = ha_planted if ha_harvest_adj !=. & ha_harvest_adj > ha_harv
 /*
 ren ag4a_16 value_harvest
 replace value_harvest=ag4b_16 if value_harvest==.
-gen val_kg = value_harvest/kg_harvest
+gen val_kg = value_harvest/kgs_harvest
 //Bringing in the permanent crop price data.
 merge m:1 y2_hhid crop_code using "${Tanzania_NPS_W2_created_data}/Tanzania_NPS_W2_crop_sales.dta", nogen keep(1 3) keepusing(price_kg)
 replace price_kg = val_kg if price_kg==.
 drop val_kg
 ren price_kg val_kg //Use observed sales prices where available, farmer estimated values where not 
-gen obs=kg_harvest>0 & kg_harvest!=.
+gen obs=kgs_harvest>0 & kgs_harvest!=.
 merge m:1 y2_hhid using "${Tanzania_NPS_W2_created_data}/Tanzania_NPS_W2_hhids.dta", nogen keep(1 3)
 gen plotweight=ha_planted*weight
 foreach i in region district ward ea y2_hhid {
@@ -602,7 +602,7 @@ foreach i in country region district ward ea {
 	replace val_kg = val_kg_`i' if obs_`i'_kg >9
 }
 	replace val_kg = val_kg_y2_hhid if val_kg_y2_hhid!=.
-	replace value_harvest=val_kg*kg_harvest if value_harvest==.
+	replace value_harvest=val_kg*kgs_harvest if value_harvest==.
 */
 merge m:1 y2_hhid using "${Tanzania_NPS_W2_created_data}/Tanzania_NPS_W2_hhids.dta"
 ren y2_hhid hhid
@@ -617,15 +617,15 @@ foreach i in country region district ward ea {
 }
 	
 	replace val_kg_hhid = val_kg if val_kg_hhid==.
-	gen value_harvest=val_kg*kg_harvest 
-	gen value_harvest_hh = val_kg_hhid * kg_harvest
+	gen value_harvest=val_kg*kgs_harvest 
+	gen value_harvest_hh = val_kg_hhid * kgs_harvest
 	replace value_harvest = ag4a_16 if value_harvest==.
 	replace value_harvest = ag4b_16 if value_harvest==.
 
 
 preserve
 ren hhid y2_hhid
-collapse (mean) price_kg=val_kg [aw=kg_harvest], by(y2_hhid crop_code) //get household prices for crops 
+collapse (mean) price_kg=val_kg [aw=kgs_harvest], by(y2_hhid crop_code) //get household prices for crops 
 save "${Tanzania_NPS_W2_created_data}/Tanzania_NPS_W2_hh_crop_prices.dta", replace
 restore
 	
@@ -635,7 +635,7 @@ ren hhid y2_hhid
 	collapse (sum) value_harvest /*(max) month_harv*/, by(y2_hhid plot_id season)
 	save "${Tanzania_NPS_W2_created_data}/Tanzania_NPS_W2_plot_value_prod.dta", replace //Needed to estimate plot rent values
 restore
-	//collapse (sum) kg_harvest value_harvest ha_planted ha_harvest number_trees_planted (min) purestand, by(region district ward ea y2_hhid plot_id crop_code field_size season) 
+	//collapse (sum) kgs_harvest value_harvest ha_planted ha_harvest number_trees_planted (min) purestand, by(region district ward ea y2_hhid plot_id crop_code field_size season) 
 	//	merge m:1 y2_hhid plot_id using "${Tanzania_NPS_W2_created_data}/Tanzania_NPS_W2_plot_decision_makers.dta", nogen keep(1 3) keepusing(dm_gender)
 	ren hhid y2_hhid
     gen lost_drought = inlist(ag4a_10, 1) | inlist(ag4b_10, 1)
@@ -644,7 +644,7 @@ restore
 	
 gen n_crops=1
 	gen no_harvest=ha_harvest==. 
-	collapse (max) no_harvest  (sum) kg_harvest value_harvest* ha_planted ha_harvest number_trees_planted n_crops (min) purestand, by(region district season ward ea y2_hhid plot_id crop_code field_size total_ha_planted)  
+	collapse (max) no_harvest  (sum) kgs_harvest value_harvest* ha_planted ha_harvest number_trees_planted n_crops (min) purestand, by(region district season ward ea y2_hhid plot_id crop_code field_size total_ha_planted)  
 		merge m:1 y2_hhid plot_id season using "${Tanzania_NPS_W2_created_data}/Tanzania_NPS_W2_plot_decision_makers.dta", nogen keep(3) keepusing(dm*) //Drops the 3 hhs  we filtered out earlier
 		gen percent_field = ha_planted/total_ha_planted
 		gen percent_inputs = percent_field if percent_field!=0
@@ -655,9 +655,11 @@ gen n_crops=1
 		drop missing_vals percent_field max_missing total_ha_planted
 		replace percent_inputs=round(percent_inputs,0.0001) //Getting rid of all the annoying 0.9999999999 etc.
 		recode ha_planted (0=.)
-		replace ha_harvest=. if (ha_harvest==0 & no_harvest==1) | (ha_harvest==0 & kg_harvest>0 & kg_harvest!=.)
-   replace kg_harvest = . if kg_harvest==0 & no_harvest==1
+		replace ha_harvest=. if (ha_harvest==0 & no_harvest==1) | (ha_harvest==0 & kgs_harvest>0 & kgs_harvest!=.)
+   replace kgs_harvest = . if kgs_harvest==0 & no_harvest==1
    drop no_harvest
+   gen ha_harv_yld=ha_harvest if ha_planted >=0.05 & !inlist(crop_code, 302,303,304,305,306,19) //Excluding nonfood crops & seaweed 
+   gen ha_plan_yld=ha_planted if ha_planted >=0.05 & !inlist(crop_code, 302,303,304,305,306,19) 
 	save "${Tanzania_NPS_W2_created_data}/Tanzania_NPS_W2_all_plots.dta",replace
 
 //One extremely large and implausible (but not impossible) harvest value for coconuts: 55,000 kg reported from 80 trees (but on 16 hectares, so possibly many more trees) with a reported value of 7,500 TSH/kg (not unreasonable), leading to a large value of harvest of 412 MM Shillings. Left in data because it doesn't defy physics. 
@@ -947,7 +949,7 @@ use "${Tanzania_NPS_W2_created_data}/Tanzania_NPS_W2_all_plots.dta", clear
 
 use "${Tanzania_NPS_W2_created_data}/Tanzania_NPS_W2_all_plots.dta", clear
 	ren ha_planted monocrop_ha
-	ren kg_harvest kgs_harv_mono
+	ren kgs_harvest kgs_harv_mono
 	ren value_harvest val_harv_mono
 	collapse (sum) *mono*, by(y2_hhid plot_id crop_code dm_gender season)
 
@@ -1092,7 +1094,6 @@ save "${Tanzania_NPS_W2_created_data}/Tanzania_NPS_W2_TLU_Coefficients.dta", rep
 *ALT 07.06.21: The preprocessing - including value imputation - is all in the "all plots" section above; this is mostly legacy compatibility stuff
 use "${Tanzania_NPS_W2_created_data}/Tanzania_NPS_W2_all_plots.dta", clear
 gen value_harvest_imputed = value_harvest
-ren kg_harvest kgs_harvest //ALT 07.19.21: Note to go back and fix this elsewhere
 lab var value_harvest_imputed "Imputed value of crop production"
 
 collapse (sum) value_harvest_imputed kgs_harvest, by (y2_hhid crop_code)
@@ -3023,9 +3024,9 @@ save `trees'
 use "${Tanzania_NPS_W2_created_data}/Tanzania_NPS_W2_all_plots.dta", clear
 *ren cropcode crop_code
 gen no_harvest=ha_harvest==.
-ren kg_harvest harvest 
-ren ha_planted area_plan
-ren ha_harvest area_harv 
+gen harvest=kgs_harvest if season==0  & ha_plan_yld !=.
+gen area_plan=ha_plan_yld if season==0
+gen area_harv = ha_harv_yld if season==0 
 gen mixed = "inter"  //Note to adjust this for lost crops 
 replace mixed="pure" if purestand==1
 gen dm_gender2="unknown"
@@ -3046,7 +3047,7 @@ foreach i in harvest area_plan area_harv {
 	}
 }
 
-collapse (sum) harvest* area* (max) no_harvest, by(y2_hhid crop_code)
+collapse (sum) harvest* area* kgs_harvest (max) no_harvest, by(y2_hhid crop_code)
 unab vars : harvest* area*
 foreach var in `vars' {
 	replace `var' = . if `var'==0 & no_harvest==1
@@ -3075,71 +3076,71 @@ restore
 *Yield at the household level
 //ALT 07.21.21: Code continues here as written in W4
 use "${Tanzania_NPS_W2_created_data}/Tanzania_NPS_W2_crop_harvest_area_yield.dta", clear
-merge m:1 crop_code using "${Tanzania_NPS_W2_created_data}/Tanzania_NPS_W2_cropname_table.dta", nogen keep(1 3)
+merge m:1 crop_code using "${Tanzania_NPS_W2_created_data}/Tanzania_NPS_W2_cropname_table.dta", nogen keep(3)
 merge 1:1 y2_hhid crop_code using "${Tanzania_NPS_W2_created_data}/Tanzania_NPS_W2_hh_crop_values_production.dta", nogen keep(1 3) 
 ren value_crop_production value_harv_
 ren value_crop_sales value_sold_
 ren kgs_sold kgs_sold_
+ren kgs_harvest kgs_harvest_
 foreach i in harvest area {
 	ren `i'* `i'*_
 }
 gen total_planted_area_ = area_plan_
 gen total_harv_area_ = area_harv_ 
-gen kgs_harvest_ = harvest_
 
-drop crop_code kgs_harvest kgs_sold price_kg
+drop crop_code price_kg //to fix
 unab vars : *_
 reshape wide `vars', i(y2_hhid) j(crop_name) string
 merge 1:1 y2_hhid using `trees', nogen
-collapse (sum) harvest* area_harv*  area_plan* total_planted_area* total_harv_area* kgs_harvest*   value_harv* value_sold* number_trees_planted*  , by(y2_hhid) 
-recode harvest*   area_harv* area_plan* kgs_harvest* total_planted_area* total_harv_area*    value_harv* value_sold* (0=.)
 egen kgs_harvest = rowtotal(kgs_harvest_*)
+egen kgs_sold = rowtotal(kgs_sold_*)
 la var kgs_harvest "Quantity harvested of all crops (kgs) (household) (summed accross all seasons)"
 //lab var kgs_sold "Kgs sold (household) (all seasons)" //Do we need this here?
 foreach p of global topcropname_area {
 	lab var value_harv_`p' "Value harvested of `p' (household)" 
 	lab var value_sold_`p' "Value sold of `p' (household)" 
 	lab var kgs_harvest_`p'  "Harvest of `p' (kgs) (household) (all seasons)" 
-	*lab var kgs_sold_`p'  "Quantity sold of `p' (kgs) (household) (all seasons)" 
+	lab var kgs_sold_`p'  "Quantity sold of `p' (kgs) (household) (all seasons)" 
 	lab var total_harv_area_`p'  "Total area harvested of `p' (ha) (household) (all seasons)" 
 	lab var total_planted_area_`p'  "Total area planted of `p' (ha) (household) (all seasons)" 
-	lab var harvest_`p' "Harvest of `p' (kgs) (household)" 
-	lab var harvest_male_`p' "Harvest of `p' (kgs) (male-managed plots)" 
-	lab var harvest_female_`p' "Harvest of `p' (kgs) (female-managed plots)" 
-	lab var harvest_mixed_`p' "Harvest of `p' (kgs) (mixed-managed plots)"
-	lab var harvest_pure_`p' "Harvest of `p' (kgs) - purestand (household)"
-	lab var harvest_pure_male_`p'  "Harvest of `p' (kgs) - purestand (male-managed plots)"
-	lab var harvest_pure_female_`p'  "Harvest of `p' (kgs) - purestand (female-managed plots)"
-	lab var harvest_pure_mixed_`p'  "Harvest of `p' (kgs) - purestand (mixed-managed plots)"
-	lab var harvest_inter_`p' "Harvest of `p' (kgs) - intercrop (household)"
-	lab var harvest_inter_male_`p' "Harvest of `p' (kgs) - intercrop (male-managed plots)" 
-	lab var harvest_inter_female_`p' "Harvest of `p' (kgs) - intercrop (female-managed plots)"
-	lab var harvest_inter_mixed_`p' "Harvest  of `p' (kgs) - intercrop (mixed-managed plots)"
-	lab var area_harv_`p' "Area harvested of `p' (ha) (household)" 
-	lab var area_harv_male_`p' "Area harvested of `p' (ha) (male-managed plots)" 
-	lab var area_harv_female_`p' "Area harvested of `p' (ha) (female-managed plots)" 
-	lab var area_harv_mixed_`p' "Area harvested of `p' (ha) (mixed-managed plots)"
-	lab var area_harv_pure_`p' "Area harvested of `p' (ha) - purestand (household)"
-	lab var area_harv_pure_male_`p'  "Area harvested of `p' (ha) - purestand (male-managed plots)"
-	lab var area_harv_pure_female_`p'  "Area harvested of `p' (ha) - purestand (female-managed plots)"
-	lab var area_harv_pure_mixed_`p'  "Area harvested of `p' (ha) - purestand (mixed-managed plots)"
-	lab var area_harv_inter_`p' "Area harvested of `p' (ha) - intercrop (household)"
-	lab var area_harv_inter_male_`p' "Area harvested of `p' (ha) - intercrop (male-managed plots)" 
-	lab var area_harv_inter_female_`p' "Area harvested of `p' (ha) - intercrop (female-managed plots)"
-	lab var area_harv_inter_mixed_`p' "Area harvested  of `p' (ha) - intercrop (mixed-managed plots)"
-	lab var area_plan_`p' "Area planted of `p' (ha) (household)" 
-	lab var area_plan_male_`p' "Area planted of `p' (ha) (male-managed plots)" 
-	lab var area_plan_female_`p' "Area planted of `p' (ha) (female-managed plots)" 
-	lab var area_plan_mixed_`p' "Area planted of `p' (ha) (mixed-managed plots)"
-	lab var area_plan_pure_`p' "Area planted of `p' (ha) - purestand (household)"
-	lab var area_plan_pure_male_`p'  "Area planted of `p' (ha) - purestand (male-managed plots)"
-	lab var area_plan_pure_female_`p'  "Area planted of `p' (ha) - purestand (female-managed plots)"
-	lab var area_plan_pure_mixed_`p'  "Area planted of `p' (ha) - purestand (mixed-managed plots)"
-	lab var area_plan_inter_`p' "Area planted of `p' (ha) - intercrop (household)"
-	lab var area_plan_inter_male_`p' "Area planted of `p' (ha) - intercrop (male-managed plots)" 
-	lab var area_plan_inter_female_`p' "Area planted of `p' (ha) - intercrop (female-managed plots)"
-	lab var area_plan_inter_mixed_`p' "Area planted  of `p' (ha) - intercrop (mixed-managed plots)"
+	lab var harvest_`p' "Harvest of `p' (kgs) (household) - LRS" 
+	lab var harvest_male_`p' "Harvest of `p' (kgs) (male-managed plots) - LRS" 
+	lab var harvest_female_`p' "Harvest of `p' (kgs) (female-managed plots) - LRS" 
+	lab var harvest_mixed_`p' "Harvest of `p' (kgs) (mixed-managed plots) - LRS"
+	lab var harvest_pure_`p' "Harvest of `p' (kgs) - purestand (household) - LRS"
+	lab var harvest_pure_male_`p'  "Harvest of `p' (kgs) - purestand (male-managed plots) - LRS"
+	lab var harvest_pure_female_`p'  "Harvest of `p' (kgs) - purestand (female-managed plots) - LRS"
+	lab var harvest_pure_mixed_`p'  "Harvest of `p' (kgs) - purestand (mixed-managed plots) - LRS"
+	lab var harvest_inter_`p' "Harvest of `p' (kgs) - intercrop (household) - LRS"
+	lab var harvest_inter_male_`p' "Harvest of `p' (kgs) - intercrop (male-managed plots) - LRS" 
+	lab var harvest_inter_female_`p' "Harvest of `p' (kgs) - intercrop (female-managed plots) - LRS"
+	lab var harvest_inter_mixed_`p' "Harvest  of `p' (kgs) - intercrop (mixed-managed plots) - LRS"
+	lab var area_harv_`p' "Area harvested of `p' (ha) (household) - LRS" 
+	lab var area_harv_male_`p' "Area harvested of `p' (ha) (male-managed plots) - LRS" 
+	lab var area_harv_female_`p' "Area harvested of `p' (ha) (female-managed plots) - LRS" 
+	lab var area_harv_mixed_`p' "Area harvested of `p' (ha) (mixed-managed plots) - LRS"
+	lab var area_harv_pure_`p' "Area harvested of `p' (ha) - purestand (household) - LRS"
+	lab var area_harv_pure_male_`p'  "Area harvested of `p' (ha) - purestand (male-managed plots) - LRS"
+	lab var area_harv_pure_female_`p'  "Area harvested of `p' (ha) - purestand (female-managed plots) - LRS"
+	lab var area_harv_pure_mixed_`p'  "Area harvested of `p' (ha) - purestand (mixed-managed plots) - LRS"
+	lab var area_harv_inter_`p' "Area harvested of `p' (ha) - intercrop (household) - LRS"
+	lab var area_harv_inter_male_`p' "Area harvested of `p' (ha) - intercrop (male-managed plots) - LRS" 
+	lab var area_harv_inter_female_`p' "Area harvested of `p' (ha) - intercrop (female-managed plots) - LRS"
+	lab var area_harv_inter_mixed_`p' "Area harvested  of `p' (ha) - intercrop (mixed-managed plots - LRS)"
+	lab var area_plan_`p' "Area planted of `p' (ha) (household) - LRS" 
+	lab var area_plan_male_`p' "Area planted of `p' (ha) (male-managed plots) - LRS" 
+	lab var area_plan_female_`p' "Area planted of `p' (ha) (female-managed plots) - LRS" 
+	lab var area_plan_mixed_`p' "Area planted of `p' (ha) (mixed-managed plots) - LRS"
+	lab var area_plan_pure_`p' "Area planted of `p' (ha) - purestand (household) - LRS"
+	lab var area_plan_pure_male_`p'  "Area planted of `p' (ha) - purestand (male-managed plots) - LRS"
+	lab var area_plan_pure_female_`p'  "Area planted of `p' (ha) - purestand (female-managed plots) - LRS"
+	lab var area_plan_pure_mixed_`p'  "Area planted of `p' (ha) - purestand (mixed-managed plots) - LRS"
+	lab var area_plan_inter_`p' "Area planted of `p' (ha) - intercrop (household) - LRS"
+	lab var area_plan_inter_male_`p' "Area planted of `p' (ha) - intercrop (male-managed plots) - LRS" 
+	lab var area_plan_inter_female_`p' "Area planted of `p' (ha) - intercrop (female-managed plots) - LRS"
+	lab var area_plan_inter_mixed_`p' "Area planted  of `p' (ha) - intercrop (mixed-managed plots) - LRS"
 }
+
 *Household grew crop
 foreach p of global topcropname_area {
 	gen grew_`p'=(total_harv_area_`p'!=. & total_harv_area_`p'!=0 ) | (total_planted_area_`p'!=. & total_planted_area_`p'!=0)

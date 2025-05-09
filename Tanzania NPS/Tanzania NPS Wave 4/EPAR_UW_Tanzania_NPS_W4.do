@@ -535,6 +535,8 @@ gen n_crops=1
 		replace ha_harvest=. if (ha_harvest==0 & no_harvest==1) | (ha_harvest==0 & kgs_harvest>0 & kgs_harvest!=.)
    replace kgs_harvest = . if kgs_harvest==0 & no_harvest==1
    drop no_harvest
+   gen ha_harv_yld=ha_harvest if ha_planted >=0.05 & !inlist(crop_code, 302,303,304,305,306,19) //Excluding nonfood crops & seaweed 
+   gen ha_plan_yld=ha_planted if ha_planted >=0.05 & !inlist(crop_code, 302,303,304,305,306,19) 
 	save "${Tanzania_NPS_W4_created_data}/Tanzania_NPS_W4_all_plots.dta",replace
 
 
@@ -3085,9 +3087,9 @@ save `trees'
 use "${Tanzania_NPS_W4_created_data}/Tanzania_NPS_W4_all_plots.dta", clear
 *ren cropcode crop_code
 gen no_harvest=ha_harvest==.
-ren kgs_harvest harvest 
-ren ha_planted area_plan
-ren ha_harvest area_harv 
+gen harvest=kgs_harvest if season==0 & ha_plan_yld!=. 
+gen area_plan=ha_plan_yld if season==0
+gen area_harv = ha_harv_yld if season==0 
 gen mixed = "inter"  //Note to adjust this for lost crops 
 replace mixed="pure" if purestand==1
 gen dm_gender2="unknown"
@@ -3108,7 +3110,7 @@ foreach i in harvest area_plan area_harv {
 	}
 }
 
-collapse (sum) harvest* area* (max) no_harvest, by(y4_hhid crop_code)
+collapse (sum) harvest* area* kgs_harvest (max) no_harvest, by(y4_hhid crop_code)
 unab vars : harvest* area*
 foreach var in `vars' {
 	replace `var' = . if `var'==0 & no_harvest==1
@@ -3142,33 +3144,24 @@ use "${Tanzania_NPS_W4_created_data}/Tanzania_NPS_W4_crop_harvest_area_yield.dta
 *Value of crop production
 merge m:1 crop_code using "${Tanzania_NPS_W4_created_data}/Tanzania_NPS_W4_cropname_table.dta", nogen keep(3)
 merge 1:1 y4_hhid crop_code using "${Tanzania_NPS_W4_created_data}/Tanzania_NPS_W4_hh_crop_values_production.dta", nogen keep(1 3) 
-
 ren value_crop_production value_harv_
 ren value_crop_sales value_sold_
+ren kgs_sold kgs_sold_
+ren kgs_harvest kgs_harvest_
 foreach i in harvest area {
 	ren `i'* `i'*_
 }
 gen total_planted_area_ = area_plan_
 gen total_harv_area_ = area_harv_ 
-gen kgs_harvest_ = harvest_
-ren kgs_sold kgs_sold_
-drop crop_code kgs_harvest price_kg
+
+drop crop_code price_kg
 unab vars : *_
 reshape wide `vars', i(y4_hhid) j(crop_name) string
-
-merge 1:1 y4_hhid using `trees'
-collapse (sum) harvest* area_harv*  area_plan* total_planted_area* total_harv_area* kgs_harvest*  kgs_sold* value_harv* value_sold* number_trees_planted*  , by(y4_hhid) 
-recode harvest*   area_harv* area_plan* kgs_harvest* total_planted_area* total_harv_area*  kgs_sold*  value_harv* value_sold* (0=.)
+merge 1:1 y4_hhid using `trees', nogen
 egen kgs_harvest = rowtotal(kgs_harvest_*)
-
-foreach p of global topcropname_area {
-	gen grew_`p'=(total_harv_area_`p'!=. & total_harv_area_`p'!=0 ) | (total_planted_area_`p'!=. & total_planted_area_`p'!=0)
-	lab var grew_`p' "1=Household grew `p'" 
-	gen harvested_`p'= (total_harv_area_`p'!=. & total_harv_area_`p'!=.0 )
-	lab var harvested_`p' "1= Household harvested `p'"
-}
-
-la var kgs_harvest "Quantity harvested of all crops (kgs) (household) (summed accross all seasons)" 
+egen kgs_sold = rowtotal(kgs_sold_*)
+lab var kgs_sold "Kgs sold (household) (all seasons)"
+lab var kgs_harvest "Kgs harvested (household) (all seasons)"
 
 foreach p of global topcropname_area {
 	lab var value_harv_`p' "Value harvested of `p' (household)" 
@@ -3177,49 +3170,56 @@ foreach p of global topcropname_area {
 	lab var kgs_sold_`p'  "Quantity sold of `p' (kgs) (household) (all seasons)" 
 	lab var total_harv_area_`p'  "Total area harvested of `p' (ha) (household) (all seasons)" 
 	lab var total_planted_area_`p'  "Total area planted of `p' (ha) (household) (all seasons)" 
-	lab var harvest_`p' "Harvest of `p' (kgs) (household) (all seasons)" 
-	lab var harvest_male_`p' "Harvest of `p' (kgs) (male-managed plots) (all seasons)" 
-	lab var harvest_female_`p' "Harvest of `p' (kgs) (female-managed plots) (all seasons)" 
-	lab var harvest_mixed_`p' "Harvest of `p' (kgs) (mixed-managed plots) (all seasons)"
-	lab var harvest_pure_`p' "Harvest of `p' (kgs) - purestand (household) (all seasons)"
-	lab var harvest_pure_male_`p'  "Harvest of `p' (kgs) - purestand (male-managed plots) (all seasons)"
-	lab var harvest_pure_female_`p'  "Harvest of `p' (kgs) - purestand (female-managed plots) (all seasons)"
-	lab var harvest_pure_mixed_`p'  "Harvest of `p' (kgs) - purestand (mixed-managed plots) (all seasons)"
-	lab var harvest_inter_`p' "Harvest of `p' (kgs) - intercrop (household) (all seasons)"
-	lab var harvest_inter_male_`p' "Harvest of `p' (kgs) - intercrop (male-managed plots) (all seasons)" 
-	lab var harvest_inter_female_`p' "Harvest of `p' (kgs) - intercrop (female-managed plots) (all seasons)"
-	lab var harvest_inter_mixed_`p' "Harvest  of `p' (kgs) - intercrop (mixed-managed plots) (all seasons)"
-	lab var area_harv_`p' "Area harvested of `p' (ha) (household) (all seasons)" 
-	lab var area_harv_male_`p' "Area harvested of `p' (ha) (male-managed plots) (all seasons)" 
-	lab var area_harv_female_`p' "Area harvested of `p' (ha) (female-managed plots) (all seasons)" 
-	lab var area_harv_mixed_`p' "Area harvested of `p' (ha) (mixed-managed plots) (all seasons)"
-	lab var area_harv_pure_`p' "Area harvested of `p' (ha) - purestand (household) (all seasons)"
-	lab var area_harv_pure_male_`p'  "Area harvested of `p' (ha) - purestand (male-managed plots) (all seasons)"
-	lab var area_harv_pure_female_`p'  "Area harvested of `p' (ha) - purestand (female-managed plots) (all seasons)"
-	lab var area_harv_pure_mixed_`p'  "Area harvested of `p' (ha) - purestand (mixed-managed plots) (all seasons)"
-	lab var area_harv_inter_`p' "Area harvested of `p' (ha) - intercrop (household) (all seasons)"
-	lab var area_harv_inter_male_`p' "Area harvested of `p' (ha) - intercrop (male-managed plots) (all seasons)" 
-	lab var area_harv_inter_female_`p' "Area harvested of `p' (ha) - intercrop (female-managed plots) (all seasons)"
-	lab var area_harv_inter_mixed_`p' "Area harvested  of `p' (ha) - intercrop (mixed-managed plots (all seasons))"
-	lab var area_plan_`p' "Area planted of `p' (ha) (household) (all seasons)" 
-	lab var area_plan_male_`p' "Area planted of `p' (ha) (male-managed plots) (all seasons)" 
-	lab var area_plan_female_`p' "Area planted of `p' (ha) (female-managed plots) (all seasons)" 
-	lab var area_plan_mixed_`p' "Area planted of `p' (ha) (mixed-managed plots) (all seasons)"
-	lab var area_plan_pure_`p' "Area planted of `p' (ha) - purestand (household) (all seasons)"
-	lab var area_plan_pure_male_`p'  "Area planted of `p' (ha) - purestand (male-managed plots) (all seasons)"
-	lab var area_plan_pure_female_`p'  "Area planted of `p' (ha) - purestand (female-managed plots) (all seasons)"
-	lab var area_plan_pure_mixed_`p'  "Area planted of `p' (ha) - purestand (mixed-managed plots) (all seasons)"
-	lab var area_plan_inter_`p' "Area planted of `p' (ha) - intercrop (household) (all seasons)"
-	lab var area_plan_inter_male_`p' "Area planted of `p' (ha) - intercrop (male-managed plots) (all seasons)" 
-	lab var area_plan_inter_female_`p' "Area planted of `p' (ha) - intercrop (female-managed plots) (all seasons)"
-	lab var area_plan_inter_mixed_`p' "Area planted  of `p' (ha) - intercrop (mixed-managed plots) (all seasons)"
+	lab var harvest_`p' "Harvest of `p' (kgs) (household) - LRS" 
+	lab var harvest_male_`p' "Harvest of `p' (kgs) (male-managed plots) - LRS" 
+	lab var harvest_female_`p' "Harvest of `p' (kgs) (female-managed plots) - LRS" 
+	lab var harvest_mixed_`p' "Harvest of `p' (kgs) (mixed-managed plots) - LRS"
+	lab var harvest_pure_`p' "Harvest of `p' (kgs) - purestand (household) - LRS"
+	lab var harvest_pure_male_`p'  "Harvest of `p' (kgs) - purestand (male-managed plots) - LRS"
+	lab var harvest_pure_female_`p'  "Harvest of `p' (kgs) - purestand (female-managed plots) - LRS"
+	lab var harvest_pure_mixed_`p'  "Harvest of `p' (kgs) - purestand (mixed-managed plots) - LRS"
+	lab var harvest_inter_`p' "Harvest of `p' (kgs) - intercrop (household) - LRS"
+	lab var harvest_inter_male_`p' "Harvest of `p' (kgs) - intercrop (male-managed plots) - LRS" 
+	lab var harvest_inter_female_`p' "Harvest of `p' (kgs) - intercrop (female-managed plots) - LRS"
+	lab var harvest_inter_mixed_`p' "Harvest  of `p' (kgs) - intercrop (mixed-managed plots) - LRS"
+	lab var area_harv_`p' "Area harvested of `p' (ha) (household) - LRS" 
+	lab var area_harv_male_`p' "Area harvested of `p' (ha) (male-managed plots) - LRS" 
+	lab var area_harv_female_`p' "Area harvested of `p' (ha) (female-managed plots) - LRS" 
+	lab var area_harv_mixed_`p' "Area harvested of `p' (ha) (mixed-managed plots) - LRS"
+	lab var area_harv_pure_`p' "Area harvested of `p' (ha) - purestand (household) - LRS"
+	lab var area_harv_pure_male_`p'  "Area harvested of `p' (ha) - purestand (male-managed plots) - LRS"
+	lab var area_harv_pure_female_`p'  "Area harvested of `p' (ha) - purestand (female-managed plots) - LRS"
+	lab var area_harv_pure_mixed_`p'  "Area harvested of `p' (ha) - purestand (mixed-managed plots) - LRS"
+	lab var area_harv_inter_`p' "Area harvested of `p' (ha) - intercrop (household) - LRS"
+	lab var area_harv_inter_male_`p' "Area harvested of `p' (ha) - intercrop (male-managed plots) - LRS" 
+	lab var area_harv_inter_female_`p' "Area harvested of `p' (ha) - intercrop (female-managed plots) - LRS"
+	lab var area_harv_inter_mixed_`p' "Area harvested  of `p' (ha) - intercrop (mixed-managed plots - LRS)"
+	lab var area_plan_`p' "Area planted of `p' (ha) (household) - LRS" 
+	lab var area_plan_male_`p' "Area planted of `p' (ha) (male-managed plots) - LRS" 
+	lab var area_plan_female_`p' "Area planted of `p' (ha) (female-managed plots) - LRS" 
+	lab var area_plan_mixed_`p' "Area planted of `p' (ha) (mixed-managed plots) - LRS"
+	lab var area_plan_pure_`p' "Area planted of `p' (ha) - purestand (household) - LRS"
+	lab var area_plan_pure_male_`p'  "Area planted of `p' (ha) - purestand (male-managed plots) - LRS"
+	lab var area_plan_pure_female_`p'  "Area planted of `p' (ha) - purestand (female-managed plots) - LRS"
+	lab var area_plan_pure_mixed_`p'  "Area planted of `p' (ha) - purestand (mixed-managed plots) - LRS"
+	lab var area_plan_inter_`p' "Area planted of `p' (ha) - intercrop (household) - LRS"
+	lab var area_plan_inter_male_`p' "Area planted of `p' (ha) - intercrop (male-managed plots) - LRS" 
+	lab var area_plan_inter_female_`p' "Area planted of `p' (ha) - intercrop (female-managed plots) - LRS"
+	lab var area_plan_inter_mixed_`p' "Area planted  of `p' (ha) - intercrop (mixed-managed plots) - LRS"
 }
+
 *Household grew crop
+foreach p of global topcropname_area {
+	gen grew_`p'=(total_harv_area_`p'!=. & total_harv_area_`p'!=0 ) | (total_planted_area_`p'!=. & total_planted_area_`p'!=0)
+	lab var grew_`p' "1=Household grew `p'" 
+	gen harvested_`p'= (total_harv_area_`p'!=. & total_harv_area_`p'!=.0 )
+	lab var harvested_`p' "1= Household harvested `p'"
+}
 
 foreach p in cassav banana { //tree/permanent crops have no area in this instrument 
 	replace grew_`p' = 1 if number_trees_planted_`p'!=0 & number_trees_planted_`p'!=.
 }
-/* To address
+// To address
 *Household grew crop in the LRS
 foreach p of global topcropname_area {
 	gen grew_`p'_lrs=(area_harv_`p'!=. & area_harv_`p'!=0 ) | (area_plan_`p'!=. & area_plan_`p'!=0)
@@ -3227,7 +3227,7 @@ foreach p of global topcropname_area {
 	gen harvested_`p'_lrs= (area_harv_`p'!=. & area_harv_`p'!=.0 )
 	lab var harvested_`p'_lrs "1= Household harvested `p' in the long rainy season"
 }
-*/
+
 foreach p of global topcropname_area {
 	recode kgs_harvest_`p' (.=0) if grew_`p'==1 
 	recode value_sold_`p' (.=0) if grew_`p'==1 
