@@ -393,7 +393,7 @@ drop if s4aq08==. & s4bq08==. //phantom entries.
 recode s4bq07 s4aq07 (0=.)
 gen planted_area = s4aq07 //values are in acres
 replace planted_area = s4bq07 if planted_area==. //values are in acres
-//replace plot_area = plot_area * 0.404686 //conversion factor is 0.404686 ha = 1 acre.
+replace planted_area = planted_area * 0.404686 //conversion factor is 0.404686 ha = 1 acre.
 gen percent_field = s4aq09/100 
 replace percent_field =s4bq09/100 if percent_field==.
 bys hhid parcel_id plot_id season : gen ncrops=_N
@@ -431,6 +431,10 @@ label var field_size "Area of plot (ha)"
 label var hhid "Household identifier"
 save "${Uganda_NPS_W7_created_data}/Uganda_NPS_W7_plot_areas.dta", replace
 
+preserve
+collapse (max) parcel_ha, by(hhid parcel_id)
+save "${Uganda_NPS_W7_created_data}/Uganda_NPS_W7_parcel_areas.dta", replace
+restore
 
 merge 1:m hhid parcel_id plot_id season using `crop_area'
 gen ha_planted=percent_field*planted_area 
@@ -2305,7 +2309,7 @@ save "${Uganda_NPS_W7_created_data}/Uganda_NPS_W7_land_rental_income.dta", repla
 ********************************************************************************
 *								FARM SIZE / LAND SIZE				  		   *
 ********************************************************************************
-/* to fix
+//To review and incorporate into plot areas.
 *Parcel areas not being created earlier so creating it now for merge later: 
 use "${Uganda_NPS_W7_raw_data}/AGSEC4A.dta", clear
 gen season = 1
@@ -2397,13 +2401,8 @@ lab var cultivated "1= Parcel was cultivated in this data set"
 save "${Uganda_NPS_W7_created_data}/Uganda_NPS_W7_parcels_cultivated.dta", replace
 
 merge 1:1 hhid parcel_id using "${Uganda_NPS_W7_created_data}/Uganda_NPS_W7_parcel_areas.dta", nogen keep (1 3) // all matched  
-
 keep if cultivated==1
-replace area_acres_meas=. if area_acres_meas<0 
-*replace area_acres_meas = area_acres_est if area_acres_meas==. 
-collapse (sum) area_acres_meas, by (hhid)
-ren area_acres_meas farm_area
-replace farm_area = farm_area * (1/2.47105) /* Convert to hectares */
+collapse (sum) farm_area=parcel_ha, by (hhid)
 lab var farm_area "Land size (denominator for land productivitiy), in hectares" 
 save "${Uganda_NPS_W7_created_data}/Uganda_NPS_W7_land_size.dta", replace
 
@@ -2429,12 +2428,7 @@ save "${Uganda_NPS_W7_created_data}/Uganda_NPS_W7_parcels_agland.dta", replace
 
 use "${Uganda_NPS_W7_created_data}/Uganda_NPS_W7_parcels_agland.dta", clear
 merge 1:1 hhid parcel_id using "${Uganda_NPS_W7_created_data}/Uganda_NPS_W7_parcel_areas.dta", nogen keep(1 3)
-replace area_acres_meas=. if area_acres_meas<0
-*replace area_acres_meas = area_acres_est if area_acres_meas==. 
-*replace area_acres_meas = area_acres_est if area_acres_meas==0 & (area_acres_est>0 & area_acres_est!=.)
-collapse (sum) area_acres_meas, by (hhid)
-ren area_acres_meas farm_size_agland
-replace farm_size_agland = farm_size_agland * (1/2.47105) /* Convert to hectares */
+collapse (sum) farm_size_agland=parcel_ha, by (hhid)
 lab var farm_size_agland "Land size in hectares, including all plots cultivated or left fallow" 
 save "${Uganda_NPS_W7_created_data}/Uganda_NPS_W7_farmsize_all_agland.dta", replace
 
@@ -2457,33 +2451,16 @@ save "${Uganda_NPS_W7_created_data}/Uganda_NPS_W7_parcels_held.dta", replace
 
 use "${Uganda_NPS_W7_created_data}/Uganda_NPS_W7_parcels_held.dta", clear
 merge 1:1 hhid parcel_id using "${Uganda_NPS_W7_created_data}/Uganda_NPS_W7_parcel_areas.dta", nogen keep(1 3)
-replace area_acres_meas=. if area_acres_meas<0
-*replace area_acres_meas = area_acres_est if area_acres_meas==. 
-collapse (sum) area_acres_meas, by (hhid)
-ren area_acres_meas land_size
-replace land_size = land_size * (1/2.47105) /* Convert to hectares */
+collapse (sum) land_size=parcel_ha, by(hhid)
 lab var land_size "Land size in hectares, including all parcels listed by the household except those rented out" 
 save "${Uganda_NPS_W7_created_data}/Uganda_NPS_W7_land_size_all.dta", replace
 
 *Total land holding including cultivated and rented out
-use "${Uganda_NPS_W7_raw_data}/AGSEC2A.dta", clear
-append using "${Uganda_NPS_W7_raw_data}/AGSEC2B.dta"
-*ren hhid HHID
-*ren t0_hhid hhid
-ren parcelID parcel_id
-drop if parcel_id==.
-drop if hhid=="."
-merge m:1 hhid parcel_id using "${Uganda_NPS_W7_created_data}/Uganda_NPS_W7_parcel_areas.dta", nogen keep(1 3) //hhid and parcel don't uniquely identify in master - is that a problem? Also only 700 matches 
-replace area_acres_meas=. if area_acres_meas<0
-*replace area_acres_meas = area_acres_est if area_acres_meas==. 
-*replace area_acres_meas = area_acres_est if area_acres_meas==0 & (area_acres_est>0 & area_acres_est!=.)
-collapse (max) area_acres_meas, by(hhid parcel_id)
-ren area_acres_meas land_size_total
-collapse (sum) land_size_total, by(hhid)
-replace land_size_total = land_size_total * (1/2.47105) /* Convert to hectares */
+use "${Uganda_NPS_W7_created_data}/Uganda_NPS_W7_parcel_areas.dta" //hhid and parcel don't uniquely identify in master - is that a problem? Also only 700 matches 
+collapse (sum) land_size_total=parcel_ha, by(hhid)
 lab var land_size_total "Total land size in hectares, including rented in and rented out plots"
 save "${Uganda_NPS_W7_created_data}/Uganda_NPS_W7_land_size_total.dta", replace
-*/
+
 ********************************************************************************
 *OFF-FARM HOURS
 ********************************************************************************
