@@ -320,16 +320,21 @@ recode ha_planted (.=0)
 bys HHID plot_id parcel_id : egen max_ha_planted = max(ha_planted) //should be total area planted by plot
 replace ha_planted=max_ha_planted
 
-gen percent_planted = A4aq9/100
-replace percent_planted = A4bq9/ 100 if percent_planted==. 
+gen percent_planted1 = A4aq9/100 if A4aq9 <= 100 & A4aq9 >= 1
+replace percent_planted1=A4aq9 if A4aq9 > 0 & A4aq9 < 1
+gen percent_planted2 = A4bq9/100 if A4bq9 <= 100 & A4bq9 >= 1
+replace percent_planted2 = A4bq9 if A4bq9 > 0 & A4bq9 < 1
+gen percent_planted = percent_planted1
+replace percent_planted=percent_planted2 if percent_planted==.
 replace percent_planted=1 if ncrops==1 & percent_planted==.
-
+replace percent_planted=. if percent_planted==0
 bys HHID parcel_id plot_id season : egen total_percent_planted = sum(percent_planted) //generate variable for total percent of a plot that is planted (all crops)
+replace total_percent_planted=1 if total_percent_planted==0 //Assume unknown plots are fully cultivated.
 gen missing_ratio=percent_planted==.
 bys HHID parcel_id plot_id season : egen tot_miss = sum(missing_ratio)
 replace percent_planted = percent_planted/total_percent_planted if total_percent_planted > 1
-replace percent_planted = 1/tot_miss if missing_ratio & tot_miss==ncrops
-replace percent_planted = (1-total_percent_planted)/tot_miss if missing_ratio & tot_miss < ncrops
+replace percent_planted = 1/tot_miss if missing_ratio==1 & tot_miss==ncrops
+replace percent_planted = (1-total_percent_planted)/tot_miss if missing_ratio==1 & tot_miss < ncrops & total_percent_planted < 1
 
 gen crop_code=A4aq6
 replace crop_code=A4bq6 if crop_code==.
@@ -340,43 +345,39 @@ save "${Uganda_NPS_W1_created_data}/Uganda_NPS_W1_crop_areas.dta", replace
 restore
 
 *Bring everything together
-collapse(max) ha_planted (sum) percent_planted, by(HHID parcel_id plot_id season)
-gen plot_area = ha_planted / percent_planted
-bys HHID parcel_id season : egen total_plot_area = sum(plot_area)
-generate plot_area_pct = plot_area/total_plot_area
-keep HHID parcel_id plot_id season plot_area total_plot_area plot_area_pct ha_planted
+collapse (max) ha_planted (sum) percent_planted, by(HHID parcel_id plot_id season)
+recode percent_planted (0=.)
+//gen plot_area = ha_planted / percent_planted
+bys HHID parcel_id season : egen parcel_area_planted = sum(ha_planted)
+generate plot_area_pct = ha_planted/parcel_area_planted
+keep HHID parcel_id plot_id season parcel_area_planted plot_area_pct ha_planted
 
-
-tempfile sea1 sea2 sea3 // 
-
-tempfile sea1 sea2 sea3 // 
-save `sea1'
-
+preserve
 use "${Uganda_NPS_W1_raw_data}/2009_AGSEC2A.dta", clear 
+append using "${Uganda_NPS_W1_raw_data}/2009_AGSEC2B.dta"
 ren A2aq2 parcel_id
+replace parcel_id=A2bq2 if parcel_id==.
 ren Hhid HHID
-save `sea2'
-
-use "${Uganda_NPS_W1_raw_data}/2009_AGSEC2B.dta", clear 
-ren A2bq2 parcel_id
-ren Hhid HHID
-save `sea3'
-
-use `sea1', clear
-merge m:1 HHID parcel_id using `sea2', nogen 
-merge m:1 HHID parcel_id using `sea3', nogen // use a temporary file to merge the 1 to many, sea1, sea2, sea3 to merge raw data together (combines the appended season w additonally appened season variables in additional data set) 
+tempfile parcels 
+save `parcels'
+restore
+merge m:1 HHID parcel_id using `parcels'
 
 ***generating field_size using merged variables***
-generate parcel_acre = parcel_id // Replaced missing GPS estimation here to get parcel size in acres if we have it, but many parcels do not have gps estimation
+recode A2aq4 A2bq4 A2aq5 A2bq5 (0=.)
+generate parcel_acre = A2aq4
 replace parcel_acre = A2bq4 if parcel_acre == . 
 replace parcel_acre = A2aq5 if parcel_acre == . // Replaced missing GPS values with farmer estimation, which is less accurate but has full coverage (and is also in acres) 
 replace parcel_acre = A2bq5 if parcel_acre == . // see above 
-gen field_size = plot_area_pct*parcel_acre // Using calculated percentages of plots (out of total plots per parcel) to estimate plot size using more accurate parcel measurements 
-replace field_size = field_size * 0.404686 // CONVERSION FACTOR IS 0.404686 ha = 1 acre 
-gen parcel_ha = parcel_acre * 0.404686 
+gen parcel_ha=parcel_acre*0.404686
+replace parcel_ha=parcel_area_planted if parcel_ha==.
+recode parcel_ha parcel_area_planted (0=.)
+replace parcel_ha = parcel_area_planted if parcel_ha==.
+replace parcel_area_planted=parcel_ha if parcel_area_planted > parcel_ha | parcel_area_planted == .
+gen field_size = plot_area_pct*parcel_area_planted // Using calculated percentages of plots (out of total plots per parcel) to estimate plot size using more accurate parcel measurements 
 *cleaning up and saving the data 
-keep HHID parcel_id plot_id season field_size plot_area total_plot_area parcel_acre ha_planted parcel_ha
-drop if field_size == . 
+keep HHID parcel_id plot_id season field_size plot_area parcel_area_planted parcel_ha
+//drop if field_size == . 
 label var field_size "area of plot (ha)"
 label var HHID "household identifier"
 tostring HHID , format(%18.0f) replace 
@@ -600,7 +601,6 @@ label define cropID 740 "BANANAS", modify //need to add new codes to the value l
 label values crop_code cropID //apply crop labels to crop_code_master
 
 merge m:1 HHID parcel_id plot_id season using "${Uganda_NPS_W1_created_data}/Uganda_NPS_W1_plot_areas.dta", nogen keep(1 3)	
-drop ha_planted //Misnomer, to fix.
 	gen ha_planted=percent_planted*field_size
 	gen perm_tree = 1 if inlist(crop_code, 460, 630, 700, 710, 720, 740, 750, 760, 770, 780, 810, 820, 830, 870) //dodo, cassava, oranges, pawpaw, pineapple, bananas, mango, jackfruit, avocado, passion fruit, coffee, cocoa, tea, and vanilla, in that order SAW everythins works except for 740 banana that is still 741 742 and 744
 replace perm_tree = 0 if perm_tree == .
@@ -979,8 +979,7 @@ restore
 
 preserve
 use "${Uganda_NPS_W1_created_data}/Uganda_NPS_W1_plot_areas.dta", clear
-collapse (sum) ha_planted, by(HHID)
-ren ha_planted ha_planted_total
+collapse (sum) ha_planted_total=field_size, by(HHID)
 tempfile ha_planted_total
 save `ha_planted_total'
 restore
@@ -988,7 +987,7 @@ restore
 preserve
 use "${Uganda_NPS_W1_created_data}/Uganda_NPS_W1_plot_areas.dta", clear
 merge m:1 HHID using `ha_planted_total', nogen
-gen planted_percent = ha_planted / ha_planted_total //generates a per-plot and season percentage of total ha planted / SAW ha_planted_total its total area planted for both seasons per HHID 
+gen planted_percent = field_size / ha_planted_total //generates a per-plot and season percentage of total ha planted / SAW ha_planted_total its total area planted for both seasons per HHID 
 tempfile planted_percent
 save `planted_percent'
 restore
