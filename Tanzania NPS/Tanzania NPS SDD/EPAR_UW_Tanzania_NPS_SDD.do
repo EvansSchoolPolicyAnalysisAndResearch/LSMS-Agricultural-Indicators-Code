@@ -155,10 +155,15 @@ global wins_upper_thres 99							//  Threshold for winzorization at the top of t
 *Enter the 12 priority crops here (maize, rice, wheat, sorghum, pearl millet (or just millet if not disaggregated), cowpea, groundnut, common bean, yam, sweet potato, cassava, banana)
 *plus any crop in the top ten crops by area planted that is not already included in the priority crops - limit to 6 letters or they will be too long!
 *For consistency, add the 12 priority crops in order first, then the additional top ten crops
-global topcropname_area "maize rice wheat sorgum pmill cowpea grdnt beans yam swtptt cassav banana cotton sunflr pigpea"
-global topcrop_area "11 12 16 13 14 32 43 31 24 22 21 71 50 41 34"
-global comma_topcrop_area "11, 12, 16, 13, 14, 32, 43, 31, 24, 22, 21, 71, 50, 41, 34" 
-global topcropname_area_full "maize rice wheat sorghum pearl-millet cowpeas groundnuts beans yam sweet-potato cassava banana cotton sunflower pigeon-peas"
+//global topcropname_area "maize rice wheat sorgum pmill cowpea grdnt beans yam swtptt cassav banana cotton sunflr pigpea"
+//global topcrop_area "11 12 16 13 14 32 43 31 24 22 21 71 50 41 34"
+//global comma_topcrop_area "11, 12, 16, 13, 14, 32, 43, 31, 24, 22, 21, 71, 50, 41, 34" 
+//global topcropname_area_full "maize rice wheat sorghum pearl-millet cowpeas groundnuts beans yam sweet-potato cassava banana cotton sunflower pigeon-peas"
+//no observed wheat harvest in this wave
+global topcropname_area "maize rice sorgum pmill cowpea grdnt beans yam swtptt cassav banana cotton sunflr pigpea"
+global topcrop_area "11 12 13 14 32 43 31 24 22 21 71 50 41 34"
+global comma_topcrop_area "11, 12, 13, 14, 32, 43, 31, 24, 22, 21, 71, 50, 41, 34" 
+global topcropname_area_full "maize rice sorghum pearl-millet cowpeas groundnuts beans yam sweet-potato cassava banana cotton sunflower pigeon-peas"
 global nb_topcrops : list sizeof global(topcropname_area) // Gets the current length of the global macro list "topcropname_area" 
 display "$nb_topcrops"
 
@@ -3243,7 +3248,7 @@ use "${Tanzania_NPS_SDD_created_data}/Tanzania_NPS_SDD_all_plots.dta", clear
 gen number_trees_planted_banana = number_trees_planted if crop_code==71
 gen number_trees_planted_cassava = number_trees_planted if crop_code==21 
 recode number_trees_planted_banana number_trees_planted_cassava (.=0) 
-collapse (sum) number_trees_planted*, by(y5_hhid)
+collapse (sum) number_trees_planted*, by(sdd_hhid)
 tempfile trees
 save `trees'
 
