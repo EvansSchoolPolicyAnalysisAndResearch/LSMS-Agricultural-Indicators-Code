@@ -167,9 +167,10 @@ save "${Ethiopia_ESS_W5_created_data}/Ethiopia_ESS_W5_cropname_table.dta", repla
 ********************************************************************************
 // crop unit conversion factor file is not present in all waves' raw data downloads.
 // the GitHub folder referenced below contains a master cf.dta that is standardized across waves
+/*
 use "$directory/Ethiopia ESS/Conversion Factors/crop_cf.dta", clear
 save "$Ethiopia_ESS_W5_raw_data/Crop_CF_Wave5.dta", replace
-
+*/
 
 ********************************************************************************
 * UNIQUELY IDENTIFIABLE GEOGRAPHIES AND PLOTS - note that without this code, collapsing by [zone, woreda, kebele, ea] using raw data (as we do to get median prices) will result in inaccurate medians. We need to create unique identifiers to collapse on!
