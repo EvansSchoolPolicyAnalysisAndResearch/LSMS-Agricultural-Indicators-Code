@@ -3596,11 +3596,12 @@ save "${Tanzania_NPS_W5_created_data}/Tanzania_NPS_W5_shannon_diversity_index.dt
 use "${Tanzania_NPS_W5_raw_data}/consumption_real_y5.dta", clear
 
 
-ren expmR total_cons // using real consumption-adjusted for region price disparities
-gen peraeq_cons = (total_cons / adulteq)
-gen percapita_cons = (total_cons / hhsize)
-gen daily_peraeq_cons = peraeq_cons/365
-gen daily_percap_cons = percapita_cons/365 
+ren expmR peraeq_cons // using real consumption-adjusted for region price disparities
+gen total_cons=peraeq_cons*adulteq
+gen percapita_cons = (total_cons/hhsize)
+//Updated to 28 days from 365 for W5.
+gen daily_peraeq_cons = peraeq_cons/28
+gen daily_percap_cons = percapita_cons/28 
 
 lab var total_cons "Total HH consumption"
 lab var peraeq_cons "Consumption per adult equivalent"

@@ -165,7 +165,6 @@ ssc install findname // need this user-written ado file for some commands to wor
 ***** SET DIRECTOREIS *******
 *****************************
 global directory "../.."
-
 global MWI_IHPS_W2_raw_data "$directory\Malawi IHS\Malawi IHS Wave 2\Raw DTA Files"
 global MWI_IHPS_W2_final_data "$directory\Malawi IHS\Malawi IHS Wave 2\Final DTA Files\final_data" 
 global MWI_IHPS_W2_appended_data "$directory\Malawi IHS\Malawi IHS Wave 2\Final DTA Files\temp_data"
@@ -175,10 +174,10 @@ global summary_stats "$directory\_Summary_statistics\EPAR_UW_335_SUMMARY_STATIST
 ************************
 *EXCHANGE RATE AND INFLATION FOR CONVERSION IN USD IDS
 ************************
-global MWI_IHPS_W2_exchange_rate 730.27		 // https://data.worldbank.org/indicator/PA.NUS.FCRF?end=2017&locations=MW&start=2011
-global MWI_IHPS_W2_gdp_ppp_dollar 262.31     // https://data.worldbank.org/indicator/PA.NUS.PPP?end=2017&locations=MW&start=2011
-global MWI_IHPS_W2_cons_ppp_dollar 249.1	 // https://data.worldbank.org/indicator/PA.NUS.PRVT.PP?end=2017&locations=MW&start=2011
-global MWI_IHPS_W2_inflation .48825393  //CPI_SURVEY_YEAR/CPI_2017 - > CPI_2013/CPI_2017 ->  166.1245533/340.2421245 from https://data.worldbank.org/indicator/FP.CPI.TOTL?end=2017&locations=MW&start=2009 //The data were collected over the period 2011 to 2012 (therefore we use 2012 the latest year)
+global MWI_IHPS_W2_exchange_rate 805.9	  //https://data.worldbank.org/indicator/PA.NUS.FCRF?end=2017&locations=MW&start=2011 {2017:730.27, 2021:805.9}
+global MWI_IHPS_W2_gdp_ppp_dollar 294.86     //2021 https://data.worldbank.org/indicator/PA.NUS.PPP?end=2017&locations=MW&start=2011
+global MWI_IHPS_W2_cons_ppp_dollar 282.09	 //2021 https://data.worldbank.org/indicator/PA.NUS.PRVT.PP?end=2017&locations=MW&start=2011
+global MWI_IHPS_W2_inflation .334389 //CPI_SURVEY_YEAR/CPI_2017 - > CPI_2013/CPI_2017 ->  166.1245533/340.2421245 2021: 166.1245533/496.8 from https://data.worldbank.org/indicator/FP.CPI.TOTL?end=2017&locations=MW&start=2009 //The data were collected over the period 2011 to 2012 (therefore we use 2012 the latest year)
 
 global MWI_IHPS_W2_poverty_under_190 (1.90*78.77*166.1/107.6) //see calculation and sources below
 //WB's previous (PPP) poverty threshold is $1.90. 
@@ -190,8 +189,8 @@ global MWI_IHPS_W2_poverty_under_npl (109797*166.12/340.2/365) //see calculation
 //Multiplied by CPI in 2013 of 166.12 //https://data.worldbank.org/indicator/FP.CPI.TOTL?end=2017&locations=MW&start=2009
 //Divided by CPI in 2017 of 340.2 //https://data.worldbank.org/indicator/FP.CPI.TOTL?end=2017&locations=MW&start=2009
 //Divide  by # of days in year (365) to get daily amount
-global MWI_IHPS_W2_poverty_under_215 (2.15* $MWI_IHPS_W2_inflation * $MWI_IHPS_W2_cons_ppp_dollar)  //WB's new (PPP) poverty threshold of $2.15 multiplied by globals
- 
+global MWI_IHPS_W2_poverty_under_215 (2.15* .48825393 * 249.1)  //WB's (PPP) poverty threshold of $2.15 multiplied by globals
+global MWI_IHPS_W2_poverty_under_300 (3 *($MWI_IHPS_W2_inflation * $MWI_IHPS_W2_cons_ppp_dollar)) //WB's new poverty threshold of $3.00
 
 ********************************************************************************
 *POPULATION
@@ -378,11 +377,33 @@ save "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_person_ids.dta", replace
 *HOUSEHOLD SIZE 
 ********************************************************************************
 use "${MWI_IHPS_W2_appended_data}/hh_mod_b_13.dta", clear
-gen hh_members = 1
-rename hh_b04 relhead 
+//gen byte hhmember = inrange(hh_b04, 1, 10)
+//label variable hhmember "Dummy Variable = 1 if Individual is Considered a Household Member in 2010"
+drop if hhmember==0 //A small number of panel individuals have either left the household or died; question not asked for cross section.
+recode hhmember (.=1)
+ren hhmember hh_members
 rename hh_b03 gender
+ren hh_b05a age
+gen adulteq=.
+replace adulteq=0.4 if (age<3 & age>=0)
+replace adulteq=0.48 if (age<5 & age>2)
+replace adulteq=0.56 if (age<7 & age>4)
+replace adulteq=0.64 if (age<9 & age>6)
+replace adulteq=0.76 if (age<11 & age>8)
+replace adulteq=0.80 if (age<=12 & age>10) & gender==1		//1=male, 2=female
+replace adulteq=0.88 if (age<=12 & age>10) & gender==2 		//ALT 01.04.21: Updated to <=12 b/c 12 yo's were being excluded from analysis
+replace adulteq=1 if (age<15 & age>12)
+replace adulteq=1.2 if (age<19 & age>14) & gender==1
+replace adulteq=1 if (age<19 & age>14) & gender==2
+replace adulteq=1 if (age<60 & age>18) & gender==1
+replace adulteq=0.88 if (age<60 & age>18) & gender==2
+replace adulteq=0.8 if (age>59 & age!=.) & gender==1
+replace adulteq=0.72 if (age>59 & age!=.) & gender==2
+replace adulteq=. if age==999
+rename hh_b04 relhead 
+
 gen fhh = (relhead==1 & gender==2)
-collapse (sum) hh_members (max) fhh, by (hhid)
+collapse (sum) hh_members adulteq (max) fhh, by (hhid)
 lab var hh_members "Number of household members"
 lab var fhh "1= Female-headed household"
 //Rescaling the weights to match the population better
@@ -408,8 +429,8 @@ egen weight_pop_rururb=rowtotal(weight_pop_rur weight_pop_urb)
 total hh_members [pweight=weight_pop_rururb]  
 lab var weight_pop_rururb "Survey weight - adjusted to match rural and urban population"
 drop weight_pop_rur weight_pop_urb
-save "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_hhsize.dta", replace
-keep hhid region district ta ea stratum weight* rural
+//save "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_hhsize.dta", replace //redundant
+keep hhid region district ta ea weight* rural hh_members adulteq
 save "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_weights.dta", replace
 
 ********************************************************************************
@@ -2355,14 +2376,11 @@ save "${MWI_IHPS_W2_created_data}/Malawi_IHPS_W2_hh_preharv_losses.dta", replace
 ********************************************************************************
 * MONOCROPPED PLOTS *
 ********************************************************************************
-use "${MWI_IHPS_W2_created_data}/Malawi_IHPS_W2_all_plots.dta",clear
-keep if purestand==1 
-ren crop_code cropcode
-save "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_monocrop_plots.dta", replace
 
 //Setting things up for AgQuery first
 use "${MWI_IHPS_W2_created_data}/Malawi_IHPS_W2_all_plots.dta",clear
 merge m:1  hhid plot_id  using  "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_plot_decision_makers.dta", nogen keep(1 3) keepusing(dm_gender)
+keep if purestand==1 
 ren ha_planted monocrop_ha
 ren quant_harv_kg kgs_harv_mono
 ren value_harvest val_harv_mono
@@ -6361,12 +6379,14 @@ gen adulteq_weight=adulteq*weight
 	// 151.1089* 1.6587243 = 250.648 N
 *NOTE: if the survey was carried out over multiple years we use the last year
 *This is the poverty line at the local currency in the year the survey was carried out
-gen poverty_under_1_9 = (daily_percap_cons < $MWI_IHPS_W2_poverty_under_190)		 
-la var poverty_under_1_9 "Household has a percapita conumption of under $1.90 in 2011 $ PPP"
-gen poverty_under_2_15 = daily_percap_cons < $MWI_IHPS_W2_poverty_under_215
-la var poverty_under_2_15 "Household per-capita consumption is below $2.15 in 2017 $ PPP"
+gen poverty_under_190 = (daily_percap_cons < $MWI_IHPS_W2_poverty_under_190)		 
+la var poverty_under_190 "Household has a percapita consumption of under $1.90 in 2011 $ PPP"
+gen poverty_under_215 = daily_percap_cons < $MWI_IHPS_W2_poverty_under_215
+la var poverty_under_215 "Household per-capita consumption is below $2.15 in 2017 $ PPP"
 gen poverty_under_npl = daily_percap_cons < $MWI_IHPS_W2_poverty_under_npl
 la var poverty_under_npl "Household per-capita consumption is below the 2017 national poverty line."
+gen poverty_under_300 = daily_percap_cons < $MWI_IHPS_W2_poverty_under_300
+la var poverty_under_300 "Household per-capita consumption is under $3.00"
 *average consumption expenditure of the bottom 40% of the rural consumption expenditure distribution
 *First, generating variable that reports the individuals in the bottom 40% of rural consumption expenditures
 *By per capita consumption

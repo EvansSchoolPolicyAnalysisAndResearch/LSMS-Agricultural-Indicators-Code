@@ -74,10 +74,12 @@ global summary_stats						"$directory/_Summary_statistics/EPAR_UW_335_SUMMARY_ST
 *EXCHANGE RATE AND INFLATION FOR CONVERSION IN SUD IDS
 ************************
 * Household survey administered in 2014 - using values from then
-global Ethiopia_ESS_W2_exchange_rate 23.8661	// https://www.bloomberg.com/quote/USDETB:CUR //2017
-global Ethiopia_ESS_W2_gdp_ppp_dollar 8.34		// https://data.worldbank.org/indicator/PA.NUS.PPP //2017
-global Ethiopia_ESS_W2_cons_ppp_dollar 8.21	// https://data.worldbank.org/indicator/PA.NUS.PPP //2017
-global Ethiopia_ESS_W2_inflation 0.773292	// inflation rate 2014-2017. Data was collected during 2013-2014. We want to adjust value to 2017. CPI_2014 = 189.19 / CPI_2017 = 244.65 
+global Ethiopia_ESS_W2_exchange_rate 43.73	// https://www.bloomberg.com/quote/USDETB:CUR, https://data.worldbank.org/indicator/PA.NUS.FCRF?end=2023&locations=ET&start=2011
+//{2017:23.8661,2021:43.73}
+global Ethiopia_ESS_W2_gdp_ppp_dollar 13.73		// https://data.worldbank.org/indicator/PA.NUS.PPP //2021
+global Ethiopia_ESS_W2_cons_ppp_dollar 13.44	// https://data.worldbank.org/indicator/PA.NUS.PPP //2021
+global Ethiopia_ESS_W2_inflation 0.3842201	// inflation rate 2014-2017. Data was collected during 2013-2014. We want to adjust value to 2017. CPI_2014 = 189.19 / CPI_2021 = 492.4  https://data.worldbank.org/indicator/FP.CPI.TOTL?locations=ET
+	//CPI_2017 = 244.65 
 
 global Ethiopia_ESS_W2_poverty_190 (1.90*5.5747*189.2/133.25) //see calculation below
 * WB's previous (PPP) poverty threshold is $1.90. (established in 2011)
@@ -95,9 +97,8 @@ global Ethiopia_ESS_W2_poverty_npl (7184*189.2/221.028/365) //see calculation an
 * Divided by 221.028 - 2016 Consumer price index (2010 = 100)
 	* https://data.worldbank.org/indicator/FP.CPI.TOTL?end=2022&locations=ET&start=2011
 * Divided  by # of days in year (365) to get daily amount
-global Ethiopia_ESS_W2_poverty_215 (2.15* $Ethiopia_ESS_W2_inflation * $Ethiopia_ESS_W2_cons_ppp_dollar)  
-* WB's new (PPP) poverty threshold of $2.15 multiplied by globals
-
+global Ethiopia_ESS_W2_poverty_215 (2.15* (0.773292 * 8.21))  // 2017 WB's (PPP) poverty threshold of $2.15 multiplied by globals
+global Ethiopia_ESS_W2_poverty_300 (3.00 * ($Ethiopia_ESS_W2_inflation * $Ethiopia_ESS_W2_cons_ppp_dollar)) //New 2025 poverty line
 
 ********************************************************************************
 *THRESHOLDS FOR WINSORIZATION
@@ -6070,6 +6071,9 @@ la var poverty_under_19 "Household per-capita consumption is below $1.90 in 2011
 gen poverty_under_215 = daily_percap_cons < $Ethiopia_ESS_W2_poverty_215
 la var poverty_under_215 "Household per-capita consumption is below $2.15 in 2017 $ PPP"
 gen poverty_under_npl = daily_percap_cons < $Ethiopia_ESS_W2_poverty_npl
+la var poverty_under_npl "Household has a percapita consumption below the national Ethiopian poverty line"
+gen poverty_under_300 = daily_percap_cons < $Ethiopia_ESS_W2_poverty_300
+la var poverty_under_300 "Household per-capita consumption is below $3.00 in 2021 $PPP"
 
 *Cleaning up output to get below 5,000 variables
 *dropping unnecessary variables and recoding to missing any variables that cannot be created in this instrument

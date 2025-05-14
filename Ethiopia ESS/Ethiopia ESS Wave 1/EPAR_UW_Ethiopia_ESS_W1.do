@@ -70,10 +70,11 @@ global Ethiopia_ESS_W1_pop_urb 15986316
 *EXCHANGE RATE AND INFLATION FOR CONVERSION IN SUD IDS
 ********************************************************************************
 * Household survey was administered in 2012
-global Ethiopia_ESS_W1_exchange_rate 23.8661	// https://www.bloomberg.com/quote/USDETB:CUR //2017
-global Ethiopia_ESS_W1_gdp_ppp_dollar 8.34		// https://data.worldbank.org/indicator/PA.NUS.PPP //2017
-global Ethiopia_ESS_W1_cons_ppp_dollar 8.21   // https://data.worldbank.org/indicator/PA.NUS.PPP //2017
-global Ethiopia_ESS_W1_inflation 0.673199  	// 2012 value divided by 2017 value. inflation rate 2012-2017. We want to adjust value to 2017. CPI_2012 = 164.7 / CPI_2017 = 244.65 https://data.worldbank.org/indicator/FP.CPI.TOTL?locations=ET
+global Ethiopia_ESS_W1_exchange_rate 43.73	// https://www.bloomberg.com/quote/USDETB:CUR, https://data.worldbank.org/indicator/PA.NUS.FCRF?end=2023&locations=ET&start=2011
+//{2017:23.8661,2021:43.73}
+global Ethiopia_ESS_W1_gdp_ppp_dollar 13.73		// https://data.worldbank.org/indicator/PA.NUS.PPP //2021
+global Ethiopia_ESS_W1_cons_ppp_dollar 13.44   // https://data.worldbank.org/indicator/PA.NUS.PRVT.PP //2021
+global Ethiopia_ESS_W1_inflation 0.334484  	//2012 value divided by 2021 value. inflation rate 2012-2021. We want to adjust value to 2021. CPI_2012 = 164.7 / CPI_2021 = 492.4 https://data.worldbank.org/indicator/FP.CPI.TOTL?locations=ET
 
 global Ethiopia_ESS_W1_poverty_190 (1.90*5.574746609*(164.697507/133.2499599)) //Calculation for WB's previous $1.90 (PPP) poverty threshold, 158 N. This controls the indicator poverty_under_1_9; change the 1.9 to get results for a different threshold. Note this is based on the 2011 con PPP conversion! Equation -> 1.90*PPP_conv_2011*Inf where Infl=(CPI_2012/CPI_2011)
 global Ethiopia_ESS_W1_poverty_npl (7184*164.697507/221.028/365) //see calculation and sources below
@@ -84,8 +85,8 @@ global Ethiopia_ESS_W1_poverty_npl (7184*164.697507/221.028/365) //see calculati
 * Divided by 221.028 - 2016 Consumer price index (2010 = 100)
 	* https://data.worldbank.org/indicator/FP.CPI.TOTL?end=2022&locations=ET&start=2011
 * Divided  by # of days in year (365) to get daily amount
-global Ethiopia_ESS_W1_poverty_215 2.15 * $Ethiopia_ESS_W1_inflation * $Ethiopia_ESS_W1_cons_ppp_dollar  //New 2017 poverty line - 124.68 N
-
+global Ethiopia_ESS_W1_poverty_215 2.15 * (0.673199 * 8.21) //2017 poverty line - 124.68 N
+global Ethiopia_ESS_W1_poverty_300 3.00 * ($Ethiopia_ESS_W1_inflation * $Ethiopia_ESS_W1_cons_ppp_dollar) //New 2025 poverty line
 
 ********************************************************************************
 *THRESHOLDS FOR WINSORIZATION
@@ -1402,33 +1403,34 @@ local stubs : subinstr local vars "female" "", all
 display "`stubs'"
 
 reshape long `stubs', i(region zone woreda kebele ea hhid holder_id parcel_id plot_id season) j(gender) string
-	sort region zone woreda kebele ea hhid holder_id parcel_id plot_id season
 reshape long number days wage, i(hhid holder_id parcel_id plot_id gender season) j(labor_type) string 
+replace wage = wage/number //Wage represents total daily wage, we need wage per worker for ag_wages and estimated value of nonhired/family labor
 	gen val = days*number*wage
 
 //Generate "median wages": `wage_`i'_median', `wage_country_median', `all_hired'
-merge m:1 hhid using "${Ethiopia_ESS_W1_created_data}/Ethiopia_ESS_W1_weights.dta", nogen keep(1 3) keepusing(weight) //all matched 
-merge m:1 hhid holder_id parcel_id plot_id using "${Ethiopia_ESS_W1_created_data}/Ethiopia_ESS_W1_plot_area.dta", nogen keep(1 3) keepusing(area_meas_hectares) // 1,500 not matched from master
-gen plotweight = weight*area_meas_hectares //1,500 missing values
+merge m:1 hhid using "${Ethiopia_ESS_W1_created_data}/Ethiopia_ESS_W1_weights.dta", nogen keep(1 3) keepusing(weight_pop_rururb) //all matched 
+//merge m:1 hhid holder_id parcel_id plot_id using "${Ethiopia_ESS_W1_created_data}/Ethiopia_ESS_W1_plot_area.dta", nogen keep(1 3) keepusing(area_meas_hectares) // 1,500 not matched from master
+//gen weight = weight*area_meas_hectares //1,500 missing values
 recode wage (0=.) 
 gen obs=wage!=.
+ren weight_pop_rururb weight
 
 *Median wages 
 foreach i in region zone woreda kebele ea hhid {
 preserve
 	bys `i' season gender : egen obs_`i' = sum(obs)
-	collapse (median) wage_`i'=wage [aw=plotweight], by (`i' season gender obs_`i')
+	collapse (median) wage_`i'=wage [aw=weight], by (`i' season gender obs_`i')
 	tempfile wage_`i'_median
 	save `wage_`i'_median'
 restore
 }
 preserve
-collapse (median) wage_country = wage (sum) obs_country=obs [aw=plotweight], by(season gender)
+collapse (median) wage_country = wage (sum) obs_country=obs [aw=weight], by(season gender)
 tempfile wage_country_median
 save `wage_country_median'
 restore
 
-drop obs plotweight wage 
+drop obs weight wage 
 tempfile all_hired
 save `all_hired'
 
@@ -1508,10 +1510,6 @@ use "$Ethiopia_ESS_W1_temp_data/sect3_pp_w1.dta", clear
 keep hhid holder_id parcel_id plot_id number* days* 
 gen season = "pp"
 tempfile postplanting_other 
-preserve
-	bysort hhid holder_id parcel_id plot_id: gen dup = cond(_N==1,0,_n)
-	tab dup 
-restore 
 save `postplanting_other'
 
 use "${Ethiopia_ESS_W1_temp_data}/sect10_ph_w1.dta" , clear
@@ -1583,18 +1581,15 @@ foreach i in region zone woreda kebele ea {
 gen val = wage*days
 append using `all_hired'
 keep hhid holder_id parcel_id plot_id season days val labor_type gender number
-drop if val==.&days==.
+drop if val==. & (days==. | days==0)
 merge m:1 hhid /*holder_id*/ parcel_id plot_id using "${Ethiopia_ESS_W1_created_data}/Ethiopia_ESS_W1_plot_decision_makers", nogen keep(1 3) keepusing(dm_gender) // 
-**# Check dm_gender missings. 
-codebook dm_gender // 1,863 missing values for dm_gender. This is absurd. 
-replace dm_gender = 1 if dm_gender==.
 
 collapse (sum) number val days, by(hhid holder_id parcel_id plot_id season labor_type gender dm_gender) 
 	la var gender "Gender of worker"
 	la var dm_gender "Plot manager gender"
 	la var labor_type "Hired, exchange, or family labor"
 	la var days "Number of person-days per plot"
-	la var val "Total value of hired labor (Naira)"
+	la var val "Total value of hired labor (Birr)"
 save "${Ethiopia_ESS_W1_created_data}/Ethiopia_ESS_W1_plot_labor_long.dta",replace
 
 preserve
@@ -1625,6 +1620,7 @@ reshape wide val*, i(hhid holder_id parcel_id plot_id dm_gender) j(season) strin
 gen dm_gender2 = "male" if dm_gender==1
 replace dm_gender2 = "female" if dm_gender==2
 replace dm_gender2 = "mixed" if dm_gender==3
+replace dm_gender2 = "unknown" if dm_gender==.
 drop dm_gender 
 ren val* val*_
 reshape wide val*, i(hhid holder_id parcel_id plot_id) j(dm_gender2) string
@@ -1896,7 +1892,7 @@ use "${Ethiopia_ESS_W1_temp_data}/sect4_pp_w1.dta", clear // Joaquin 04.06.23: T
 	merge m:1 hhid using "${Ethiopia_ESS_W1_created_data}/Ethiopia_ESS_W1_weights.dta",nogen keep(1 3) keepusing(weight_pop_rururb)
 	merge m:1 hhid holder_id parcel_id plot_id using "${Ethiopia_ESS_W1_created_data}/Ethiopia_ESS_W1_plot_area.dta", nogen keep(1 3) keepusing(area_meas_hectares)
 	merge m:1 hhid parcel_id plot_id using "${Ethiopia_ESS_W1_created_data}/Ethiopia_ESS_W1_plot_decision_makers",nogen keep(1 3) keepusing(dm_gender)
-	replace dm_gender = 1 if dm_gender == . // Joaquin 7.7.23: Obs are not presenst in plot_decision_maker
+	//replace dm_gender = 1 if dm_gender == . // Joaquin 7.7.23: Obs are not presenst in plot_decision_maker
 	merge m:1  hhid using "${Ethiopia_ESS_W1_created_data}/Ethiopia_ESS_W1_hhsize.dta", nogen keep(1 3) keepusing(region zone woreda kebele ea) 
 	
 	preserve
@@ -2006,6 +2002,7 @@ restore
 	gen dm_gender2 = "male" if dm_gender==1
 	replace dm_gender2 = "female" if dm_gender==2
 	replace dm_gender2 = "mixed" if dm_gender==3
+	replace dm_gender2= "unknown" if dm_gender==.
 	drop dm_gender
 	ren val* val*_
 	reshape wide val*, i(hhid holder_id parcel_id plot_id) j(dm_gender2) string
@@ -2015,14 +2012,14 @@ restore
 	unab vars3 : *_exp_male //just get stubs from one
 	local stubs3 : subinstr local vars3 "_exp_male" "", all
 	foreach i in `stubs3' {
-		egen `i'_exp_hh = rowtotal(`i'_exp_male `i'_exp_female `i'_exp_mixed)
-		egen `i'_imp_hh=rowtotal(`i'_exp_hh `i'_imp_male `i'_imp_female `i'_imp_mixed)
+		egen `i'_exp_hh = rowtotal(`i'_exp_*)
+		egen `i'_imp_hh=rowtotal(`i'_exp_hh `i'_imp_*)
 	}
 	egen val_exp_hh=rowtotal(*_exp_hh)
 	egen val_imp_hh=rowtotal(*_imp_hh)
 	//drop /*val_mech_imp**/ val_seedtrans_imp* val_transfert_imp* val_feedanml_imp* //Not going to have any data
 	save "${Ethiopia_ESS_W1_created_data}/Ethiopia_ESS_W1_hh_cost_inputs_verbose.dta", replace
-*/
+
 
 	//We can do this more simply by:
 	use "${Ethiopia_ESS_W1_created_data}/Ethiopia_ESS_W1_plot_cost_inputs_long.dta", clear
@@ -2033,9 +2030,8 @@ restore
 	gen dm_gender2 = "male" if dm_gender==1
 	replace dm_gender2 = "female" if dm_gender==2
 	replace dm_gender2 = "mixed" if dm_gender==3
+	replace dm_gender2 = "unknown" if dm_gender==.
 	drop dm_gender
-	codebook dm_gender2 
-	
 	ren val* val*_
 	drop if exp== "" // 4500 obs dropped
 	reshape wide val*, i(hhid holder_id parcel_id plot_id dm_gender) j(exp) string
@@ -2118,13 +2114,15 @@ preserve
 	gen dm_gender2 = "male" if dm_gender==1
 	replace dm_gender2 = "female" if dm_gender==2
 	replace dm_gender2 = "mixed" if dm_gender==3
+	replace dm_gender2 = "unknown" if dm_gender==.
 	drop dm_gender
 	reshape wide val*, i(hhid holder_id parcel_id plot_id) j(dm_gender2) string
 	merge 1:1 hhid holder_id parcel_id plot_id using "${Ethiopia_ESS_W1_created_data}/Ethiopia_ESS_W1_`cn'_monocrop.dta", nogen keep(3)
 	collapse (sum) val*, by(hhid)
 	foreach i in `input_names' {
-		egen val_`i'_`cn'_hh = rowtotal(val_`i'_`cn'_male val_`i'_`cn'_female val_`i'_`cn'_mixed)
+		egen val_`i'_`cn'_hh = rowtotal(val_`i'_`cn'_male val_`i'_`cn'_female val_`i'_`cn'_mixed val_`i'_`cn'_unknown)
 	}
+	drop *unknown*
 	//To do: labels
 	save "${Ethiopia_ESS_W1_created_data}/Ethiopia_ESS_W1_inputs_`cn'.dta", replace
 restore
@@ -5797,6 +5795,10 @@ la var poverty_under_190 "Household per-capita consumption is below $1.90 in 201
 gen poverty_under_215 = daily_percap_cons < $Ethiopia_ESS_W1_poverty_215
 la var poverty_under_215 "Household per-capita consumption is below $2.15 in 2017 $ PPP"
 gen poverty_under_npl = daily_percap_cons < $Ethiopia_ESS_W1_poverty_npl
+la var poverty_under_npl "Household has a percapita consumption below the national Ethiopian poverty line"
+gen poverty_under_300 = daily_percap_cons < $Ethiopia_ESS_W1_poverty_300
+la var poverty_under_300 "Household has a percapita consumption of under $3.00 in 2021 $PPP"
+
 
 *Cleaning up output to get below 5,000 variables
 *dropping unnecessary variables and recoding to missing any variables that cannot be created in this instrument

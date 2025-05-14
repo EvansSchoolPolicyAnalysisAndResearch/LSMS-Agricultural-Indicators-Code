@@ -1,8 +1,8 @@
-# Nigeria GHS/LSMS-ISA Wave 4 (2018-2019)
+# Nigeria GHS/LSMS-ISA Wave 5 (2023-24)
 CODING STATUS: Fully completed, still under active review and expansion
 
 ## Prerequisites
-* Download the raw data from https://microdata.worldbank.org/index.php/catalog/3557
+* Download the raw data from https://microdata.worldbank.org/index.php/catalog/6410
 * Extract the files to the "Raw DTA Files" folder in the cloned directory
 * Update the paths on lines 131 and 136-139 with the correct paths to the raw data and output files.
 * This file also calculates child anthropometry Z-scores using the WHO iGrowUp module, which can be found here: https://www.who.int/tools/child-growth-standards/software. Download the file and update the path on line 141 if you want this information; otherwise, the do file will skip the anthropometry section.  
@@ -11,31 +11,32 @@ CODING STATUS: Fully completed, still under active review and expansion
 ### Globals
 * This section sets global variables for use later in the script, including:
   * Population
-    * Nigeria_GHS_W4_pop_tot - Total population in 2019 (World Bank)
-    * Nigeria_GHS_W4_pop_rur - Rural population in 2019 (World Bank)
-    * Nigeria_GHS_W4_pop_urb - Urban population in 2019 (World Bank)
+    * Nigeria_GHS_W5_pop_tot - Total population in 2025 (World Bank)
+    * Nigeria_GHS_W5_pop_rur - Rural population in 2025 (World Bank)
+    * Nigeria_GHS_W5_pop_urb - Urban population in 2025 (World Bank)
   * Non-GPS-Plots
     * drop_unmeas_plots - if not 0, this global will remove any plot that is not measured by GPS from the sample. Used to reduce variability in yields that results from uncertainty around farmer area estimation and nonstandard unit conversion
   * Exchange Rates
-    * Nigeria_GHS_W4_exchange_rate - USD-Naira conversion
-    * Nigeria_GHS_W4_gdp_ppp_dollar - GDP-based purchasing power parity conversion, World Bank Indicator PA.NUS.PPP
-    * Nigeria_GHS_W4_cons_ppp_dollar - Private-consumption-based purchasing power parity conversion, World Bank Indicator PA.NUS.PRVT.P
-    * Nigeria_GHS_W4_infl_adj - Ratio of 2019:2017 Nigeria consumer price index (World Bank), used for calculating poverty thresholds
-    * Nigeria_GHS_W4_pound_exchange - Pound exchange rate for 2019, used for remittances
-    * Nigeria_GHS_W4_euro_exchange - Euro exchange rate for 2019, used for remittances
+    * Nigeria_GHS_W5_exchange_rate - USD-Naira conversion (2024 rate)
+    * Nigeria_GHS_W5_gdp_ppp_dollar - GDP-based purchasing power parity conversion, World Bank Indicator PA.NUS.PPP
+    * Nigeria_GHS_W5_cons_ppp_dollar - Private-consumption-based purchasing power parity conversion, World Bank Indicator PA.NUS.PRVT.P
+    * Nigeria_GHS_W5_infl_adj - Ratio of 2024:2021 Nigeria consumer price index (World Bank), used for calculating poverty thresholds (indexed to the year of the most recent international poverty threshold).
+    * Nigeria_GHS_W5_pound_exchange - Pound exchange rate for 2025, used for remittances
+    * Nigeria_GHS_W5_euro_exchange - Euro exchange rate for 2019, used for remittances
   * Poverty Thresholds
-    * Nigeria_GHS_W4_poverty_threshold - The pre-2023 $1.90 2011 PPP poverty line used by the World Bank, converted to local currency
-    * Nigeria_GHS_W4_poverty_nbs - The poverty threshold as determined from the National Statistics Bureau, inflated to 2019 via CPI
-    * Nigeria_GHS_W4_poverty_215 - The updated $2.15 2017 PPP poverty line currently used by the world bank, converted to local currency
+    * Nigeria_GHS_W5_poverty_190 - The pre-2023 $1.90 2011 PPP international poverty line previously used by the World Bank, converted to local currency
+    * Nigeria_GHS_W5_poverty_nbs - The poverty threshold as determined from the National Statistics Bureau, reported in 2019 and inflated to 2024 via CPI
+    * Nigeria_GHS_W5_poverty_215 - The $2.15 2017 PPP poverty line established in 2023, converted to local currency
+    * Nigeria_GHs_W5_poverty_300 - the $3.00 2021 PPP poverty line established in 2025, converted to local currency
   * Cost of a Nutritious Diet
-    * Nigeria_GHS_W4_CoCA_diet - Cost of a calorically adequate diet, Naira per adult equivalent, as calculated from Bai et al. (2021)
-    * Nigeria_GHS_W4_CoNA_diet - Cost of a nutritionally adequate diet, as above  
+    * Nigeria_GHS_W5_CoCA_diet - Cost of a calorically adequate diet, Naira per adult equivalent, as calculated from the September 2024 affordability report by the Nigeria Bureau of Statistics
+    * Nigeria_GHS_W5_CoNA_diet - Cost of a nutritionally adequate diet, as above  
 ### Winsorization Thresholds
 * We correct outliers by Winsorization - setting values above the 99th and/or below the 1st percentiles to the value of the 99th or 1st percentile. The thresholds can be adjusted here or removed by setting them to 0 and 100
 ### Globals of Priority Crops
 * This section defines the list of crops used to report crop-specific indicators, including indicators for monocropped plots. Adjust this list to change the output.
 ### Weights
-* We rescale the weights to match the rural and urban populations for 2019 as reported in the World Bank Data Bank (last accessed 2023)
+* We rescale the weights to match the rural and urban populations for 2024 as reported in the World Bank Data Bank (last accessed 2025)
 ### Household IDs
 * This section simplifies the household roster and drops non-surveyed households
 ### Individual IDs
@@ -45,7 +46,7 @@ CODING STATUS: Fully completed, still under active review and expansion
 ### Head of Household
 * Determines gender of household head
 ### GPS Coordinates
-* Simplified EA lat/lon
+* **Not available for Nigeria GHS W5**
 ### Plot Areas
 * Calculates farmer-estimated plot areas from nonstandard units and GPS-measured plot areas and converts to hectares
 * If gps_area is set to something other than 0, non-measured plots are dropped; otherwise, area is determined first from GPS measurements and backfilled from respondent estimates when GPS measurements are unavailable
@@ -68,7 +69,7 @@ CODING STATUS: Fully completed, still under active review and expansion
 ### Livestock Income
 * Values of production from reported sales of eggs, milk, other livestock products, and slaughtered livestock.
 ### Fish Income
-* Total value of fish caught and time spent fishing
+* **Not in GHS W5**
 ### Self-Employment Income
 * Value of income from owned businesses and postharvest crop processing
 ### Off-Farm Hours
@@ -116,8 +117,6 @@ CODING STATUS: Fully completed, still under active review and expansion
 * Detailed breakdown of the types of livestock and plot management decisions women were listed as controlling
 ### Women's Ownership of Assets
 * Capital asset ownership rates among women
-### Agricultural Wages
-* Deprecated, removed (see Farm Labor)
 ### Crop Yields
 * Converts plot variables file to wider format for backwards compatibility - yields are now directly constructable in "all_plots.dta"
 ### Shannon Diversity Index
@@ -141,7 +140,7 @@ CODING STATUS: Fully completed, still under active review and expansion
 * Computes summary statistics for the variables in the previous 3 sections, reporting mean, standard deviation/standard error, percentiles, and n. See the summary statistics file in the main project folder.
  
 ## Known Issues and Changes from Previous Surveys
-* Previous waves of Nigeria consider yams under a single crop code (1120). In Wave 4, the category was broken out into four subcategories: white yam, yellow yam, water yam, and three-leaved yam. These crops were reunited under the 1120 umbrella, but have (sometimes significantly) different planting and harvest dates, so there's some loss of information occurring. In the October 2024 update, the decision was made to drop three-leaved yam from the combined category under the assumption that its cultivation and uses differ substantially from the other three.
+* Previous waves of Nigeria consider yams under a single crop code (1120). In Wave 4, the category was broken out into four subcategories: white yam, yellow yam, water yam, and three-leaved yam. These crops were reunited under the 1120 umbrella, but have (sometimes significantly) different planting and harvest dates, so there's some loss of information occurring. In the October 2024 update to wave 4, the decision was made to drop three-leaved yam from the combined category under the assumption that its cultivation and uses differ substantially from the other three; this has also been implemented for wave 5.
 * The questions around family labor days worked have changed, resulting in underreporting compared to previous waves. Labor productivity statistics are not comparable to waves 1-3.
 * Fishing-related expenses are no longer included because the relevant questions were removed
-* Prior to version 3 of the dataset, the aggregate consumption files were unavailable, so a similar version was constructed _without_ using the regional and temporal deflation factors applied in consumption aggregate files. This code is left in for validation purposes but not currently used to construct estimates.
+* As of version 1 of the dataset (in use as of July 2025), the aggregate consumption files were unavailable, so a similar versio is constructed _without_ using the regional and temporal deflation factors applied in consumption aggregate files. This code is currently used to construct the consumption estimates. Comparisons in wave 4 suggested that the deflation factors only modestly affected the averages.

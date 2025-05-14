@@ -142,10 +142,11 @@ global drop_unmeas_plots 0 //If not 0, this variable will result in all plots no
 ********************************************************************************
 *EXCHANGE RATE AND INFLATION FOR CONVERSION IN USD
 ********************************************************************************
-global Nigeria_GHS_W4_exchange_rate 199.04975		// https://www.bloomberg.com/quote/USDETB:CURR
-global Nigeria_GHS_W4_gdp_ppp_dollar 115.9778	// https://data.worldbank.org/indicator/PA.NUS.PPP
-global Nigeria_GHS_W4_cons_ppp_dollar 112.0983276		// https://data.worldbank.org/indicator/PA.NUS.PRVT.P
-global Nigeria_GHS_W4_infl_adj = 1.249 //267.5/214.2
+global Nigeria_GHS_W4_exchange_rate 401.15  		// https://www.bloomberg.com/quote/USDETB:CUR, https://data.worldbank.org/indicator/PA.NUS.FCRF?end=2023&locations=NG&start=2011
+// {2017:315,2021:401.15}
+global Nigeria_GHS_W4_gdp_ppp_dollar 146.72		// https://data.worldbank.org/indicator/PA.NUS.PPP //2021
+global Nigeria_GHS_W4_cons_ppp_dollar 155.72		// https://data.worldbank.org/indicator/PA.NUS.PRVT.PP //2021
+global Nigeria_GHS_W4_infl_adj = 0.755009 //2017: 267.5/214.2, 2021: 267.5/354.3
 	
 global Nigeria_GHS_W4_pound_exchange 476.5
 global Nigeria_GHS_W4_euro_exchange 418.7
@@ -155,7 +156,8 @@ global Nigeria_GHS_W4_euro_exchange 418.7
 //Per W3, we convert WB's international poverty threshold to 2011$ using the PA.NUS.PRVT.PP WB info then inflate to the last year of the survey using CPI
 global Nigeria_GHS_W4_poverty_190 (1.90*79.531*(1+(267.512-110.84)/110.84)) //~365 N
 global Nigeria_GHS_W4_poverty_npl 376.52 //ALT 06.18.2020: Nigeria's NBS defines poverty as living below 376 N/day. Included for comparison purposes.
-global Nigeria_GHS_W4_poverty_215 (2.15*$Nigeria_GHS_W4_infl_adj * $Nigeria_GHS_W4_cons_ppp_dollar)  //New 2023 WB poverty threshold, works out to 273 N - a substantial drop largely because inflation was about 100% between 2011 and 2017
+global Nigeria_GHS_W4_poverty_215 (2.15*(1.249 * 112.0983276))  //New 2023 WB poverty threshold, works out to 273 N - a substantial drop largely because inflation was about 100% between 2011 and 2017
+global Nigeria_GHS_W4_poverty_300 3.00*($Nigeria_GHS_W4_infl_adj * $Nigeria_GHS_W4_cons_ppp_dollar) //New 2025 WB poverty threshold, ~690 N
 
 //These values from Bai, Y., et al. (2021) Cost and affordability of nutritious diets at retail prices: Evidence from 177 countries. Food Policy 99. doi:https://doi.org/10.1016/j.foodpol.2020.101983
 //CoCA is cost of a calorically adequate diet in PPP$ (minimum number of calories needed for survival); CoNA is cost of a nutritionally adequate diet, i.e., the minimum expenditure required to get RDIs of macro and micronutrients. 
@@ -446,7 +448,7 @@ drop if indiv==.
 merge m:1 hhid indiv using "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_person_ids.dta", nogen keep(1 3) keepusing(female) 
 preserve 
 keep hhid plot_id indiv female
-save "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_dm_ids.dta"
+save "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_dm_ids.dta", replace
 restore
 gen dm1_gender = female+1 if indivno==1
 collapse (mean) female (firstnm) dm1_gender, by(hhid plot_id)
@@ -690,6 +692,7 @@ use "${Nigeria_GHS_W4_raw_data}/secta3ii_harvestW4.dta", clear
 	ren sa3iiq1d size
 	ren sa3iiq6 value
 	merge m:1 hhid using "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_weights.dta", nogen keepusing(weight_pop_rururb) keep(3)
+	gen weight=qty*weight_pop_rururb
 	//ren cropcode crop_code
 	gen price_unit = value/qty
 	gen obs=price_unit!=.
@@ -697,13 +700,13 @@ use "${Nigeria_GHS_W4_raw_data}/secta3ii_harvestW4.dta", clear
 	foreach i in zone state lga ea hhid {
 		preserve
 		bys `i' cropcode unit size condition : egen obs_`i'_price = sum(obs)
-		collapse (median) price_unit_`i'=price_unit [aw=weight_pop_rururb], by (`i' unit size condition cropcode obs_`i'_price)
+		collapse (median) price_unit_`i'=price_unit [aw=weight], by (`i' unit size condition cropcode obs_`i'_price)
 		tempfile price_unit_`i'_median
 		save `price_unit_`i'_median'
 		restore
 	}
 	bys cropcode unit size condition : egen obs_country_price = sum(obs)
-	collapse (median) price_unit_country = price_unit [aw=weight_pop_rururb], by(cropcode unit size condition obs_country_price)
+	collapse (median) price_unit_country = price_unit [aw=weight], by(cropcode unit size condition obs_country_price)
 	tempfile price_unit_country_median
 	save `price_unit_country_median'
 //Because we have several qualifiers now (size and condition), using kg as an alternative for pricing. Results from experimentation suggests that the kg method is less accurate than using original units, so original units should be preferred.
@@ -724,6 +727,7 @@ use "${Nigeria_GHS_W4_raw_data}/secta3ii_harvestW4.dta", clear
 	gen price_kg = value/qty_kg
 	gen obs=price_kg !=.
 	keep if obs == 1
+	replace weight = weight_pop_rururb*qty_kg
 	foreach i in zone state lga ea hhid {
 		preserve
 		bys `i' cropcode : egen obs_`i'_pkg = sum(obs)
@@ -940,6 +944,7 @@ restore
 	drop percent_area //Assumes that inputs are +/- distributed by the area planted. Probably not true for mixed tree/field crops, but reasonable for plots that are all field crops
 	//Labor should be weighted by growing season length, though. 
 	replace ha_harvest=. if (ha_harvest==0 & no_harvest==1) | (ha_harvest==0 & quant_harv_kg>0 & quant_harv_kg!=.)
+	replace value_harvest =. if value_harvest==0 & (no_harvest==1 | (quant_harv_kg!=0 & quant_harv_kg!=.))
 	replace quant_harv_kg = . if quant_harv_kg==0 & no_harvest==1
 	drop no_harvest
 	drop if (ha_planted==0 | ha_planted==.) & (ha_harvest==0 | ha_harvest==.) & (quant_harv_kg==0 | quant_harv_kg==.)
@@ -2782,13 +2787,14 @@ save `imprv_seed'
 
 
 
-use "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_input_quantities.dta", clear
-merge 1:m hhid plot_id using "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_all_plots.dta", nogen keep(1 3) keepusing(cropcode)
+use "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_all_plots.dta", clear
+keep hhid plot_id cropcode use_imprv_seed 
+ren cropcode crop_code
+merge m:1 hhid plot_id using "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_input_quantities.dta", nogen
 foreach i in inorg_fert org_fert pest herb {
 	recode `i'_kg (.=0)
 	gen use_`i'= `i'_kg > 0
 }
-ren cropcode crop_code
 collapse (max) use*, by(hhid plot_id crop_code)
 merge 1:1 hhid plot_id crop_code using `imprv_seed',nogen
 recode use* (.=0)
@@ -4106,7 +4112,7 @@ save "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_ownasset.dta", replace
 			kgs_harvest 
 		Suffixes: crop (only)
 */
-
+/* no longer necessary
 use "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_all_plots.dta", clear
 ren cropcode crop_code
 gen number_trees_planted_banana = number_trees_planted if crop_code==2030 
@@ -4115,13 +4121,31 @@ gen number_trees_planted_cocoa = number_trees_planted if crop_code==3040
 recode number_trees_planted_banana number_trees_planted_cassava number_trees_planted_cocoa (.=0) 
 collapse (sum) number_trees_planted*, by(hhid)
 save "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_trees.dta", replace
+*/
+
+use "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_all_plots.dta", clear
+ren cropcode crop_code
+drop if hhid== 200156 | hhid==200190 | hhid==310091 // households that have an area planted or harvested but indicated that they rented out or did not cultivate 
+gen grew_=1
+gen harvested_ = (quant_harv_kg!=0 & quant_harv_kg!=.) | (ha_harvest!=0 & ha_harvest!=.)
+collapse (max) grew_ harvested_, by(hhid crop_code)
+merge m:1 crop_code using "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_cropname_table.dta", nogen keep(3)
+keep hhid crop_name grew_ harvested_
+fillin hhid crop_name
+drop _fillin
+recode grew_ harvested_ (.=0)
+reshape wide grew_ harvested_, i(hhid) j(crop_name) string
+tempfile grew_crops
+save `grew_crops'
+
+
 
 use "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_all_plots.dta", clear
 ren cropcode crop_code
 gen no_harvest=ha_harvest==.
 ren quant_harv_kg harvest 
-ren ha_planted area_plan
-ren ha_harvest area_harv 
+ren ha_plan_yld area_plan
+ren ha_harv_yld area_harv 
 gen mixed = "inter"  //Note to adjust this for lost crops 
 replace mixed="pure" if purestand==1
 gen dm_gender2="unknown"
@@ -4189,7 +4213,7 @@ gen kgs_harvest_ = harvest_
 drop crop_code
 unab vars : *_
 reshape wide `vars', i(hhid) j(crop_name) string
-merge 1:1 hhid using "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_trees.dta"
+//merge 1:1 hhid using "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_trees.dta"
 egen kgs_harvest = rowtotal(kgs_harvest_*)
 la var kgs_harvest "Quantity harvested of all crops (kgs) (household) (summed accross all seasons)" 
 
@@ -4239,15 +4263,19 @@ foreach p of global topcropname_area {
 }
 
 drop if hhid== 200156 | hhid==200190 | hhid==310091 // households that have an area planted or harvested but indicated that they rented out or did not cultivate 
+merge 1:1 hhid using `grew_crops', nogen
 foreach p of global topcropname_area {
-	gen grew_`p'=(total_harv_area_`p'!=. & total_harv_area_`p'!=.0 ) | (total_planted_area_`p'!=. & total_planted_area_`p'!=.0)
+	//gen grew_`p'=(total_harv_area_`p'!=. & total_harv_area_`p'!=.0 ) | (total_planted_area_`p'!=. & total_planted_area_`p'!=.0)
 	lab var grew_`p' "1=Household grew `p'" 
-	gen harvested_`p'= (total_harv_area_`p'!=. & total_harv_area_`p'!=.0 )
+	//gen harvested_`p'= (total_harv_area_`p'!=. & total_harv_area_`p'!=.0 )
 	lab var harvested_`p' "1= Household harvested `p'"
 }
+
+/* No longer necessary
 replace grew_banana =1 if  number_trees_planted_banana!=0 & number_trees_planted_banana!=. 
 replace grew_cassav =1 if number_trees_planted_cassava!=0 & number_trees_planted_cassava!=. 
 replace grew_cocoa =1 if number_trees_planted_cocoa!=0 & number_trees_planted_cocoa!=. 
+*/
 //drop harvest- harvest_pure_mixed area_harv- area_harv_pure_mixed area_plan- area_plan_pure_mixed value_harv value_sold total_planted_area total_harv_area  
 //ALT 08.16.21: No drops necessary; only variables here are the ones that are listed in the labeling block above.
 save "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_yield_hh_crop_level.dta", replace
@@ -6214,16 +6242,19 @@ global empty_vars $empty_vars water_source*
 merge 1:1 hhid using "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_shannon_diversity_index.dta", nogen keep(1 3)
 
 *Farm Production 
-gen value_farm_production = value_crop_production + value_livestock_products + value_slaughtered + value_lvstck_sold
+recode value_crop_production value_livestock_products value_slaughtered value_lvstck_sold (.=0)
+egen value_farm_production = rowtotal(value_crop_production value_livestock_products value_slaughtered value_lvstck_sold)
 lab var value_farm_production "Total value of farm production (crops + livestock products)"
-gen value_farm_prod_sold = value_crop_sales + sales_livestock_products + value_livestock_sales 
+egen value_farm_prod_sold = rowtotal(value_crop_sales sales_livestock_products value_livestock_sales)
 lab var value_farm_prod_sold "Total value of farm production that is sold" 
-replace value_farm_prod_sold = 0 if value_farm_prod_sold==. & value_farm_production!=.
+
 
 *Agricultural households
-recode value_crop_production livestock_income farm_area tlu_today (.=0)
+recode value_farm_production crop_income livestock_income farm_area tlu_today land_size farm_size_agland value_farm_prod_sold (.=0)
 //ALT 06.18.2020: Note to revisit this. Ayala says it's oddly high.
 gen ag_hh = (value_crop_production!=0 | livestock_income!=0 | farm_area!=0 | tlu_today!=0)
+replace value_farm_production=. if ag_hh==0
+replace value_farm_prod_sold=. if ag_hh==0
 recode nb* tlu* *tlu (.=0) if ag_hh==1 //ALT 10.08.24: Issue causing SSP to be too low; consider other variables if needed
 lab var ag_hh "1= Household has some land cultivated, some livestock, some crop income, or some livestock income"
 
@@ -6946,6 +6977,8 @@ gen poverty_under_215 = daily_percap_cons < $Nigeria_GHS_W4_poverty_215
 la var poverty_under_215 "Household per-capita consumption is below $2.15 in 2017 $ PPP"
 gen poverty_under_npl = daily_percap_cons < $Nigeria_GHS_W4_poverty_npl
 la var poverty_under_npl "Household per-capita consumption is below the national poverty line"
+gen poverty_under_300 = daily_percap_cons < $Nigeria_GHS_W4_poverty_300
+la var poverty_under_300 "household per-capita consumption is below $3.00 in 2021 $PPP"
 //ALT Update END
 *average consumption expenditure of the bottom 40% of the rural consumption expenditure distribution
 *First, generating variable that reports the individuals in the bottom 40% of rural consumption expenditures
@@ -6991,7 +7024,7 @@ keep hhid fhh clusterid strataid weight *weight_pop_rururb* *_weight* *wgt* zone
 */ *_exp* poverty* *value_crop_production* *value_harv* *value_crop_sales* *value_sold* *kgs_harvest* *total_planted_area* *total_harv_area* /*
 */ *all_area_* grew_* agactivities_hh ag_hh crop_hh livestock_hh fishing_hh *_milk_produced* *eggs_total_year *value_eggs_produced* /*
 */ *value_livestock_products* *value_livestock_sales* *total_cons* nb_cattle_today /*HKS 6.6.23*/ nb_largerum_t nb_smallrum_t nb_chickens_t  *sales_livestock_products nb_cows_today lvstck_holding_srum  nb_smallrum_today nb_chickens_today nb_poultry_today bottom_40_percap bottom_40_peraeq /*
-*/ ccf_loc ccf_usd ccf_1ppp ccf_2ppp *sales_livestock_products  *value_pro* *value_sal* *inter* *pure*
+*/ ccf_loc ccf_usd ccf_1ppp ccf_2ppp *sales_livestock_products  *value_pro* *value_sal* *inter* *pure* *value_farm*
 
 ren weight weight_sample
 ren weight_pop_rururb weight
@@ -7008,7 +7041,7 @@ gen survey = "LSMS-ISA"
 la var survey "Survey type (LSMS or AgDev)"
 gen year = "2018-19"
 la var year "Year survey was carried out"
-gen instrument = 33 
+gen instrument = 34 
 la var instrument "Wave and location of survey"
 //Only runs if label isn't already defined.
 capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2" 13 "Tanzania NPS Wave 3" 14 "Tanzania NPS Wave 4" 15 "Tanzania NPS SDD" 16 "Tanzania NPS Wave 5" /*

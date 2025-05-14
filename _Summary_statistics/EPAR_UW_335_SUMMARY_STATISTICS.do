@@ -11,10 +11,10 @@ global directory "../../_Summary_statistics"
 **************
 *SUMMARY STATISTICS
 ************** 
-global topcropname_area_yield maize rice wheat sorgum millet /*mill*/ pmill cowpea grdnt beans yam swtptt cassav banana teff barley coffee sesame hsbean nueg cotton sunflr pigpea cocoa soy mangos mungbn avocad potato cashew jute	/*
+global topcropname_area_yield maize rice wheat sorgum millet /*mill*/ pmill beanc cowpea grdnt beans yam swtptt cassav banana teff barley coffee sesame hsbean nueg cotton sunflr pigpea cocoa soy mangos mungbn avocad potato cashew jute	/* Eventually beanc will replace cowpea
 */ maize_k rice_k wheat_k jute_k maize_r rice_r wheat_r jute_r
 
-global topcropname_area maize rice wheat sorgum millet pmill cowpea grdnt beans yam swtptt cassav banana teff barley coffee sesame hsbean nueg cotton sunflr pigpea cocoa soy mangos mungbn avocad potato cashew jute
+global topcropname_area maize rice wheat sorgum millet pmill beanc cowpea grdnt beans yam swtptt cassav banana teff barley coffee sesame hsbean nueg cotton sunflr pigpea cocoa soy mangos mungbn avocad potato cashew jute
  
 global gender male female mixed
 /*
@@ -105,20 +105,20 @@ foreach instrument of global list_instruments {
 		qui gen `p'_usd = `p' * ccf_usd
 		qui gen `p'_loc = `p' * ccf_loc
 		qui local l`p' : var lab `p' 
-		qui lab var `p'_1ppp "`l`p'' (2017 $ Private Consumption PPP)"
-		qui lab var `p'_2ppp "`l`p'' (2017 $ GDP PPP)"
-		qui lab var `p'_usd "`l`p'' (2017 $ USD)"
-		qui lab var `p'_loc "`l`p'' (2017 LCU)"
+		qui lab var `p'_1ppp "`l`p'' (2021 $ Private Consumption PPP)"
+		qui lab var `p'_2ppp "`l`p'' (2021 $ GDP PPP)"
+		qui lab var `p'_usd "`l`p'' (2021 $ USD)"
+		qui lab var `p'_loc "`l`p'' (2021 LCU)"
 		qui lab var `p' "`l`p'' (LCU)"  
 		qui gen w_`p'_1ppp =  w_`p' * ccf_1ppp 
 		qui gen w_`p'_2ppp =  w_`p' * ccf_1ppp 
 		qui gen w_`p'_usd =  w_`p' * ccf_usd
 		qui gen w_`p'_loc = w_`p' * ccf_loc 
 		local lw_`p' : var lab w_`p'
-		qui lab var w_`p'_1ppp "`lw_`p'' (2017 $ Private Consumption PPP)"
-		qui lab var w_`p'_2ppp "`lw_`p'' (2017 $ GDP PPP)"
-		qui lab var w_`p'_usd "`lw_`p'' (2017 $ USD)"
-		qui lab var w_`p'_loc "`lw_`p'' (2017 LCU)"
+		qui lab var w_`p'_1ppp "`lw_`p'' (2021 $ Private Consumption PPP)"
+		qui lab var w_`p'_2ppp "`lw_`p'' (2021 $ GDP PPP)"
+		qui lab var w_`p'_usd "`lw_`p'' (2021 $ USD)"
+		qui lab var w_`p'_loc "`lw_`p'' (2021 LCU)"
 		qui lab var w_`p' "`lw_`p'' (LCU)"
 	}
 
@@ -477,8 +477,13 @@ foreach instrument of global list_instruments {
 			qui replace w_yield_hv_`v'=0		
 		}
 		qui svyset clusterid [pweight=ar_h_wgt_`v'], strata(strataid) singleunit(centered) // get standard errors of the mean	
-		qui svy, subpop(if rural==1): mean w_yield_hv_`v'
+		capture qui svy, subpop(if rural==1): mean w_yield_hv_`v'
+		if !_rc {
 		matrix final_indicator4a=final_indicator4a\(temp4,el(r(table),2,1))	
+		}
+		else {
+			matrix final_indicator4a=final_indicator4a\(temp4,(.))
+		}
 	}
  
 	matrix final_indicator4b=(.,.,.,.,.,.,.,.,.)
@@ -634,20 +639,20 @@ foreach instrument of global list_instruments {
 		}
 	foreach chem in `chem_inputs' {
 		foreach v in w_`chem'_rate   {
-			capture confirm variable `v'
+			capture qui confirm variable `v'
 			if _rc {
 				qui gen `v'=.
 			}
 		}
-		capture confirm var w_`chem'_rate_all 
+		capture qui confirm var w_`chem'_rate_all 
 		if _rc {
-			gen w_`chem'_rate_all = w_`chem'_rate
+			qui gen w_`chem'_rate_all = w_`chem'_rate
 		}
 
 		qui recode w_`chem'_rate* (.=0) if crop_hh==1
 
 		foreach  v of global final_indicator6 {
-			capture confirm variable w_`chem'_rate_`v' 
+			capture qui confirm variable w_`chem'_rate_`v' 
 			if _rc {
 				qui gen w_`chem'_rate_`v' = .
 			}
@@ -655,8 +660,8 @@ foreach instrument of global list_instruments {
 			qui gen w_`chem'_rate_`v'users=w_`chem'_rate_`v'  if  (w_`chem'_rate_`v'!=0 & w_`chem'_rate_`v'!=.)
 			qui lab var w_`chem'_rate_`v'users "`l`v'' - only household using `chem'"
 
-			di "`chem'_`v'"
-			capture confirm variable area_weight_`v'
+			//di "`chem'_`v'"
+			qui capture confirm variable area_weight_`v'
 			if _rc {
 				qui gen area_weight_`v'=1
 			}	
@@ -688,14 +693,13 @@ foreach instrument of global list_instruments {
 			if "`missing_var'"!="" { 
 				qui replace area_weight_`v'=1
 			}
-			di "`chem'_rate`v'users"
 			local missing_var ""
 			qui findname w_`chem'_rate_`v'users,  all(@==.) local (missing_var)
 			if "`missing_var'"!="" { 
 				qui replace w_`chem'_rate_`v'users=0
 				qui replace w_`chem'_rate_`v'=0.000001
-				di "w_`chem'_rate_`v'users"
-				ta w_`chem'_rate_`v'users
+				//di "w_`chem'_rate_`v'users"
+				qui ta w_`chem'_rate_`v'users
 			} 
 		
 			capture qui tabstat  w_`chem'_rate_`v'users [aw=area_weight_`v'] if rural==1  & ag_hh==1  & w_`chem'_rate_`v'!=. & w_`chem'_rate_`v'!=0,  stat(mean sd p25 p50 p75  min max N) col(stat) save
@@ -737,17 +741,25 @@ foreach instrument of global list_instruments {
 		global final_indicator7a $final_indicator7a w_`v'  w_`v'_fhh  w_`v'_mhh
 		qui tabstat $final_indicator7a [aw=weight] if rural==1, stat(mean sd p25 p50 p75  min max N) col(stat) save
 		matrix temp7a=r(StatTotal)'	
-		qui svyset clusterid [pweight=weight], strata(strataid) singleunit(centered) // get standard errors of the mean
+		qui svyset clusterid [pweight=weight], strata(strataid) singleunit(centered)
 		matrix semean7a=(.)
 		matrix colnames semean7a=semean_wei
+		
+		local x = 1
 		foreach v of global final_indicator7a {
 			local missing_var ""
 			qui findname `v',  all(@==.) local (missing_var)
 			if "`missing_var'"!="" { 
 			qui replace `v'=0
 			}	
+			if el(temp7a,`x',1)!=. {
 			qui svy, subpop(if rural==1): mean `v' 
 			matrix semean7a=semean7a\(el(r(table),2,1))
+			}
+			else {
+				matrix semean7a=semean7a\(.)
+			}
+			local ++x
 		}
 		matrix temp7a=temp7a,semean7a[2..rowsof(semean7a),.]
 		matrix final_indicator7a=final_indicator7a\temp7a
@@ -876,21 +888,21 @@ foreach instrument of global list_instruments {
 	*generate area weights for monocropped plots
 	foreach i in 1ppp 2ppp loc {
 		//di "`i'"
-		capture confirm variable w_cost_total_ha_`i'
+		capture qui confirm variable w_cost_total_ha_`i'
 		if _rc {
 			qui gen w_cost_total_ha_`i'=.
 		}
 		ren w_cost_total_ha_`i' w_cost_total_ha_all_`i'
 		foreach v in $topcropname_area {
-			capture confirm variable w_`v'_exp_`i'
+			capture qui confirm variable w_`v'_exp_`i'
 			if _rc {
 				qui gen w_`v'_exp_`i'=. 
 			}
-			capture confirm variable w_`v'_exp_ha_`i'
+			capture qui confirm variable w_`v'_exp_ha_`i'
 			if _rc {
 				qui gen w_`v'_exp_ha_`i'=. 
 			}
-			capture confirm variable w_`v'_exp_kg_`i'
+			capture qui confirm variable w_`v'_exp_kg_`i'
 			if _rc {
 				qui gen w_`v'_exp_kg_`i'=. 
 			}
@@ -906,7 +918,7 @@ foreach instrument of global list_instruments {
 	foreach i in 1ppp 2ppp loc {
 		foreach v of global final_indicator9 {
 			//di "area_weight_`v'"
-			capture confirm variable area_weight_`v'
+			capture qui confirm variable area_weight_`v'
 			if _rc {
 				qui gen area_weight_`v'=1
 			}
@@ -915,7 +927,7 @@ foreach instrument of global list_instruments {
 			if "`missing_var'"!="" { 
 				qui replace area_weight_`v'=1
 			}
-			capture confirm variable w_cost_total_ha_`v'_`i'
+			capture qui confirm variable w_cost_total_ha_`v'_`i'
 			if _rc {
 				qui gen w_cost_total_ha_`v'_`i'=0 
 			}
@@ -938,7 +950,7 @@ foreach instrument of global list_instruments {
 		foreach v of global final_indicator9 {
 			foreach x in $topcropname_area {
 				//di "w_`x'_exp_`v'_`i'"
-				capture confirm variable  w_`x'_exp_`v'_`i'
+				capture qui confirm variable  w_`x'_exp_`v'_`i'
 				if _rc {
 					qui gen  w_`x'_exp_`v'_`i'=0 
 				}
@@ -963,7 +975,7 @@ foreach instrument of global list_instruments {
 			foreach x in $topcropname_area {
 				//di "`x'"
 				//di "ar_pl_mono_wgt_`x'_`v''"
-				capture confirm variable  ar_pl_mono_wgt_`x'_`v'
+				capture qui confirm variable  ar_pl_mono_wgt_`x'_`v'
 				if _rc {
 					qui gen  ar_pl_mono_wgt_`x'_`v'=1
 				}
@@ -975,7 +987,7 @@ foreach instrument of global list_instruments {
 				//if "`allzeros'"!="" { 
 				//	qui replace ar_pl_mono_wgt_`x'_`v'=1
 				//}				
-				capture confirm variable  w_`x'_exp_ha_`v'_`i'
+				capture qui confirm variable  w_`x'_exp_ha_`v'_`i'
 				if _rc {
 					qui gen w_`x'_exp_ha_`v'_`i'=0
 				}				
@@ -998,7 +1010,7 @@ foreach instrument of global list_instruments {
 	foreach i in 1ppp 2ppp loc {
 		foreach v of global final_indicator9 {
 			foreach x in $topcropname_area {
-				capture confirm variable  kgs_harv_wgt_`x'_`v'
+				capture qui confirm variable  kgs_harv_wgt_`x'_`v'
 				if _rc {
 					qui gen kgs_harv_wgt_`x'_`v'=1
 				}
@@ -1007,7 +1019,7 @@ foreach instrument of global list_instruments {
 				if "`missing_var'"!="" { 
 					qui replace kgs_harv_wgt_`x'_`v'=1
 				}
-				capture confirm variable  w_`x'_exp_kg_`v'_`i'
+				capture qui confirm variable  w_`x'_exp_kg_`v'_`i'
 				if _rc {
 					qui gen w_`x'_exp_kg_`v'_`i'=0	
 				}
@@ -1022,7 +1034,7 @@ foreach instrument of global list_instruments {
 					qui replace w_`x'_exp_kg_`v'_`i'=0
 				}
 				local missing_var ""	
-				recode kgs_harv_wgt_`x'_`v' (.=0)
+				qui recode kgs_harv_wgt_`x'_`v' (.=0)
 				qui findname kgs_harv_wgt_`x'_`v' if rural==1 & ag_hh==1,  all(@==. | @==0) local (missing_var)
 				if "`missing_var'"!="" { 
 					qui replace kgs_harv_wgt_`x'_`v'=1
@@ -1141,10 +1153,14 @@ foreach instrument of global list_instruments {
 	if _rc {
 		qui gen poverty_under_npl = . 
 	}
+	capture confirm var poverty_under_300
+	if _rc {
+		qui gen poverty_under_300=.
+	}
 	/* DMC - not sure about this - we want them to be missing if it's not there, right?
 	i DYA - I think we need these because in the code below, the condition 'if bottom_40_peraeq==1" is used
 	in the spreadhseet we will remove all rows with 0 for for all summary stats*/
-	qui findname poverty_under_190 poverty_under_215 poverty_under_npl,  all(@==.) local (missing_var)
+	qui findname poverty_under_190 poverty_under_215 poverty_under_300 poverty_under_npl,  all(@==.) local (missing_var)
 	if "`missing_var'"!="" { 
 		foreach var in `missing_var' {
 			qui replace `var'=0
@@ -1163,7 +1179,7 @@ foreach instrument of global list_instruments {
 		qui replace bottom_40_percap=1
 	}		
 	
-	foreach v in poverty_under_190 /*ALT 03.21.23*/ poverty_under_npl poverty_under_215 {
+	foreach v in poverty_under_190 /*ALT 03.21.23*/ poverty_under_npl poverty_under_215 poverty_under_300 {
 	
 		local l`v' : var lab `v' 
 		qui gen `v'_fhh=`v' if fhh==1	
@@ -1316,7 +1332,8 @@ foreach instrument of global list_instruments {
 	gen  poverty_under_190_all= poverty_under_190
 	gen poverty_under_215_all = poverty_under_215
 	gen poverty_under_npl_all = poverty_under_npl
-	foreach v in poverty_under_190_all poverty_under_215_all poverty_under_npl_all {	
+	gen poverty_under_300_all = poverty_under_300
+	foreach v in poverty_under_190_all poverty_under_215_all poverty_under_npl_all poverty_under_300_all {	
 		local l`v' : var lab `v' 
 		qui gen `v'_fhh=`v' if fhh==1	
 		qui lab var `v'_fhh "`l`v'' -ds FHH"
