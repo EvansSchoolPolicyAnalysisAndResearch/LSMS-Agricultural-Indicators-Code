@@ -57,10 +57,7 @@ ssc install findname  // need this user-written ado file for some commands to wo
 
 
 global directory			    "../.." //Update this to global repo 
-//set directories: These paths correspond to the folders where the raw data files are located and where the created data and final data will be stored.*/
-
 //set directories: These paths correspond to the folders where the raw data files are located and where the created data and final data will be stored.
-
 global Tanzania_NPS_W4_raw_data 			"$directory/Tanzania NPS/Tanzania NPS Wave 4/Raw DTA files/"
 global Tanzania_NPS_W4_created_data 		"$directory/Tanzania NPS/Tanzania NPS Wave 4/Final DTA files/created_data"
 global Tanzania_NPS_W4_final_data  			"$directory/Tanzania NPS/Tanzania NPS Wave 4/Final DTA files/final_data"
@@ -73,13 +70,13 @@ global summary_stats "${directory}/_Summary_Statistics/EPAR_UW_335_SUMMARY_STATI
 global Tanzania_NPS_W4_exchange_rate 2158			// https://www.bloomberg.com/quote/USDETB:CUR
 global Tanzania_NPS_W4_gdp_ppp_dollar 762.96 // 889.45 was the value in 2017 https://data.worldbank.org/indicator/PA.NUS.PPP		// UPDATED 7/9/25: GDP_PPP_DOLLAR for 2021
 global Tanzania_NPS_W4_cons_ppp_dollar 681.85 // 777.60	was the value in 2017 https://data.worldbank.org/indicator/PA.NUS.PRVT.PP	// UPDATED 7/9/25: GDP_PPP_DOLLAR for 2021
-global Tanzania_NPS_W4_infl_adj  158/200.7 // (158/175) was the inflation rate in 2017. Data was collected during 2014-15. Base year should be 2024 and is available as of the most recent update. As of 2025, we want to adjust the value to 2021 // I = CPI 2015/CPI 2021 = 158/200.7		
+global Tanzania_NPS_W4_infl_adj  (158/200.7) // (158/175) was the inflation rate in 2017. Data was collected during 2014-15. Base year should be 2024 and is available as of the most recent update. As of 2025, we want to adjust the value to 2021 // I = CPI 2015/CPI 2021 = 158/200.7		
 //https://data.worldbank.org/indicator/FP.CPI.TOTL?locations=TZ
 global Tanzania_NPS_W4_poverty_190 (1.9 * 588.8 * (158/112.7)) //$1.90 was the poverty line in 2011. 588.8 was the PPP in 2011. Since the survey was conducted in 2014-15, we inflate based on CPI (2015)/CPI (2011) 
 //Previous international extreme poverty line
 global Tanzania_NPS_W4_poverty_npl 1410  //Similarly, the national poverty line in 2015 estimated from https://onlinelibrary.wiley.com/doi/full/10.1111/rode.12829 stating a monthly line of 36,482 in 2011/12 and 49,320 in 2017-18. So the national poverty line would be calculated based on (49,320*12)/365. INcluded for comparison purposes; adjusted for inflation although it is not clear if that happens internally. 
 //https://documents1.worldbank.org/curated/en/679851467999966244/pdf/AUS6819-WP-v1-P148501-PUBLIC-Tanzania-summary-15Apr15-Box391437B.pdf
-global Tanzania_NPS_W4_poverty_215 (2.15*777.6*158/175) //$2.15 was the poverty line in 2017. 777.6 was the PPP in 2017 so we deflate based on CPI (2015)/CPI (2017) since that is the year we're adjusting for. 
+global Tanzania_NPS_W4_poverty_215 (2.15*777.6*(158/175)) //$2.15 was the poverty line in 2017. 777.6 was the PPP in 2017 so we deflate based on CPI (2015)/CPI (2017) since that is the year we're adjusting for. 
 global Tanzania_NPS_W4_poverty_300 (3.00 * $Tanzania_NPS_W4_infl_adj * $Tanzania_NPS_W4_cons_ppp_dollar ) //$3.00 is the new poverty line in international PPP dollars which has been updated to 2021.
 
 ********************************************************************************
@@ -286,7 +283,7 @@ save "${Tanzania_NPS_W4_created_data}/Tanzania_NPS_W4_plot_decision_makers.dta",
 
 
 ********************************************************************************
-*ALL PLOTS 
+*ALL PLOTS - Ahana updated 12/05/2024
 ********************************************************************************
 /* This is a new module that's designed to combine/streamline a lot of the crop
 data processing. My goal is to have crops crunched down to 2-ish sections; one for
@@ -358,30 +355,6 @@ tempfile val_kg_country_median
 save `val_kg_country_median'
 restore
  
- /*
-//Old code that was replaced since it doesn't ask who manages the plot, just 
-use "${Tanzania_NPS_W4_raw_data}/ag_sec_4a.dta", clear
-	append using "${Tanzania_NPS_W4_raw_data}/ag_sec_6a.dta"
-	gen season=0
-	append using "${Tanzania_NPS_W4_raw_data}/ag_sec_4b.dta"
-	append using "${Tanzania_NPS_W4_raw_data}/ag_sec_6b.dta"
-recode season (.=1)
-ren plotnum plot_id
-ren zaocode crop_code
-drop if crop_code==.
-ren ag6a_02 number_trees_planted
-replace number_trees_planted = ag6b_02 if number_trees_planted==.
-sort y4_hhid plot_id crop_code
-bys y4_hhid plot_id season : gen cropid = _n //Get number of crops grown on each plot in each season
-bys y4_hhid plot_id season : egen num_crops = max(cropid)
-gen purestand = 1 if ag4a_04==2 
-replace purestand = 1 if ag4b_04==2 & purestand==.
-replace purestand = 1 if ag6a_05==2 & purestand==.
-replace purestand = 1 if ag6b_05==2 & purestand==.
-replace purestand = 1 if num_crops==1 //141 instances where cropping system was reported as other than monocropping, but only one crop was reported
-//At this point, we have about 830 observations that reported monocropping but have something else on the plot
-recode purestand (.=0)
-*/
 
 
 //Earlier code did not ask who managed the plot, just who controls the harvest.
@@ -2356,22 +2329,6 @@ save "${Tanzania_NPS_W4_created_data}/Tanzania_NPS_W4_livestock_feed_water_house
 ********************************************************************************
 * PLOT MANAGERS * (INPUT USE)
 ********************************************************************************
-/*use "${Tanzania_NPS_W4_raw_data}/ag_sec_4a.dta", clear 
-gen season=0
-append using "${Tanzania_NPS_W4_raw_data}/ag_sec_4b.dta" 
-recode season (.=1)
-ren zaocode crop_code
-recode crop_code (31 32=931) //recoding for new consolidated crop bencwp (931) for combined beans and cowpeas 
-		label define crop_code 931 "Beans-Cowpeas", add
-		label values crop_code crop_code
-		tab crop_code if crop_code==931 
-ren plotname plot_id
-gen imprv_seed_use= ag4a_08==1 | ag4b_08==1 | ag4a_08==3 | ag4b_08==3
-collapse (max) imprv_seed_use, by(y4_hhid plot_id crop_code season)
-tempfile imprv_seed
-save `imprv_seed' //Will use this in a minute
-*/
-
 use "${Tanzania_NPS_W4_created_data}/Tanzania_NPS_W4_input_quantities.dta", clear
 gen use_inorg_fert = inorg_fert_kg != 0 & inorg_fert_kg!=.
 gen use_org_fert = org_fert_kg != 0 & org_fert_kg != .
@@ -2383,10 +2340,6 @@ recode use* (.=0)
 
 preserve
 ren imprv_seed_use imprv_seed_ 
-//recode crop_code (31 32=931) //recoding for new consolidated crop bencwp (931) for combined beans and cowpeas 
-		//label define crop_code 931 "Beans-Cowpeas", add
-		//label values crop_code crop_code
-		//tab crop_code if crop_code==931 
 collapse (max) imprv_seed_, by(y4_hhid crop_code)
 gen hybrid_seed_ = . //More specific for hybrid crop varieties; not available in this wave
 merge m:1 crop_code using "${Tanzania_NPS_W4_created_data}/Tanzania_NPS_W4_cropname_table.dta", nogen keep(3)
@@ -3238,19 +3191,11 @@ restore
 
 *Yield at the household level
 //AT: Future update should disaggregate by season.
+//Check to see if we need the cowpea recode here.
 use "${Tanzania_NPS_W4_created_data}/Tanzania_NPS_W4_crop_harvest_area_yield.dta", clear
-recode crop_code (31 32=931) //recoding for new consolidated crop bencwp (931) for combined beans and cowpeas 
-		//label define crop_code 931 "Beans-Cowpeas", add
-		//label values crop_code crop_code
-		tab crop_code if crop_code==931 
-
+merge 1:1 y4_hhid crop_code using "${Tanzania_NPS_W4_created_data}/Tanzania_NPS_W4_hh_crop_values_production.dta", nogen keep(1 3) 
 *Value of crop production
 merge m:1 crop_code using "${Tanzania_NPS_W4_created_data}/Tanzania_NPS_W4_cropname_table.dta", nogen keep(3)
-merge 1:1 y4_hhid crop_code using "${Tanzania_NPS_W4_created_data}/Tanzania_NPS_W4_hh_crop_values_production.dta", nogen keep(1 3) 
-recode crop_code (31 32=931) //recoding for new consolidated crop bencwp (931) for combined beans and cowpeas 
-		//label define crop_code 931 "Beans-Cowpeas", add
-		//label values crop_code crop_code
-		tab crop_code // final check to see if Beans-Cowpeas has been accounted for 
 ren value_crop_production value_harv_
 ren value_crop_sales value_sold_
 ren kgs_sold kgs_sold_
@@ -3263,7 +3208,6 @@ gen total_harv_area_ = area_harv_
 
 drop crop_code price_kg
 unab vars : *_
-tab crop_name
 reshape wide `vars', i(y4_hhid) j(crop_name) string
 
 merge 1:1 y4_hhid using `trees', nogen
@@ -4037,12 +3981,11 @@ merge 1:1 y4_hhid using "${Tanzania_NPS_W4_created_data}/Tanzania_NPS_W4_shannon
 
 /*OUT DYA.10.30.2020*/ 
 *Farm Production 
-recode value_crop_production  value_livestock_products value_slaughtered  value_lvstck_sold (.=0)
-egen value_farm_production = rowtotal(value_crop_production value_livestock_products value_slaughtered value_lvstck_sold)
+egen value_farm_production = rowtotal(value_crop_production value_livestock_products value_slaughtered value_lvstck_sold) 
 lab var value_farm_production "Total value of farm production (crops + livestock products)"
-egen value_farm_prod_sold = rowtotal(value_crop_sales sales_livestock_products value_livestock_sales)
+egen value_farm_prod_sold = rowtotal(value_crop_sales sales_livestock_products value_livestock_sales) 
 lab var value_farm_prod_sold "Total value of farm production that is sold" 
-*replace value_farm_prod_sold = 0 if value_farm_prod_sold==. & value_farm_production!=.
+replace value_farm_prod_sold = 0 if value_farm_prod_sold==. & value_farm_production!=. 
 
 *Agricultural households
 recode crop_income livestock_income farm_area tlu_today land_size farm_size_agland value_farm_prod_sold (.=0)
@@ -4674,13 +4617,13 @@ gen adulteq_weight=adulteq*weight
 
 ********Currency Conversion Factors*********
 gen ccf_loc = (1/$Tanzania_NPS_W4_infl_adj) 
-lab var ccf_loc "currency conversion factor - 2017 $NGN"
+lab var ccf_loc "currency conversion factor - 2021 $TZS"
 gen ccf_usd = ccf_loc/$Tanzania_NPS_W4_exchange_rate 
-lab var ccf_usd "currency conversion factor - 2017 $USD"
+lab var ccf_usd "currency conversion factor - 2021 $USD"
 gen ccf_1ppp = ccf_loc/$Tanzania_NPS_W4_cons_ppp_dollar
-lab var ccf_1ppp "currency conversion factor - 2017 $Private Consumption PPP"
+lab var ccf_1ppp "currency conversion factor - 2021 $Private Consumption PPP"
 gen ccf_2ppp = ccf_loc/$Tanzania_NPS_W4_gdp_ppp_dollar
-lab var ccf_2ppp "currency conversion factor - 2017 $GDP PPP"
+lab var ccf_2ppp "currency conversion factor - 2021 $GDP PPP"
 
 ************Rural poverty headcount ratio***************
 gen poverty_under_190 = daily_percap_cons < $Tanzania_NPS_W4_poverty_190
@@ -4688,6 +4631,7 @@ la var poverty_under_190 "Household per-capita conumption is below $1.90 in 2011
 gen poverty_under_215 = daily_percap_cons < $Tanzania_NPS_W4_poverty_215
 la var poverty_under_215 "Household per-capita consumption is below $2.15 in 2017 $ PPP"
 gen poverty_under_npl = daily_percap_cons < $Tanzania_NPS_W4_poverty_npl
+la var poverty_under_npl "Household per-capita consumption is under the estimated national poverty line"
 gen poverty_under_300 = daily_percap_cons < $Tanzania_NPS_W4_poverty_300
 la var poverty_under_300 "Household per-capita consumption is below $3.00 in 2021 $ PPP"
 
@@ -4885,13 +4829,13 @@ foreach v of varlist  plot_productivity  plot_labor_prod {
 	
 	
 gen ccf_loc = (1/$Tanzania_NPS_W4_infl_adj) 
-lab var ccf_loc "currency conversion factor - 2017 $TSH"
+lab var ccf_loc "currency conversion factor - 2021 $TZS"
 gen ccf_usd = ccf_loc/$Tanzania_NPS_W4_exchange_rate 
-lab var ccf_usd "currency conversion factor - 2017 $USD"
+lab var ccf_usd "currency conversion factor - 2021 $USD"
 gen ccf_1ppp = ccf_loc/$Tanzania_NPS_W4_cons_ppp_dollar
-lab var ccf_1ppp "currency conversion factor - 2017 $Private Consumption PPP"
+lab var ccf_1ppp "currency conversion factor - 2021 $Private Consumption PPP"
 gen ccf_2ppp = ccf_loc/$Tanzania_NPS_W4_gdp_ppp_dollar
-lab var ccf_2ppp "currency conversion factor - 2017 $GDP PPP"
+lab var ccf_2ppp "currency conversion factor - 2021 $GDP PPP"
 global monetary_val plot_value_harvest plot_productivity plot_labor_prod 
 
 foreach p of varlist $monetary_val {

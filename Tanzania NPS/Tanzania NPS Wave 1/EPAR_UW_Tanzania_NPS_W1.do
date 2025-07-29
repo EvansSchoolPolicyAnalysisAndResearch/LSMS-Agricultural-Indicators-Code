@@ -448,9 +448,7 @@ save `val_kg_country_median'
 restore
 
 save "${Tanzania_NPS_W1_created_data}/Tanzania_NPS_W1_crop_sales.dta", replace
-
-//Old code didn't ask who managed the plot, just who controls the harvest. However Wave 1 lacks the ag6a_08_1 and ag6b_08_1 variables so the tree crop decisionmaker merge will not work. Keeping the old code as is.
-
+ 
 use "${Tanzania_NPS_W1_raw_data}/SEC_4A.dta", clear
 	append using "${Tanzania_NPS_W1_raw_data}/SEC_6A.dta"
 	gen season=0 
@@ -533,14 +531,7 @@ replace kg_harvest = s6bq8 if kg_harvest==.
 replace kg_harvest = kg_harvest/(1-s4aq14/100) if s4aq12==2 & s4aq14 < 100 //There are several observations ranging from 200-60000
 replace kg_harvest = kg_harvest/(1-s4bq14/100) if s4bq12==2 & s4bq14 < 100
 
-/*gen kgs_harvest = s4aq15
-replace kgs_harvest = s4bq15 if kgs_harvest==.
-replace kgs_harvest = s6aq8 if kgs_harvest==.
-replace kgs_harvest = s6bq8 if kgs_harvest==.
-replace kgs_harvest = kgs_harvest/(1-s4aq14/100) if s4aq12==2 & s4aq14 < 100 //There are several observations ranging from 200-60000
-replace kgs_harvest = kgs_harvest/(1-s4bq14/100) if s4bq12==2 & s4bq14 < 100
-	//Rescale harvest area 
-*/
+
 	gen over_harvest = ha_harvest > ha_planted & ha_planted!=.
 gen lost_plants = s4aq17==1 | s6aq9==1 | s4bq17==1 | s6bq9==1
 //Assume that the area harvest=area planted if the farmer does not report crop losses
@@ -1046,7 +1037,6 @@ save "${Tanzania_NPS_W1_created_data}/Tanzania_NPS_W1_TLU_Coefficients.dta", rep
 *The preprocessing - including value imputation - is all in the "all plots" section above; this is mostly legacy compatibility stuff
 use "${Tanzania_NPS_W1_created_data}/Tanzania_NPS_W1_all_plots.dta", clear
 gen value_harvest_imputed = value_harvest
-ren kg_harvest kg_harvest //ALT 07.19.21: Note to go back and fix this elsewhere
 lab var value_harvest_imputed "Imputed value of crop production"
 collapse (sum) value_harvest_imputed kg_harvest, by (hhid crop_code)
 merge 1:1 hhid crop_code using "${Tanzania_NPS_W1_created_data}/Tanzania_NPS_W1_crop_sales.dta", nogen 
@@ -1110,6 +1100,9 @@ collapse (sum) value_lost, by (hhid)
 ren value_lost crop_value_lost
 lab var crop_value_lost "Value of crop production that had been lost by the time of survey"
 save "${Tanzania_NPS_W1_created_data}/Tanzania_NPS_W1_crop_losses.dta", replace
+
+
+
 
 ********************************************************************************
 *LIVESTOCK INCOME
@@ -2739,12 +2732,8 @@ restore
 //ALT 07.21.21: Code continues here as written in W4
 
 use "${Tanzania_NPS_W1_created_data}/Tanzania_NPS_W1_crop_harvest_area_yield.dta", clear
+merge m:1 crop_code using "${Tanzania_NPS_W1_created_data}/Tanzania_NPS_W1_cropname_table.dta", nogen keep(3)
 merge 1:1 hhid crop_code using "${Tanzania_NPS_W1_created_data}/Tanzania_NPS_W1_hh_crop_values_production.dta", nogen keep(1 3) keepusing(value_crop_production value_crop_sales kgs_sold)
-recode crop_code (31 32=931) //recoding for new consolidated crop bnscps (931) for combined beans and cowpeas 
-		//label define crop_code 931 "bnscps", add
-		//label values crop_code crop_code
-		tab crop_code if crop_code==931 
-		
 merge m:1 crop_code using "${Tanzania_NPS_W1_created_data}/Tanzania_NPS_W1_cropname_table.dta", nogen keep(3)		
 ren value_crop_production value_harv_
 ren value_crop_sales value_sold_

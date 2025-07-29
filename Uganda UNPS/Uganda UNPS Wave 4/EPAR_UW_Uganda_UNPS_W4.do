@@ -4,7 +4,7 @@
 
 *Author(s): Didier Alia & C. Leigh Anderson; uw.eparx@uw.edu
 															  
-*Date : March 31st, 2025
+*Date : September 5th, 2025
 
 *Dataset Version: UGA_2013_UNPS_v03_M
 --------------------------------------------------------------------------------------*/
@@ -171,20 +171,21 @@ global summary_stats "$directory/_Summary_statistics/EPAR_UW_335_SUMMARY_STATIST
 ********************************************************************************
 *           EXCHANGE RATE AND INFLATION FOR CONVERSION IN SUD IDS              *
 ********************************************************************************
-global Uganda_NPS_W4_exchange_rate 3689.75      // https://www.bloomberg.com/quote/USDUGX:CUR 										// NKF 12.30.19 - What year? Present?
-global Uganda_NPS_W4_gdp_ppp_dollar 1251.63  // 1270.608398 // updated 4.6.23 to 2017 values from https://data.worldbank.org/indicator/PA.NUS.PPP?locations=UG 
-global Uganda_NPS_W4_cons_ppp_dollar  1219.19 // 1221.087646 // updated 4.6.23 to 2017 values from https://data.worldbank.org/indicator/PA.NUS.PRVT.PP?locations=UG // for 2014 
-global Uganda_NPS_W4_inflation 0.8515721875 //CPI_SURVEY_YEAR/CPI_2017 -> CPI_2014/CPI_2017 ->  142.024166/166.7787747 from https://data.worldbank.org/indicator/FP.CPI.TOTL?locations=UG  //The data were collected over the period November 2013 - October 2014
-global Uganda_NPS_W4_poverty_threshold ((1.90*944.255*142.024166)/116.6)
+global Uganda_NPS_W4_exchange_rate 3689.75      // https://www.bloomberg.com/quote/USDUGX:CUR // NKF 12.30.19 - What year? Present?
+global Uganda_NPS_W4_gdp_ppp_dollar 1203.16 // 1251.63 was the value in 2017 https://data.worldbank.org/indicator/PA.NUS.PPP?locations=UG // UPDATED 7/9/25: GDP_PPP_DOLLAR for 2021
+global Uganda_NPS_W4_cons_ppp_dollar 1315.27 // 1219.19 was the value in 2017  https://data.worldbank.org/indicator/PA.NUS.PRVT.PP?locations=UG UPDATED 7/9/25: GDP_PPP_DOLLAR for 2021
+global Uganda_NPS_W4_inflation (142/185.9) // 0.8515721875 was the infl rate in 2017. Data was collected during 2013-2014. Base year should be 2024 and is available as of the most recent update. As of 2025, we want to adjust the value to 2021 // I = CPI_SURVEY_YEAR/CPI_2021 -> CPI_2014/CPI_2021 -> (142/185.9) from https://data.worldbank.org/indicator/FP.CPI.TOTL?locations=UG 
+global Uganda_NPS_W4_poverty_threshold (1.90*944.26*(142.024166/116.6)) //$1.90 was the poverty line in 2011. 944.26 was the PPP in 2011. Since the survey was conducted in 2013-2014, we inflate based on CPI (2014)/CPI (2011).
 
 * Notes:  Calculation for WB' previous $1.90 (PPP) poverty threshold, 2185.2775 Uganda Shilling UGX. This is calculated as the following: PovertyLine x PPP conversion factor (private consumption)t=2011 (reference year of PL, therefore 2011. This is fixed across waves so no need to change it) x Inflation(from t=2011 to t+1=last year survey was implemented). Inflation is calculated as the following: CPI Uganda inflation from 2011 (baseline year) to 2014 (last survey year) Inflation = Inflation (t=last survey year =2014)/Inflation (t= baseline year of PL =2011) https://data.worldbank.org/indicator/PA.NUS.PRVT.PP?locations=UG&name_desc=false and https://data.worldbank.org/indicator/FP.CPI.TOTL?locations=UG
 
-global Uganda_NPS_W4_poverty_215 (2.15*($Uganda_NPS_W4_inflation)*$Uganda_NPS_W4_cons_ppp_dollar)
+global Uganda_NPS_W4_poverty_215 (2.15 * 1219.19 * (142/166.8)) //$2.15 was the poverty line in 2017. 1219.19 was the PPP in 2017 so we deflate based on CPI (2014)/CPI (2017) since that is the year we're adjusting for. 
  
 *SAW Now: The $2.15 Poverty line ($US) is converted to Uganda Shillings using the PPP Conversion Factor, Consumption of 2017 (so we get the value in UGX 2017) and then we deflate this value to the last year of the survey implementation 2014. Thr 2.15 PL is 2235.6652 UGX (2017) Notes: This time we had to deflate since our cpp was in 2017 but the last year of the survey was 2014, for the 2011 1.90 poverty line we had to inflate given that the baseline year was 2011 but the last year of the survey was 2012. 
 
 *The national poverty line is merged later since it's already provided by the raw data (Also there npl has variation across regions so it's not a single number)
 
+global Uganda_NPS_W4_poverty_300 (3.00 * $Uganda_NPS_W4_inflation * $Uganda_NPS_W4_cons_ppp_dollar )
 
 ********************************************************************************
 *					THRESHOLDS FOR WINSORIZATION							   *
@@ -4443,17 +4444,20 @@ merge 1:1 hhid using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_livestock_feed
 merge 1:1 hhid using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_shannon_diversity_index.dta", nogen keep(1 3)
 
 *Farm Production 
-recode value_crop_production  value_livestock_products value_slaughtered  value_lvstck_sold (.=0)
-gen value_farm_production = value_crop_production + value_livestock_products + value_slaughtered + value_lvstck_sold
+recode value_crop_production value_livestock_products value_slaughtered  value_lvstck_sold (.=0)
+egen value_farm_production = rowtotal(value_crop_production value_livestock_products value_slaughtered value_lvstck_sold)
 lab var value_farm_production "Total value of farm production (crops + livestock products)"
-gen value_farm_prod_sold = value_crop_sales + sales_livestock_products + value_livestock_sales 
+egen value_farm_prod_sold = rowtotal(value_crop_sales sales_livestock_products value_livestock_sales)
 lab var value_farm_prod_sold "Total value of farm production that is sold" 
-replace value_farm_prod_sold = 0 if value_farm_prod_sold==. & value_farm_production!=.
+*replace value_farm_prod_sold = 0 if value_farm_prod_sold==. & value_farm_production!=.
 
 *Agricultural households
-recode value_crop_production livestock_income farm_area tlu_today (.=0)
-gen ag_hh = (value_crop_production!=0 | livestock_income!=0 | farm_area!=0 | tlu_today!=0)
+recode crop_income livestock_income farm_area tlu_today land_size farm_size_agland value_farm_prod_sold (.=0)
+gen ag_hh = (value_crop_production!=0 | livestock_income !=0 | farm_area!=0 | tlu_today!=0)
+recode value_farm_production value_farm_prod_sold value_crop_production value_livestock_products value_slaughtered value_lvstck_sold (0=.) if ag_hh==0
 lab var ag_hh "1= Household has some land cultivated, some livestock, some crop income, or some livestock income"
+replace value_farm_production=. if ag_hh==0
+
 
 *household with egg-producing animals  
 gen egg_hh = (value_eggs_produced>0 & value_eggs_produced!=.)
@@ -5140,6 +5144,8 @@ gen poverty_under_190 = (daily_percap_cons < $Uganda_NPS_W4_poverty_threshold)
 la var poverty_under_190 "Household per-capita conumption is below $1.90 in 2011 $ PPP"
 gen poverty_under_215 = (daily_percap_cons < $Uganda_NPS_W4_poverty_215)
 la var poverty_under_215 "Household per-capita consumption is below $2.15 in 2017 $ PPP"
+gen poverty_under_300 = (daily_percap_cons < $Uganda_NPS_W4_poverty_300)
+la var poverty_under_300 "Household per-capita consumption is below $3.00 in 2021 $ PPP"
 
 * Need to figure out National poverty lines for Uganda wave 4
 *We merge the national poverty line provided by the World bank "${UGS_W3_raw_data}/AGSEC9"

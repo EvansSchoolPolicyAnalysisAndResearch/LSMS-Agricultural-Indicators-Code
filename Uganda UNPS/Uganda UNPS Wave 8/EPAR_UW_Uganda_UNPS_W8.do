@@ -2,7 +2,7 @@
 /*-----------------------------------------------------------------------------------------------------------------------------------------------------
 *Title:                              : Agricultural Development Indicators for the LSMS-ISA, Uganda National Panel Sample Wave 8, 2019-2020
 *Author(s)/Correspondence			 : Didier Alia & C. Leigh Anderson; uw.eparx@uw.edu
-*Updated			          	     : March 31st, 2025
+*Updated			          	     : September 5th, 2025
 *Dataset Version            	     : UGA_2019_UNPS_v03_M 
 ----------------------------------------------------------------------------------------------------------------------------------------------------*/
 
@@ -175,14 +175,18 @@ global summary_stats "$directory/_Summary_statistics/EPAR_UW_335_SUMMARY_STATIST
 *EXCHANGE RATE AND INFLATION FOR CONVERSION IN SUD IDS
 ********************************************************************************
 
-//global Uganda_NPS_W8_exchange_rate 3376.4246		// Rate of Jan 1, 2015 from https://www.exchangerates.org.uk/USD-UGX-spot-exchange-rates-history-2016.html (Can we get historical rate from bloomberg?) // RH: average exchrt for 2019 was 3704.5036 UGX. Use that instead of Jan 1,2015?
 global Uganda_NPS_W8_exchange_rate 3704.5036		// Average rate of 2019 from https://www.exchangerates.org.uk/USD-UGX-spot-exchange-rates-history-2019.html
-global Uganda_NPS_W8_gdp_ppp_dollar 1270.608398 // updated 4.6.23 to 2017 values from https://data.worldbank.org/indicator/PA.NUS.PPP
-global Uganda_NPS_W8_cons_ppp_dollar 1221.087646 // updated 4.6.23 to 2017 values from https://data.worldbank.org/indicator/PA.NUS.PRVT.PP
-global Uganda_NPS_W8_inflation 1.09056114201 //CPI_SURVEY_YEAR/CPI_2017 -> CPI_2020/CPI_2017 -> 181.882451/166.7787747 The data were collected over the period February 2019 - February 2020.
-global Uganda_NPS_W8_poverty_190 (1.90*944.255*181.882451/116.6)
-global Uganda_NPS_W8_poverty_215 (2.15 * $Uganda_NPS_W8_inflation * $Uganda_NPS_W8_cons_ppp_dollar) 
-global Uganda_NPS_W8_poverty_npl (361*183.9/267.5) 
+global Uganda_NPS_W8_gdp_ppp_dollar 1203.16 // 1270.608398 was the value in 2017 
+//https://data.worldbank.org/indicator/PA.NUS.PPP // UPDATED 7/9/25: GDP_PPP_DOLLAR for 2021
+global Uganda_NPS_W8_cons_ppp_dollar 1315.27 // 1221.087646 was the value in 2017
+//https://data.worldbank.org/indicator/PA.NUS.PRVT.PP // UPDATED 7/9/25: GDP_PPP_DOLLAR for 2021
+global Uganda_NPS_W8_inflation (181.9/185.9) // 1.09056114201 was the infl rate in 2017. Data was collected during 2019-2020. Base year should be 2024 and is available as of the most recent update. As of 2025, we want to adjust the value to 2021 // I = CPI_SURVEY_YEAR/CPI_2021 -> CPI_2020/CPI_2021 -> (181.9/185.9) The data were collected over the period February 2019 - February 2020.
+//https://data.worldbank.org/indicator/FP.CPI.TOTL?end=2016&locations=UG&start=2010 
+global Uganda_NPS_W8_poverty_190 (1.90*944.255*(181.882451/116.6)) // $1.90 was the poverty line in 2011. 944.26 was the PPP in 2011. Since the survey was conducted in 2019-2020, we inflate based on CPI (2020)/CPI (2021)
+//Previous international extreme poverty line
+global Uganda_NPS_W8_poverty_npl (361*(183.9/267.5)) 
+global Uganda_NPS_W8_poverty_215 (2.15 * 1219.19 * (181.9/166.8)) //$2.15 was the poverty line in 2017. 1219.19 was the PPP in 2017 so we inflate based on CPI (2020)/CPI (2017) since that is the year we're adjusting for. 
+global Uganda_NPS_W8_poverty_300 (3.00 * $Uganda_NPS_W8_inflation * $Uganda_NPS_W8_cons_ppp_dollar ) 
 //Updated 11.15.23 - Re-scaling survey weights to match population estimates
 *https://databank.worldbank.org/source/world-development-indicators#
 *Using 2020 numbers
@@ -4686,16 +4690,18 @@ merge 1:1 hhid using  "${Uganda_NPS_W8_created_data}/Uganda_NPS_W8_shannon_diver
 *Farm Production 
 *gen value_farm_production
 recode value_crop_production value_livestock_products value_slaughtered  value_lvstck_sold (.=0)
-gen value_farm_production = value_crop_production + value_livestock_products + value_slaughtered + value_lvstck_sold
+egen value_farm_production = rowtotal(value_crop_production value_livestock_products value_slaughtered value_lvstck_sold)
 lab var value_farm_production "Total value of farm production (crops + livestock products)"
-gen value_farm_prod_sold = value_crop_sales + sales_livestock_products + value_livestock_sales 
+egen value_farm_prod_sold = rowtotal(value_crop_sales sales_livestock_products value_livestock_sales)
 lab var value_farm_prod_sold "Total value of farm production that is sold" 
-replace value_farm_prod_sold = 0 if value_farm_prod_sold==. & value_farm_production!=.
+*replace value_farm_prod_sold = 0 if value_farm_prod_sold==. & value_farm_production!=.
 
 *Agricultural households
-recode value_crop_production livestock_income farm_area tlu_today (.=0)
-gen ag_hh = (value_crop_production!=0 | crop_income!=0 | livestock_income!=0 | farm_area!=0 | tlu_today!=0)
+recode crop_income livestock_income farm_area tlu_today land_size farm_size_agland value_farm_prod_sold (.=0)
+gen ag_hh = (value_crop_production!=0 | livestock_income !=0 | farm_area!=0 | tlu_today!=0)
+recode value_farm_production value_farm_prod_sold value_crop_production value_livestock_products value_slaughtered value_lvstck_sold (0=.) if ag_hh==0
 lab var ag_hh "1= Household has some land cultivated, some livestock, some crop income, or some livestock income"
+replace value_farm_production=. if ag_hh==0
 
 *household with egg-producing animals  
 gen egg_hh = (value_eggs_produced>0 & value_eggs_produced!=.)
@@ -5389,6 +5395,9 @@ gen poverty_under_215 = (daily_percap_cons < $Uganda_NPS_W8_poverty_215)
 la var poverty_under_215 "Household per-capita consumption is below $2.15 in 2017 $ PPP"
 gen poverty_under_npl = (daily_percap_cons < $Uganda_NPS_W8_poverty_npl) 
 la var poverty_under_npl "Household daily per-capita consumption is below the national poverty line"
+gen poverty_under_300 = (daily_percap_cons < $Uganda_NPS_W8_poverty_300)
+la var poverty_under_300 "Household per-capita consumption is below $3.00 in 2021 $ PPP"
+
 
 gen clusterid=subcounty_code
 
