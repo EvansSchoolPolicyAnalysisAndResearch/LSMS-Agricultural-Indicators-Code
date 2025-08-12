@@ -1,4 +1,7 @@
 # Malawi IHS-IHPS Wave 3 (2016-2017)
+- ![Incomplete](https://placehold.co/15x15/f03c15/f03c15.png) `Incomplete`
+- ![Complete](https://placehold.co/15x15/c5f015/c5f015.png) `Complete`
+- ![Pending Review](https://placehold.co/15x15/1589F0/1589F0.png) `Pending Review`
 
 ## Prerequisites
 * Download the raw data from https://microdata.worldbank.org/index.php/catalog/2936 (IHS) and https://microdata.worldbank.org/index.php/catalog/2939 (IHPS)
