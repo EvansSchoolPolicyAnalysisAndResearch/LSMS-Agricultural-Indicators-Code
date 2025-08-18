@@ -393,18 +393,36 @@ foreach instrument of global list_instruments {
 
 	di "---------------- Summary statistics group 3 ----------------"
 	*Group 3 : daily wage in  agriculture
+	capture confirm var wage_paid_aglabor 
+	if _rc {
+		gen wage_paid_aglabor=0
+		gen w_wage_paid_aglabor=0
+	}
+	capture confirm var wage_paid_aglabor_all 
+	if _rc {
+		gen wage_paid_aglabor_all = wage_paid_aglabor
+		gen w_wage_paid_aglabor_all = w_wage_paid_aglabor
+	}
 	foreach v in 1ppp 2ppp loc {
 		capture confirm variable w_wage_paid_aglabor_`v'
 		if _rc {
-			qui gen w_wage_paid_aglabor_`v'=.
+			capture confirm variable w_wage_paid_aglabor
+			if !_rc {
+				qui gen w_wage_paid_aglabor_`v' = w_wage_paid_aglabor * ccf_`v'
+			} 
+			else {
+				qui gen w_wage_paid_aglabor_`v'=0
+			}
 		}
-	}
+	} 
+	/*
 	foreach v in w_wage_paid_aglabor_1ppp w_wage_paid_aglabor_2ppp w_wage_paid_aglabor_loc {
 		capture confirm variable `v'
 		if _rc {
 			qui gen `v'=0
 		}	
 	}
+	*/
 	ren w_wage_paid_aglabor_1ppp w_wage_paid_aglabor_all_1ppp
 	ren w_wage_paid_aglabor_2ppp w_wage_paid_aglabor_all_2ppp
 	ren w_wage_paid_aglabor_loc w_wage_paid_aglabor_all_loc
@@ -420,6 +438,7 @@ foreach instrument of global list_instruments {
 			qui replace w_aglabor_weight_`g'=1
 		}
 	}
+	
 
 	global final_indicator3a "all female male"
 	matrix final_indicator3a=(.,.,.,.,.,.,.,.,.)
@@ -427,7 +446,13 @@ foreach instrument of global list_instruments {
 		foreach v of global final_indicator3a {
 			capture confirm variable w_wage_paid_aglabor_`v'_`i'
 			if _rc {
+				capture confirm variable w_wage_paid_aglabor_`v'
+				if !_rc {
+					qui gen w_wage_paid_aglabor_`v'_`i' = w_wage_paid_aglabor_`v' * ccf_`i'
+				}
+				else {
 				qui gen w_wage_paid_aglabor_`v'_`i'=0
+				}
 			}	
 			local missing_var "" 
 			qui findname w_wage_paid_aglabor_`v'_`i', all (@==.) local (missing_var)
@@ -536,13 +561,17 @@ foreach instrument of global list_instruments {
 	replace w_eggs_total_year=. if weight_egg==0  |  weight_egg==.
 
 	foreach v in 1ppp 2ppp loc {
-		capture confirm variable w_value_milk_produced_`v'
+		foreach var in w_value_milk_produced w_value_eggs_produced {
+		capture confirm variable `var'_`v'
 		if _rc {
-			qui gen w_value_milk_produced_`v'=.
+			capture confirm var `var' 
+				if !_rc {
+					qui gen `var'_`v'=`var' * ccf_`v'
+				}
+				else {
+					qui gen `var'_`v'=.
+				}
 		}
-		capture confirm variable w_value_eggs_produced_`v'
-		if _rc {
-			qui gen w_value_eggs_produced_`v'=.
 		}
 		replace w_value_milk_produced_`v'=. if weight_milk==0  | weight_milk==. 
 		replace w_value_eggs_produced_`v'=. if weight_egg==0  |  weight_egg==.
