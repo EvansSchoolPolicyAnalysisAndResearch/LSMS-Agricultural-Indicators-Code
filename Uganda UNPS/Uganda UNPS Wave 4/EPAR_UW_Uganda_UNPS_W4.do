@@ -4444,12 +4444,11 @@ merge 1:1 hhid using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_livestock_feed
 merge 1:1 hhid using "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_shannon_diversity_index.dta", nogen keep(1 3)
 
 *Farm Production 
-recode value_crop_production value_livestock_products value_slaughtered  value_lvstck_sold (.=0)
-egen value_farm_production = rowtotal(value_crop_production value_livestock_products value_slaughtered value_lvstck_sold)
+egen value_farm_production = rowtotal(value_crop_production value_livestock_products value_slaughtered value_lvstck_sold) 
 lab var value_farm_production "Total value of farm production (crops + livestock products)"
-egen value_farm_prod_sold = rowtotal(value_crop_sales sales_livestock_products value_livestock_sales)
+egen value_farm_prod_sold = rowtotal(value_crop_sales sales_livestock_products value_livestock_sales) 
 lab var value_farm_prod_sold "Total value of farm production that is sold" 
-*replace value_farm_prod_sold = 0 if value_farm_prod_sold==. & value_farm_production!=.
+replace value_farm_prod_sold = 0 if value_farm_prod_sold==. & value_farm_production!=. 
 
 *Agricultural households
 recode crop_income livestock_income farm_area tlu_today land_size farm_size_agland value_farm_prod_sold (.=0)
@@ -5131,13 +5130,13 @@ replace bottom_40_peraeq = 1 if r(r1) > w_daily_peraeq_cons & rural==1
 
 ****Currency Conversion Factors***
 gen ccf_loc = (1/$Uganda_NPS_W4_inflation) 
-lab var ccf_loc "currency conversion factor - 2017 $UGX"
+lab var ccf_loc "currency conversion factor - 2021 $UGX"
 gen ccf_usd = ccf_loc/$Uganda_NPS_W4_exchange_rate
-lab var ccf_usd "currency conversion factor - 2017 $USD"
+lab var ccf_usd "currency conversion factor - 2021 $USD"
 gen ccf_1ppp = ccf_loc/$Uganda_NPS_W4_cons_ppp_dollar
-lab var ccf_1ppp "currency conversion factor - 2017 $Private Consumption PPP"
+lab var ccf_1ppp "currency conversion factor - 2021 $Private Consumption PPP"
 gen ccf_2ppp = ccf_loc/$Uganda_NPS_W4_gdp_ppp_dollar
-lab var ccf_2ppp "currency conversion factor - 2017 $GDP PPP"
+lab var ccf_2ppp "currency conversion factor - 2021 $GDP PPP"
 
 *Poverty indicators 
 gen poverty_under_190 = (daily_percap_cons < $Uganda_NPS_W4_poverty_threshold)
@@ -5185,7 +5184,7 @@ keep hhid fhh poverty* clusterid strataid *weight* *wgt* region region sregion d
 *What about harvested_*, 
 
 
-gen ssp = (farm_size_agland <= 2 & farm_size_agland != 0) & (nb_cows_today <= 10 & nb_smallrum_today <= 10 & nb_chickens_today <= 50) // This line is for HH vars only; rest for all three
+gen ssp = (farm_size_agland <= 2 & farm_size_agland != 0) & (nb_cows_today <= 10 & nb_smallrum_today <= 10 & nb_chickens_today <= 50) if ag_hh==1
 ren weight weight_sample
 ren weight_pop_rururb weight
 la var weight_sample "Original survey weight"
@@ -5386,13 +5385,13 @@ foreach v of varlist  plot_productivity  plot_labor_prod {
 
 ****Currency Conversion Factors***
 gen ccf_loc = (1/$Uganda_NPS_W4_inflation) 
-lab var ccf_loc "currency conversion factor - 2017 $UGX"
+lab var ccf_loc "currency conversion factor - 2021 $UGX"
 gen ccf_usd = ccf_loc/$Uganda_NPS_W4_exchange_rate
-lab var ccf_usd "currency conversion factor - 2017 $USD"
+lab var ccf_usd "currency conversion factor - 2021 $USD"
 gen ccf_1ppp = ccf_loc/$Uganda_NPS_W4_cons_ppp_dollar
-lab var ccf_1ppp "currency conversion factor - 2017 $Private Consumption PPP"
+lab var ccf_1ppp "currency conversion factor - 2021 $Private Consumption PPP"
 gen ccf_2ppp = ccf_loc/$Uganda_NPS_W4_gdp_ppp_dollar
-lab var ccf_2ppp "currency conversion factor - 2017 $GDP PPP"
+lab var ccf_2ppp "currency conversion factor - 2021 $GDP PPP"
 
 global monetary_val plot_value_harvest plot_productivity  plot_labor_prod 
 foreach p of global monetary_val {

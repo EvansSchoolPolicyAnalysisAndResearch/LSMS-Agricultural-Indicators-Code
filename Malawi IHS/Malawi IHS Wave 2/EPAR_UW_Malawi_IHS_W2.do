@@ -1025,7 +1025,7 @@ replace value_harvest_hh=price_kg_hh * kg_harvest if value_harvest_hh==.
 
 gen val_unit = value_harvest/quantity_harvested 
 gen val_kg = value_harvest/kg_harvest
-merge m:1 hhid using "${MWI_IHPS_W2_created_data}\Malawi_IHPS_W2_weights.dta", nogen keep(1 3) keepusing(weight)
+merge m:1 hhid using "${MWI_IHPS_W2_created_data}\MWI_IHPS_W2_weights.dta", nogen keep(1 3) keepusing(weight)
 gen harv_wt=quantity_harvested*weight
 
 
@@ -2880,14 +2880,12 @@ replace price_per_animal = price_median_district if price_per_animal==. & obs_di
 replace price_per_animal = price_median_region if price_per_animal==. & obs_region >= 10
 replace price_per_animal = price_median_country if price_per_animal==. 
 lab var price_per_animal "Price per animal sold, imputed with local median prices if household did not sell"
-gen value_lvstck_sold = price_per_animal * number_sold
-gen value_livestock_sales  = value_lvstck_sold
+gen value_livestock_sales = price_per_animal * number_sold
 
-collapse (sum) value_livestock_sales value_livestock_purchases value_lvstck_sold /*value_slaughtered*/, by (hhid)
+collapse (sum) value_livestock_sales value_livestock_purchases /*value_slaughtered*/, by (hhid)
 drop if hhid==""
 lab var value_livestock_sales "Value of livestock sold (live)"
 lab var value_livestock_purchases "Value of livestock purchases"
-lab var value_lvstck_sold "Value of livestock sold live" 
 save "${MWI_IHPS_W2_created_data}\MWI_IHPS_W2_livestock_sales", replace 
 
 *TLU (Tropical Livestock Units)
@@ -3017,7 +3015,7 @@ merge 1:1 hhid using "${MWI_IHPS_W2_created_data}\MWI_IHPS_W2_TLU.dta", nogen
 recode value_milk_produced (.=0)
 recode value_other_produced (.=0)
 recode value_eggs_produced (.=0)
-gen livestock_income = value_lvstck_sold + /*value_slaughtered*/ - value_livestock_purchases /*
+gen livestock_income = value_livestock_sales + /*value_slaughtered*/ - value_livestock_purchases /*
 */ + (value_milk_produced + value_eggs_produced + value_other_produced + sales_manure) /*
 */ - (cost_hired_labor_livestock + cost_fodder_livestock + cost_vaccines_livestock + cost_othervet_livestock + cost_input_livestock)
 lab var livestock_income "Net livestock income"
@@ -5316,8 +5314,8 @@ merge 1:1 hhid  using "${MWI_IHPS_W2_created_data}/MWI_IHPS_W2_herd_characterist
 merge 1:1 hhid  using "${MWI_IHPS_W2_created_data}/MWI_IHPS_W2_TLU_Coefficients.dta", nogen
 merge 1:1 hhid  using "${MWI_IHPS_W2_created_data}/MWI_IHPS_W2_livestock_expenses_animal.dta", nogen 
 
-recode /*value_slaughtered*/ value_lvstck_sold value_livestock_purchases value_milk_produced value_eggs_produced value_other_produced /*sales_dung*/ sales_manure cost_hired_labor_livestock cost_fodder_livestock cost_vaccines_livestock /*cost_water_livestock*/ (.=0) 
-gen livestock_income = /*value_slaughtered +*/ value_lvstck_sold - value_livestock_purchases + (value_milk_produced + value_eggs_produced + value_other_produced + /*sales_dung +*/ sales_manure) - (cost_hired_labor_livestock + cost_fodder_livestock + cost_vaccines_livestock /*+ cost_water_livestock*/)
+recode /*value_slaughtered*/ value_livestock_sales value_livestock_purchases value_milk_produced value_eggs_produced value_other_produced /*sales_dung*/ sales_manure cost_hired_labor_livestock cost_fodder_livestock cost_vaccines_livestock /*cost_water_livestock*/ (.=0) 
+gen livestock_income = /*value_slaughtered +*/ value_livestock_sales - value_livestock_purchases + (value_milk_produced + value_eggs_produced + value_other_produced + /*sales_dung +*/ sales_manure) - (cost_hired_labor_livestock + cost_fodder_livestock + cost_vaccines_livestock /*+ cost_water_livestock*/)
 lab var livestock_income "Net livestock income"
 gen livestock_expenses = cost_hired_labor_livestock + cost_fodder_livestock + cost_vaccines_livestock /*+ cost_water_livestock*/ 
 ren cost_vaccines_livestock ls_exp_vac  
@@ -5485,10 +5483,10 @@ global empty_vars $empty_vars feed_grazing* water_source* lvstck_housed* lost_di
 merge 1:1 hhid  using "${MWI_IHPS_W2_created_data}/MWI_IHPS_W2_shannon_diversity_index.dta", nogen
 
 *Farm Production 
-recode value_crop_production  value_livestock_products /*value_slaughtered */value_lvstck_sold (.=0)
-gen value_farm_production = value_crop_production + value_livestock_products + /*value_slaughtered */value_lvstck_sold
+recode value_crop_production  value_livestock_products /*value_slaughtered */value_livestock_sales (.=0)
+egen value_farm_production = rowtotal(value_crop_production value_livestock_products value_livestock_sales)
 lab var value_farm_production "Total value of farm production (crops + livestock products)"
-gen value_farm_prod_sold = value_crop_sales + sales_livestock_products + value_livestock_sales 
+egen value_farm_prod_sold = rowtotal(value_crop_sales sales_livestock_products value_livestock_sales)
 lab var value_farm_prod_sold "Total value of farm production that is sold" 
 replace value_farm_prod_sold = 0 if value_farm_prod_sold==. & value_farm_production!=. 
 
@@ -6168,7 +6166,7 @@ keep hhid  fhh clusterid strataid *weight* *wgt* region district ta ea_id rural 
 */ *value_livestock_products* *value_livestock_sales* *total_cons* nb_cattle_today nb_cows_today nb_poultry_today nb_smallrum_today bottom_40_percap bottom_40_peraeq /*
 */ ccf_loc ccf_usd ccf_1ppp ccf_2ppp *sales_livestock_products area_plan* area_harv*  value_pro* *_rate* *value_sal* *pure* *inter*
 
-gen ssp = (farm_size_agland <= 2 & farm_size_agland != 0) & (nb_cows_today <= 10 & nb_smallrum_today <= 10 & nb_poultry_today <= 50)
+gen ssp = (farm_size_agland <= 2 & farm_size_agland != 0) & (nb_cows_today <= 10 & nb_smallrum_today <= 10 & nb_poultry_today <= 50) if ag_hh==1
 la var weight_sample "Original survey weight"
 la var weight "Weight adjusted to match rural/urban populations"
 

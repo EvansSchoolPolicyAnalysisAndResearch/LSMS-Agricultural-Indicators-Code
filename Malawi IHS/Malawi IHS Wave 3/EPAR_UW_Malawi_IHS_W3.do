@@ -1842,6 +1842,22 @@ use "${MWI_IHS_IHPS_W3_appended_data}\ag_mod_k.dta", clear
 	ren wagehired wagehired_plot
 	tempfile plot_wages 
 	save `plot_wages'
+	preserve
+	drop if gender=="child" | season==1 //Only considering adult wages during the main season here
+	gen wage_paid_aglabor_male = wagehired if gender=="male"
+	gen wage_paid_aglabor_female=wagehired if gender=="female"
+	collapse (mean) wage_paid_aglabor_male wage_paid_aglabor_female wage_paid_aglabor=wagehired, by(hhid)
+	gen hired_all=. 
+	la var hired_all "Number of person-days for hired laborers (cannot construct)"
+	gen hired_female=.
+	la var hired_female "Number of person-days for female laborers (cannot construct)"
+	gen hired_male = .
+	la var hired_male "Number of person-days for male laborers (cannot construct)"
+	lab var wage_paid_aglabor "Daily agricultural wage paid for hired labor (local currency)"
+	lab var wage_paid_aglabor_female "Daily agricultural wage paid for hired labor - female workers(local currency)"
+	lab var wage_paid_aglabor_male "Daily agricultural wage paid for hired labor - male workers (local currency)"
+	save "${MWI_IHS_IHPS_W3_created_data}/MWI_IHS_IHPS_W3_ag_wage.dta", replace
+	restore
 	collapse (mean) wagehired=wagehired_plot, by(hhid season gender)
 	merge m:1 hhid using "${MWI_IHS_IHPS_W3_created_data}/MWI_IHS_IHPS_W3_weights.dta", nogen keep(1 3)
 	gen obs=1
@@ -5735,26 +5751,26 @@ save "${MWI_IHS_IHPS_W3_created_data}\MWI_IHS_IHPS_W3_shannon_diversity_index.dt
 *CONSUMPTION -- SS Checked and Updated 11-21-2023, CG updated 8.21.24
 ******************************************************************************** 
 use "${MWI_IHS_IHPS_W3_appended_data}/IHS4 Consumption Aggregate.dta", clear 
-merge m:1 hhid using "${MWI_IHS_IHPS_W3_created_data}\Malawi_IHS_IHPS_W3_weights.dta", nogen keep (3)
+merge m:1 hhid using "${MWI_IHS_IHPS_W3_created_data}\MWI_IHS_IHPS_W3_weights.dta", nogen keep (3)
 ren smonth intmonth
 ren syear intyear
 describe
 collapse (mean) price_index_region=price_index [aw=weight], by(region intmonth intyear) //Modified from price_indexL in W4 since W4 is the Laspeyres monthly Spatial and Temporal Price Index (Base National April 2019) 
-save "${MWI_IHS_IHPS_W3_created_data}/Malawi_IHS_IHPS_W3_price_index_lookup_region.dta", replace
+save "${MWI_IHS_IHPS_W3_created_data}/MWI_IHS_IHPS_W3_price_index_lookup_region.dta", replace
 
 use "${MWI_IHS_IHPS_W3_appended_data}/IHS4 Consumption Aggregate.dta", clear 
-merge m:1 hhid using "${MWI_IHS_IHPS_W3_created_data}\Malawi_IHS_IHPS_W3_weights.dta", nogen keep (3)
+merge m:1 hhid using "${MWI_IHS_IHPS_W3_created_data}\MWI_IHS_IHPS_W3_weights.dta", nogen keep (3)
 ren smonth intmonth 
 ren syear intyear 
 collapse (mean) price_index_district=price_index [aw=weight], by(district region intmonth intyear)
 fillin district intmonth intyear 
 bys district : egen regnm = min(region)
 replace region = regnm if region==.
-merge m:1 region intmonth intyear using "${MWI_IHS_IHPS_W3_created_data}/Malawi_IHS_IHPS_W3_price_index_lookup_region.dta", nogen keep (3)
+merge m:1 region intmonth intyear using "${MWI_IHS_IHPS_W3_created_data}/MWI_IHS_IHPS_W3_price_index_lookup_region.dta", nogen keep (3)
 gen price_index=price_index_district
 replace price_index=price_index_region if price_index ==.
 keep district intmonth intyear price_index
-save "${MWI_IHS_IHPS_W3_created_data}/Malawi_IHS_IHPS_W3_price_index_lookup.dta", replace
+save "${MWI_IHS_IHPS_W3_created_data}/MWI_IHS_IHPS_W3_price_index_lookup.dta", replace
 
 use "${MWI_IHS_IHPS_W3_appended_data}\hh_metadata.dta", clear
 merge 1:1 hhid using "${MWI_IHS_IHPS_W3_appended_data}\hh_mod_a_filt.dta", nogen
@@ -5768,8 +5784,8 @@ reshape long interviewdate, i(district hhid) j(int_mod) string
 gen intmonth= regexs(2) if regexm(interviewdate, "([0-9]{4})-([0-9]{2})-([0-9]{2})")
 gen intyear = regexs(1) if regexm(interviewdate, "([0-9]{4})-([0-9]{2})-([0-9]{2})")
 destring intmonth intyear, replace
-merge m:1 district intmonth intyear using "${MWI_IHS_IHPS_W3_created_data}/Malawi_IHS_IHPS_W3_price_index_lookup.dta", nogen keep(1 3) 
-save "${MWI_IHS_IHPS_W3_created_data}/Malawi_IHS_IHPS_W3_price_index_lookup_module.dta", replace
+merge m:1 district intmonth intyear using "${MWI_IHS_IHPS_W3_created_data}/MWI_IHS_IHPS_W3_price_index_lookup.dta", nogen keep(1 3) 
+save "${MWI_IHS_IHPS_W3_created_data}/MWI_IHS_IHPS_W3_price_index_lookup_module.dta", replace
 
 use "${MWI_IHS_IHPS_W3_appended_data}\hh_mod_g1.dta", clear
 preserve 
@@ -5804,12 +5820,12 @@ gen size_own=hh_g06c
 ren hh_g02 itemcode
 //recode qty* (.=0)
 //drop if qty_purchase==0 & qty_own==0 & qty_gift==0
-merge m:1 hhid using "${MWI_IHS_IHPS_W3_created_data}\Malawi_IHS_IHPS_W3_weights.dta", nogen keepusing(weight region district ta ea)	
+merge m:1 hhid using "${MWI_IHS_IHPS_W3_created_data}\MWI_IHS_IHPS_W3_weights.dta", nogen keepusing(weight region district ta ea)	
 keep hhid weight price_unit unit* qty* size* itemcode region district ta ea
 gen country = "MWI" 
-save "${MWI_IHS_IHPS_W3_created_data}/Malawi_IHS_IHPS_W3_cons_value.dta", replace
+save "${MWI_IHS_IHPS_W3_created_data}/MWI_IHS_IHPS_W3_cons_value.dta", replace
 
-use "${MWI_IHS_IHPS_W3_created_data}/Malawi_IHS_IHPS_W3_cons_value.dta", clear
+use "${MWI_IHS_IHPS_W3_created_data}/MWI_IHS_IHPS_W3_cons_value.dta", clear
 drop if unit_purchase=="23"
 drop if price_unit==0 | price_unit==. 
 gen obs=price_unit!=.
@@ -5827,7 +5843,7 @@ gen obs_weight=weight
 	restore
 	}
 	
-use "${MWI_IHS_IHPS_W3_created_data}/Malawi_IHS_IHPS_W3_cons_value.dta", clear
+use "${MWI_IHS_IHPS_W3_created_data}/MWI_IHS_IHPS_W3_cons_value.dta", clear
 drop price_unit 
 gen price_unit=.
 //recode price_unit (0=.)
@@ -5844,14 +5860,14 @@ replace price_unit = price_unit_hhid if price_unit_hhid !=.
 replace price_unit = price_unit_country if price_unit==.
 gen val_fdcons=price_unit*qty
 
-save "${MWI_IHS_IHPS_W3_created_data}/Malawi_IHS_IHPS_W3_food_consumption_items.dta", replace 
+save "${MWI_IHS_IHPS_W3_created_data}/MWI_IHS_IHPS_W3_food_consumption_items.dta", replace 
 gen val_alc=val_fdcons if inrange(itemcode, 911,916)
 replace val_fdcons=. if inrange(itemcode, 911,916)
 collapse (sum) val_fdcons val_alc, by (hhid) 
 gen int_mod = "g"
 gen annual_val_fdcons=(val_fdcons*52)
 gen annual_val_alc = val_alc*52
-save "${MWI_IHS_IHPS_W3_created_data}/Malawi_IHS_IHPS_W3_food_consumption.dta", replace
+save "${MWI_IHS_IHPS_W3_created_data}/MWI_IHS_IHPS_W3_food_consumption.dta", replace
 
 use "${MWI_IHS_IHPS_W3_appended_data}\hh_mod_i1.dta", clear
 append using "${MWI_IHS_IHPS_W3_appended_data}\hh_mod_i2.dta"
@@ -5865,9 +5881,9 @@ append using "${MWI_IHS_IHPS_W3_appended_data}\hh_mod_g1.dta"
 append using "${MWI_IHS_IHPS_W3_appended_data}\hh_mod_g2.dta"
 append using "${MWI_IHS_IHPS_W3_appended_data}\hh_mod_g3.dta"
 replace int_mod="g" if int_mod==""
-append using "${MWI_IHS_IHPS_W3_created_data}/Malawi_IHS_IHPS_W3_food_consumption.dta"
+append using "${MWI_IHS_IHPS_W3_created_data}/MWI_IHS_IHPS_W3_food_consumption.dta"
 append using `othfoods'
-merge m:1 hhid int_mod using "${MWI_IHS_IHPS_W3_created_data}/Malawi_IHS_IHPS_W3_price_index_lookup_module.dta", nogen keep(1 3) 
+merge m:1 hhid int_mod using "${MWI_IHS_IHPS_W3_created_data}/MWI_IHS_IHPS_W3_price_index_lookup_module.dta", nogen keep(1 3) 
 
 
 //Alc/Tobacco (April 2016 price) annual consumption. Tobacco and alcohol for the past week is calculated for the whole year (52 weeks). Therefore, measures are multiplied by 52.
@@ -5917,7 +5933,7 @@ foreach v in `vars' {
 }
 collapse (sum) rexp*, by(hhid)
 recode rexp* (0=.)
-merge 1:1 hhid using "${MWI_IHS_IHPS_W3_created_data}/Malawi_IHS_IHPS_W3_weights.dta", nogen keep (1 3)
+merge 1:1 hhid using "${MWI_IHS_IHPS_W3_created_data}/MWI_IHS_IHPS_W3_weights.dta", nogen keep (1 3)
 /*
 //Winsorize at top 1% (approximation of the WB strategy?)
 foreach v in `vars' {
@@ -5934,10 +5950,10 @@ gen total_cons = expagg
 replace total_cons = expagg_new if total_cons==.
 
 *Our method produces differnces from the World Bank consumption method. This code allows you to compare both panel and cross section. 
-save "${MWI_IHS_IHPS_W3_created_data}/Malawi_IHS_IHPS_W3_aggregate_consumption.dta", replace
+save "${MWI_IHS_IHPS_W3_created_data}/MWI_IHS_IHPS_W3_aggregate_consumption.dta", replace
 
-//use "${MWI_IHS_IHPS_W3_created_data}/Malawi_IHS_IHPS_W3_agg_consumption.dta", clear 
-use "${MWI_IHS_IHPS_W3_created_data}/Malawi_IHS_IHPS_W3_aggregate_consumption.dta", clear
+//use "${MWI_IHS_IHPS_W3_created_data}/MWI_IHS_IHPS_W3_agg_consumption.dta", clear 
+use "${MWI_IHS_IHPS_W3_created_data}/MWI_IHS_IHPS_W3_aggregate_consumption.dta", clear
 gen peraeq_cons = (total_cons / adulteq)
 
 gen percapita_cons = (total_cons / hh_members)
@@ -6313,9 +6329,9 @@ merge 1:1 hhid using "${MWI_IHS_IHPS_W3_created_data}/MWI_IHS_IHPS_W3_shannon_di
 
 *Farm Production 
 recode value_crop_production  value_livestock_products value_livestock_sales (.=0)
-gen value_farm_production = value_crop_production + value_livestock_products + value_livestock_sales
+egen value_farm_production = rowtotal(value_crop_production value_livestock_products value_livestock_sales)
 lab var value_farm_production "Total value of farm production (crops + livestock products)"
-gen value_farm_prod_sold = value_crop_sales + sales_livestock_products +  value_livestock_sales
+egen value_farm_prod_sold = rowtotal(value_crop_sales sales_livestock_products value_livestock_sales)
 lab var value_farm_prod_sold "Total value of farm production that is sold" 
 replace value_farm_prod_sold = 0 if value_farm_prod_sold==. & value_farm_production!=.
 
@@ -6995,7 +7011,7 @@ keep hhid fhh clusterid strataid *weight* *wgt* /*zone*/ region district ea rura
 */ *value_livestock_products* *value_livestock_sales* *total_cons* nb_cattle_today nb_cows_today nb_largerum_today nb_smallrum_today nb_chickens_today nb_poultry_today bottom_40_percap bottom_40_peraeq /*
 */ ccf_loc ccf_usd ccf_1ppp ccf_2ppp *sales_livestock_products area_plan* area_harv* *_rate* *value_pro* *value_sal* *inter*
  
-gen ssp = (farm_size_agland <= 2 & farm_size_agland != 0) & (nb_cows_today <= 10 & nb_smallrum_today <= 10 & nb_chickens_today <= 50) // This line is for HH vars only; rest for all three
+gen ssp = (farm_size_agland <= 2 & farm_size_agland != 0) & (nb_cows_today <= 10 & nb_smallrum_today <= 10 & nb_chickens_today <= 50) if ag_hh==1 // This line is for HH vars only; rest for all three
 
 
 //////////Identifier Variables ////////

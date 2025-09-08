@@ -4,7 +4,7 @@
 
 *Author(s)		: Didier Alia & C. Leigh Anderson; uw.eparx@uw.edu
 				  
-*Date			: March 31st, 2025
+*Date			: September 5th, 2025
 *Dataset version: ETH_2015_ESS_v02_M_STATA8
 ----------------------------------------------------------------------------------------------------------------------------------------------------*/
 
@@ -1253,23 +1253,23 @@ recode obs* (.=0)
 	replace price_kg_hh=price_kg if price_kg==.
 
 	* VALUE HARVEST
-	gen quant_harv_kg = qty_harv if unit == 1
-	replace quant_harv_kg = qty_harv * conversion if unit > 1
+	gen kg_harvest = qty_harv if unit == 1
+	replace kg_harvest = qty_harv * conversion if unit > 1
 	gen value_harvest = qty_harv*price_unit if unit>1
-	replace value_harvest = quant_harv_kg*price_kg if value_harvest==.
+	replace value_harvest = kg_harvest*price_kg if value_harvest==.
 	
 	* For still missing value_harvest, use country prices even if we do not have enough obs for a reliable median - may be methodologically questionable 
 	/*
 	replace value_harvest = qty_harv*price_unit_country if unit>1 & value_harvest == .  // 119 changes
-	replace value_harvest = quant_harv_kg*price_kg_country if value_harvest == . // 1,114 changes
+	replace value_harvest = kg_harvest*price_kg_country if value_harvest == . // 1,114 changes
 	*/
 	
 	gen value_harvest_hh=qty_harv*price_unit_hh 
-	replace value_harvest_hh=quant_harv_kg * price_kg_hh if value_harvest_hh==.
+	replace value_harvest_hh=kg_harvest * price_kg_hh if value_harvest_hh==.
 	replace value_harvest_hh=value_harvest if value_harvest_hh==.
 	replace value_harvest=value_harvest_hh if value_harvest==. 
 	
-	keep region zone woreda kebele ea hhid holder_id parcel_id field_id purestand /*crops_plot*/ crop_code val* quant* cultivated ha_planted ha_harvest number_trees_planted percent_field field_size /*gps_meas*/ lost* use_imprv_seed
+	keep region zone woreda kebele ea hhid holder_id parcel_id field_id purestand /*crops_plot*/ crop_code val* kg_harvest cultivated ha_planted ha_harvest number_trees_planted percent_field field_size /*gps_meas*/ lost* use_imprv_seed
 	bys hhid holder_id parcel_id field_id : egen percent_area = sum(percent_field)
 	bys hhid holder_id parcel_id field_id : gen percent_inputs = percent_field / percent_area
 	drop percent_area //Assumes that inputs are +/- distributed by the area planted. Probably not true for mixed tree/field crops, but reasonable for plots that are all field crops
@@ -2077,7 +2077,7 @@ use "${Ethiopia_ESS_W3_created_data}/Ethiopia_ESS_W3_all_fields.dta", clear
 	drop dup 
 	merge 1:1 hhid holder_id parcel_id field_id using "${Ethiopia_ESS_W3_created_data}/Ethiopia_ESS_W3_field_decision_makers.dta", nogen keep(1 3) keepusing(dm_gender)
 	ren ha_planted monocrop_ha
-	ren quant_harv_kg kgs_harv_mono
+	ren kg_harvest kgs_harv_mono
 	ren value_harvest val_harv_mono
 
 	
@@ -4041,7 +4041,7 @@ save "${Ethiopia_ESS_W3_created_data}/Ethiopia_ESS_W3_trees.dta", replace
 use "${Ethiopia_ESS_W3_created_data}/Ethiopia_ESS_W3_all_fields.dta", clear
 //Legacy stuff- agquery gets handled above.
 gen no_harvest=ha_harvest==.
-ren quant_harv_kg harvest 
+ren kg_harvest harvest 
 ren ha_planted area_plan
 ren ha_harvest area_harv 
 gen mixed = "inter"  //Note to adjust this for lost crops 
@@ -4864,10 +4864,10 @@ merge 1:1 hhid using "${Ethiopia_ESS_W3_created_data}/Ethiopia_ESS_W3_livestock_
 merge 1:1 hhid using "${Ethiopia_ESS_W3_created_data}/Ethiopia_ESS_W3_shannon_diversity_index.dta", nogen keep(1 3)
 
 *Farm Production 
-recode value_crop_production  value_livestock_products value_slaughtered  value_lvstck_sold (.=0)
-gen value_farm_production = value_crop_production + value_livestock_products + value_slaughtered + value_lvstck_sold
+// recode value_crop_production  value_livestock_products value_slaughtered  value_lvstck_sold (.=0)
+egen value_farm_production = rowtotal(value_crop_production value_livestock_products value_slaughtered value_lvstck_sold)
 lab var value_farm_production "Total value of farm production (crops + livestock products)"
-gen value_farm_prod_sold = value_crop_sales + sales_livestock_products + value_livestock_sales 
+egen value_farm_prod_sold = rowtotal(value_crop_sales sales_livestock_products value_livestock_sales)
 lab var value_farm_prod_sold "Total value of farm production that is sold" 
 replace value_farm_prod_sold = 0 if value_farm_prod_sold==. & value_farm_production!=.
 
@@ -5509,13 +5509,13 @@ replace bottom_40_peraeq = 1 if r(r1) > w_daily_peraeq_cons & rural==1
 
 ****Currency Conversion Factors*** 
 gen ccf_loc = 1 / $Ethiopia_ESS_W3_inflation
-lab var ccf_loc "currency conversion factor - 2017 $ETB"
+lab var ccf_loc "currency conversion factor - 2021 $ETB"
 gen ccf_usd = ccf_loc / $Ethiopia_ESS_W3_exchange_rate 
-lab var ccf_usd "currency conversion factor - 2017 $USD"
+lab var ccf_usd "currency conversion factor - 2021 $USD"
 gen ccf_1ppp = ccf_loc / $Ethiopia_ESS_W3_cons_ppp_dollar
-lab var ccf_1ppp "currency conversion factor - 2017 $Private Consumption PPP"
+lab var ccf_1ppp "currency conversion factor - 2021 $Private Consumption PPP"
 gen ccf_2ppp = ccf_loc / $Ethiopia_ESS_W3_gdp_ppp_dollar
-lab var ccf_2ppp "currency conversion factor - 2017 $GDP PPP"
+lab var ccf_2ppp "currency conversion factor - 2021 $GDP PPP"
 
 gen poverty_under_190 = (daily_percap_cons < $Ethiopia_ESS_W3_poverty_190)
 la var poverty_under_190 "Household per-capita consumption is below $1.90 in 2011 $ PPP"
@@ -5551,7 +5551,7 @@ foreach v of varlist $empty_vars {
 }
 */
 
-gen ssp = (farm_size_agland <= 2 & farm_size_agland != 0) & (nb_cows_today <= 10 & nb_smallrum_today <= 10 & nb_chickens_today <= 50) // This line is for HH vars only; rest for all three
+gen ssp = (farm_size_agland <= 2 & farm_size_agland != 0) & (nb_cows_today <= 10 & nb_smallrum_today <= 10 & nb_chickens_today <= 50) if ag_hh==1 // This line is for HH vars only; rest for all three
 ren weight weight_sample
 ren weight_pop_rururb weight
 la var weight_sample "Original survey weight"

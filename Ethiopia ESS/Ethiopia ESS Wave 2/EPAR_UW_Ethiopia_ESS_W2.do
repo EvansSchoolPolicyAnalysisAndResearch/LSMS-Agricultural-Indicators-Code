@@ -4,8 +4,7 @@
 
 *Author(s)		: Didier Alia & C. Leigh Anderson; uw.eparx@uw.edu
 
-				  All coding errors remain ours alone.
-*Date			: March 31st, 2025
+*Date			: September 5th, 2025
 *Dataset Version: ETH_2013_ESS_v02_M_Stata8
 ----------------------------------------------------------------------------------------------------------------------------------------------------*/
 
@@ -31,7 +30,7 @@
 *The processed files include all households, individuals, and plots in the sample.
 *Toward the end of the do.file, a block of code estimates summary statistics (mean, standard error of the mean, minimum, first quartile, median, third quartile, maximum) 
 *of final indicators, restricted to the rural households only, disaggregated by gender of head of household or plot manager.
-*The results are outputted in the excel file "Ethiopia_ESS_W2_summary_stats.rtf" in the "Final DTA files" folder.
+*The results are outputted in the excel file "Ethiopia_ESS_W2_summary_stats.xls" in the "Final DTA files" folder.
 *It is possible to modify the condition  "if rural==1" in the portion of code following the heading "SUMMARY STATISTICS" to generate all summary statistics for a different sub_population.
 
 *The following refer to running this Master do.file with EPAR's cleaned data files. Information on EPAR's cleaning and construction decisions is available in the documents
@@ -1233,13 +1232,13 @@ ren price_unit_hhid price_unit_hh
 	replace price_kg_hh=price_kg if price_kg==.
 
 	* VALUE HARVEST
-	gen quant_harv_kg = qty_harv if unit == 1
-	replace quant_harv_kg = qty_harv * conversion if unit > 1
+	gen kg_harvest = qty_harv if unit == 1
+	replace kg_harvest = qty_harv * conversion if unit > 1
 	gen value_harvest = qty_harv*price_unit if unit>1
-	replace value_harvest = quant_harv_kg*price_kg if value_harvest==.
+	replace value_harvest = kg_harvest*price_kg if value_harvest==.
 	
 	gen value_harvest_hh=qty_harv*price_unit_hh 
-	replace value_harvest_hh=quant_harv_kg * price_kg_hh if value_harvest_hh==.
+	replace value_harvest_hh=kg_harvest * price_kg_hh if value_harvest_hh==.
 	replace value_harvest_hh=value_harvest if value_harvest_hh==.
 	replace value_harvest=value_harvest_hh if value_harvest==. 
 
@@ -1247,7 +1246,7 @@ ren price_unit_hhid price_unit_hh
 bys hhid holder_id parcel_id field_id : egen area_plan= sum(ha_planted)
 gen percent_inputs = ha_planted / area_plan 
 drop if parcel_id == ""
-keep region zone woreda kebele ea hhid holder_id parcel_id field_id purestand /*crops_plot*/ crop_code val* quant* cultivated ha_planted ha_harvest number_trees_planted percent_inputs months_grown /*reason_loss*/ field_size /*gps_meas*/ lost* use*
+keep region zone woreda kebele ea hhid holder_id parcel_id field_id purestand /*crops_plot*/ crop_code val* kg_harvest cultivated ha_planted ha_harvest number_trees_planted percent_inputs months_grown /*reason_loss*/ field_size /*gps_meas*/ lost* use*
 
 merge m:1 hhid holder_id parcel_id field_id using "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_field_decision_makers.dta", nogen keep(1 3) keepusing(dm*) // 105 not matched
 order region zone woreda kebele ea hhid holder_id parcel_id field_id crop_code
@@ -2078,7 +2077,7 @@ use "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_all_fields.dta", clear
 	drop dup 
 	merge 1:1 hhid holder_id parcel_id field_id using "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_field_decision_makers.dta", nogen keep(1 3) keepusing(dm_gender)
 	ren ha_planted monocrop_ha
-	ren quant_harv_kg kgs_harv_mono
+	ren kg_harvest kgs_harv_mono
 	ren value_harvest val_harv_mono
 
 
@@ -4557,7 +4556,7 @@ save "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_trees.dta", replace
 use "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_all_fields.dta", clear
 //Legacy stuff- agquery gets handled above.
 gen no_harvest=ha_harvest==.
-ren quant_harv_kg harvest 
+ren kg_harvest harvest 
 ren ha_planted area_plan
 ren ha_harvest area_harv 
 gen mixed = "inter"  //Note to adjust this for lost crops 
@@ -5413,10 +5412,10 @@ global empty_vars $empty_vars feed_grazing* water_source_nat* water_source_const
 merge 1:1 hhid using "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_shannon_diversity_index.dta", nogen keep(1 3)
 
 *Farm Production 
-recode value_crop_production  value_livestock_products value_slaughtered  value_lvstck_sold (.=0)
-gen value_farm_production = value_crop_production + value_livestock_products + value_slaughtered + value_lvstck_sold
+// recode value_crop_production  value_livestock_products value_slaughtered  value_lvstck_sold (.=0)
+egen value_farm_production = rowtotal(value_crop_production value_livestock_products value_slaughtered value_lvstck_sold)
 lab var value_farm_production "Total value of farm production (crops + livestock products)"
-gen value_farm_prod_sold = value_crop_sales + sales_livestock_products + value_livestock_sales 
+egen value_farm_prod_sold = rowtotal(value_crop_sales sales_livestock_products value_livestock_sales)
 lab var value_farm_prod_sold "Total value of farm production that is sold" 
 replace value_farm_prod_sold = 0 if value_farm_prod_sold==. & value_farm_production!=.
 
@@ -6058,13 +6057,13 @@ replace bottom_40_peraeq = 1 if r(r1) > w_daily_peraeq_cons & rural==1
 
 ****Currency Conversion Factors*** (ETH)
 gen ccf_loc = 1 / $Ethiopia_ESS_W2_inflation
-lab var ccf_loc "currency conversion factor - 2017 $ETB"
+lab var ccf_loc "currency conversion factor - 2021 $ETB"
 gen ccf_usd = ccf_loc / $Ethiopia_ESS_W2_exchange_rate 
-lab var ccf_usd "currency conversion factor - 2017 $USD"
+lab var ccf_usd "currency conversion factor - 2021 $USD"
 gen ccf_1ppp = ccf_loc / $Ethiopia_ESS_W2_cons_ppp_dollar
-lab var ccf_1ppp "currency conversion factor - 2017 $Private Consumption PPP"
+lab var ccf_1ppp "currency conversion factor - 2021 $Private Consumption PPP"
 gen ccf_2ppp = ccf_loc / $Ethiopia_ESS_W2_gdp_ppp_dollar
-lab var ccf_2ppp "currency conversion factor - 2017 $GDP PPP"
+lab var ccf_2ppp "currency conversion factor - 2021 $GDP PPP"
 
 gen poverty_under_190 = (daily_percap_cons < $Ethiopia_ESS_W2_poverty_190)
 la var poverty_under_19 "Household per-capita consumption is below $1.90 in 2011 $ PPP"
@@ -6082,7 +6081,7 @@ drop harvest_* w_harvest_*
 *Removing intermediate variables to get below 5,000 vars (ETH)
 keep hhid fhh clusterid strataid *weight* *wgt* region zone woreda /*city subcity*/ kebele ea /*household*/ rural farm_size* *total_income* *percapita_income* *percapita_cons* *daily_percap_cons* *peraeq_cons* *daily_peraeq_cons* *income* *share* *proportion_cropvalue_sold *farm_size_agland hh_members adulteq *labor_family *labor_hired use_inorg_fert vac_* feed* water* lvstck_housed* ext_* use_fin_* lvstck_holding* *mortality_rate* *lost_disease* disease* any_imp* /*formal_land_rights_hh ALT:MISSING*/ *livestock_expenses* *ls_exp_vac* *prop_farm_prod_sold *hrs_*   /*months_food_insec*/ *value_assets* hhs_* *dist_agrodealer encs* num_crops_* multiple_crops* imprv_seed_* hybrid_seed_* *labor_total *farm_area *labor_productivity* *land_productivity* *wage_paid_aglabor* *labor_hired ar_h_wgt_* *yield_hv_* ar_pl_wgt_* *yield_pl_* *liters_per_* milk_animals poultry_owned *costs_dairy* *cost_per_lit* *egg_poultry_year* *ha_planted* *cost_expli_hh* *cost_expli_ha* /* *monocrop_ha* */ *kgs_harv_mono* *cost_total_ha* *_exp* poverty* *value_crop_production* *value_harv* *value_crop_sales* *value_sold* *kgs_harvest* *total_planted_area* *total_harv_area* *all_area_* grew_* agactivities_hh ag_hh crop_hh livestock_hh fishing_hh *_milk_produced* *eggs_total_year *value_eggs_produced* *value_livestock_products* *value_livestock_sales* *total_cons* nb_largerum_today nb_cattle_today nb_poultry_today bottom_40_percap bottom_40_peraeq  ccf_loc ccf_usd ccf_1ppp ccf_2ppp *sales_livestock_products nb_cows_today lvstck_holding_srum  nb_smallrum_today nb_chickens_today  *value_pro* *value_sal* *value_livestock_sales*  *w_value_farm_production* *value_slaughtered* *value_lvstck_sold* *value_crop_sales* *sales_livestock_products* *value_livestock_sales* animals_lost12months *area_plan* *_inter_* /*MGM 8.29.2024: adding in additional indicators for ATA estimates*/ hh_work_age hh_women hh_adult_women tlu_today use_* crop_rotation *rate*
 
-gen ssp = (farm_size_agland <= 2 & farm_size_agland != 0) & (nb_cows_today <= 10 & nb_smallrum_today <= 10 & nb_chickens_today <= 50) // This line is for HH vars only; rest for all three
+gen ssp = (farm_size_agland <= 2 & farm_size_agland != 0) & (nb_cows_today <= 10 & nb_smallrum_today <= 10 & nb_chickens_today <= 50) if ag_hh==1 // This line is for HH vars only; rest for all three
 ren weight weight_sample
 ren weight_pop_rururb weight
 la var weight_sample "Original survey weight"

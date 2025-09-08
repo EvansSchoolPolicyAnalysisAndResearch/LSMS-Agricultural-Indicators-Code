@@ -377,12 +377,14 @@ gen season=0
 append using "${Tanzania_NPS_W5_raw_data}/ag_sec_5b.dta"
 append using "${Tanzania_NPS_W5_raw_data}/ag_sec_7b.dta"
 recode season(.=1)
-
 ren cropid crop_code
+
 recode ag7a_03 ag7b_03 ag5a_02 ag5b_02 (.=0)
 egen quantity_sold=rowtotal(ag7a_03 ag7b_03 ag5a_02 ag5b_02) 
 recode ag7a_04 ag7b_04 ag5a_03 ag5b_03 (.=0)
 egen value_sold = rowtotal(ag7a_04 ag7b_04 ag5a_03 ag5b_03)
+preserve 
+recode crop_code (31 32=931)
 collapse (sum) quantity_sold value_sold, by (y5_hhid crop_code)
 recode quantity_sold value_sold (0=.) if quantity_sold==0
 lab var quantity_sold "Kgs sold of this crop, summed over both seasons"
@@ -391,9 +393,11 @@ gen price_kg = value_sold / quantity_sold
 drop if price_kg==.
 lab var price_kg "Price per kg sold"
 save "${Tanzania_NPS_W5_created_data}/Tanzania_NPS_W5_crop_sales.dta", replace
+restore 
 
+gen price_kg = value_sold / quantity_sold
 merge m:1 y5_hhid using "${Tanzania_NPS_W5_created_data}/Tanzania_NPS_W5_weights.dta", nogen keep(1 3) keepusing(region district ward ea weight_pop_rururb)
-gen weight=quantity_sold*weight_pop_rururb
+ren weight_pop_rururb weight
 gen obs=price_kg !=. & weight!=.
 foreach i in region district ward ea y5_hhid {
 preserve
@@ -407,32 +411,6 @@ collapse (median) val_kg_country = price_kg (rawsum) obs_country_kg=obs [aw=weig
 tempfile val_kg_country_median
 save `val_kg_country_median'
 restore
-
- /*
-//Old code doesn't ask who controls the plot, just who controls the harvest
-use "${Tanzania_NPS_W5_raw_data}/ag_sec_4a.dta", clear //crops by plot, long rainy season
-	append using "${Tanzania_NPS_W5_raw_data}/ag_sec_6a.dta" //permanent crops, long rainy season
-	gen season=0
-	append using "${Tanzania_NPS_W5_raw_data}/ag_sec_4b.dta" //short rainy season
-	append using "${Tanzania_NPS_W5_raw_data}/ag_sec_6b.dta" 
-	replace season=1 if season==.
-gen use_imprv_seed= ag4a_08==1 | ag4b_08==1 | ag4a_08==3 | ag4b_08==3
-
-ren cropid crop_code
-ren ag6a_02 number_trees_planted
-replace number_trees_planted = ag6b_02 if number_trees_planted==.
-sort y5_hhid plot_id crop_code
-bys y5_hhid plot_id season : gen cropid = _n //Get number of crops grown on each plot in each season
-bys y5_hhid plot_id season : egen num_crops = max(cropid)
-gen purestand = 1 if ag4a_04==2 //intercrop questions, 2 = not intercropped
-replace purestand = 1 if ag4b_04==2 & purestand==.
-replace purestand = 1 if ag6a_05==2 & purestand==.
-replace purestand = 1 if ag6b_05==2 & purestand==.
-replace purestand = 1 if num_crops==1 //141 instances where cropping system was reported as other than monocropping, but only one crop was reported
-//At this point, we have about 830 observations that reported monocropping but have something else on the plot
-recode purestand (.=0)
-replace purestand = 0 if num_crops > 1 //ALT: while it may be worth noting when multiple crops on the same plot are all listed as purestand (indicating that they were probably cultivated separately), for the purposes of accounting for inputs, we should consider them intercropped.
-*/
 
 //New code. For Wave 5, the ag6a_01 variable doesn't exist. Terefore, the first four classifications are dropped 
 use "${Tanzania_NPS_W5_raw_data}/ag_sec_6a.dta", clear // permanent crops, long rainy season
@@ -576,44 +554,6 @@ replace ha_harvest = 0 if kg_harvest==.
 gen ha_harvest_adj = ha_harvest/est_ha_planted * ha_planted if over_harvest==1 & lost_plants==1 
 replace ha_harvest = ha_harvest_adj if ha_harvest_adj !=. & ha_harvest_adj<= ha_harvest
 replace ha_harvest = ha_planted if ha_harvest_adj !=. & ha_harvest_adj > ha_harvest //14 plots where this clever plan did not work; going with area planted because that's all we got for these guys
-
-
-/*
-ren ag4a_28 value_harvest // called 4a Q29 in instrument
-replace value_harvest=ag4b_29 if value_harvest==.
-gen val_kg = value_harvest/kg_harvest
-//Bringing in the permanent crop price data.
-merge m:1 y5_hhid crop_code using "${Tanzania_NPS_W5_created_data}/Tanzania_NPS_W5_crop_sales.dta", nogen keep(1 3) keepusing(price_kg)
-replace price_kg = val_kg if price_kg==.
-drop val_kg
-ren price_kg val_kg //Use observed sales prices where available, farmer estimated values where not 
-gen obs=val_kg>0 & val_kg!=. //ALT: 11/11/21: Previously this used amount harvested as the basis for observations; updated to val_kg
-merge m:1 y5_hhid using "${Tanzania_NPS_W5_created_data}/Tanzania_NPS_W5_hhids.dta", nogen keep(1 3)
-gen plotweight=ha_planted*weight
-foreach i in region district ward village ea y5_hhid {
-preserve
-	bys crop_code `i' : egen obs_`i'_kg = sum(obs)
-	collapse (median) val_kg_`i'=val_kg [aw=plotweight], by (`i' crop_code obs_`i'_kg)
-	tempfile val_kg_`i'_median
-	save `val_kg_`i'_median'
-restore
-merge m:1 `i' crop_code using `val_kg_`i'_median', nogen keep(1 3)
-}
-preserve
-collapse (median) val_kg_country = val_kg (sum) obs_country_kg=obs [aw=plotweight], by(crop_code)
-tempfile val_kg_country_median
-save `val_kg_country_median'
-restore
-merge m:1 crop_code using `val_kg_country_median',nogen keep(1 3)
-foreach i in country region district ward village ea {
-	replace val_kg = val_kg_`i' if obs_`i'_kg >9
-}
-	replace val_kg = val_kg_y5_hhid if val_kg_y5_hhid!=.
-	replace value_harvest=val_kg*kg_harvest if value_harvest==.
-	replace kg_harvest = . if strmatch(y5_hhid, "0015-001-001") & plot_id==4 //1 very strange outlier, 800000 kg cabbage
-	replace value_harvest=. if strmatch(y5_hhid, "0015-001-001") & plot_id==4 
-	*/
-	
 	
 merge m:1 y5_hhid using "${Tanzania_NPS_W5_created_data}/Tanzania_NPS_W5_hhids.dta", nogen keep(1 3)
 foreach i in region district ward ea y5_hhid {
@@ -643,35 +583,31 @@ preserve
 	save "${Tanzania_NPS_W5_created_data}/Tanzania_NPS_W5_plot_value_prod.dta", replace //Needed to estimate plot rent values
 restore
 
-gen lost_drought = inlist(ag4a_23, 1) | inlist(ag4b_23, 1)
+	gen lost_drought = inlist(ag4a_23, 1) | inlist(ag4b_23, 1)
 	gen lost_flood = inlist(ag4a_23, 2) | inlist(ag4b_23, 2) 
 	gen lost_crop = lost_flood | lost_drought
 
 	gen n_crops=1
 	gen no_harvest=ha_harvest==. 
+	recode crop_code (31 32=931) //recoding for new consolidated crop bencwp (931) for combined beans and cowpeas 
+	label define CROPID 931 "Beans-Cowpeas", add
+	label values crop_code CROPID
 	collapse (max) no_harvest  (sum) kg_harvest imprv_seed_use value_harvest* ha_planted ha_harvest number_trees_planted n_crops (min) purestand (max) use_imprv_seed, by(region district season ward ea y5_hhid plot_id crop_code field_size total_ha_planted) 
-		merge m:1 y5_hhid plot_id season using "${Tanzania_NPS_W5_created_data}/Tanzania_NPS_W5_plot_decision_makers.dta", nogen keep(1 3) keepusing(dm*) //Drops the 3 hhs  we filtered out earlier
-		gen percent_field = ha_planted/total_ha_planted
-		gen percent_inputs = percent_field if percent_field!=0
-		recode percent_inputs (0=.)
-		gen missing_vals = percent_inputs==.
-		bys *hhid plot_id season : egen max_missing = max(missing_vals)
-		replace percent_inputs = . if max_missing == 1
-		drop missing_vals percent_field max_missing total_ha_planted
-		replace percent_inputs=round(percent_inputs,0.0001) //Getting rid of all the annoying 0.9999999999 etc.
-		recode ha_planted (0=.)
-		//Combining beans and cowpeas together into a single crop_code. 
-		tab crop_code if crop_code==31 | crop_code==32 
-		recode crop_code (31 32=931) //recoding for new consolidated crop bencwp (931) for combined beans and cowpeas 
-		label define crop_code 931 "Beans-Cowpeas", add
-		label values crop_code crop_code
-		tab crop_code if crop_code==931 // Check if crops combined 
-		
-		replace ha_harvest=. if (ha_harvest==0 & no_harvest==1) | (ha_harvest==0 & kg_harvest>0 & kg_harvest!=.)
-   replace kg_harvest = . if kg_harvest==0 & no_harvest==1
-   gen ha_harv_yld=ha_harvest if ha_planted >=0.05 & !inlist(crop_code, 302,303,304,305,306,19) //Excluding nonfood crops & seaweed 
-   gen ha_plan_yld=ha_planted if ha_planted >=0.05 & !inlist(crop_code, 302,303,304,305,306,19) 
-   drop no_harvest
+	merge m:1 y5_hhid plot_id season using "${Tanzania_NPS_W5_created_data}/Tanzania_NPS_W5_plot_decision_makers.dta", nogen keep(1 3) keepusing(dm*) //Drops the 3 hhs  we filtered out earlier
+	gen percent_field = ha_planted/total_ha_planted
+	gen percent_inputs = percent_field if percent_field!=0
+	recode percent_inputs (0=.)
+	gen missing_vals = percent_inputs==.
+	bys *hhid plot_id season : egen max_missing = max(missing_vals)
+	replace percent_inputs = . if max_missing == 1
+	drop missing_vals percent_field max_missing total_ha_planted
+	replace percent_inputs=round(percent_inputs,0.0001) //Getting rid of all the annoying 0.9999999999 etc.
+	recode ha_planted (0=.)
+	replace ha_harvest=. if (ha_harvest==0 & no_harvest==1) | (ha_harvest==0 & kg_harvest>0 & kg_harvest!=.)
+	replace kg_harvest = . if kg_harvest==0 & no_harvest==1
+	gen ha_harv_yld=ha_harvest if ha_planted >=0.05 & !inlist(crop_code, 302,303,304,305,306,19) //Excluding nonfood crops & seaweed 
+	gen ha_plan_yld=ha_planted if ha_planted >=0.05 & !inlist(crop_code, 302,303,304,305,306,19) 
+	drop no_harvest
 	save "${Tanzania_NPS_W5_created_data}/Tanzania_NPS_W5_all_plots.dta",replace
 
 //AT: moving this up here and making it its own file because we use it often below
@@ -1130,10 +1066,7 @@ merge 1:1 y5_hhid crop_code using "${Tanzania_NPS_W5_created_data}/Tanzania_NPS_
 
 preserve
 	recode  value_harvest_imputed value_sold kgs_harvest quantity_sold (.=0)
-	recode crop_code (31 32=931) //recoding for new consolidated crop bencwp (931) for combined beans and cowpeas 
-		//label define crop_code 931 "Beans-Cowpeas", add
-		//label values crop_code crop_code
-		tab crop_code if crop_code==931 
+	recode crop_code (31 32=931)
 	collapse (sum) value_harvest_imputed value_sold kgs_harvest quantity_sold , by (y5_hhid crop_code)
 	ren value_harvest_imputed value_crop_production
 	lab var value_crop_production "Gross value of crop production, summed over main and season season"
@@ -3955,12 +3888,11 @@ merge 1:1 y5_hhid using "${Tanzania_NPS_W5_created_data}/Tanzania_NPS_W5_shannon
 
 /*OUT DYA.10.30.2020*/ 
 *Farm Production 
-recode value_crop_production  value_livestock_products value_slaughtered  value_lvstck_sold (.=0)
-egen value_farm_production = rowtotal(value_crop_production value_livestock_products value_slaughtered value_lvstck_sold)
+egen value_farm_production = rowtotal(value_crop_production value_livestock_products value_slaughtered value_lvstck_sold) 
 lab var value_farm_production "Total value of farm production (crops + livestock products)"
-egen value_farm_prod_sold = rowtotal(value_crop_sales sales_livestock_products value_livestock_sales)
+egen value_farm_prod_sold = rowtotal(value_crop_sales sales_livestock_products value_livestock_sales) 
 lab var value_farm_prod_sold "Total value of farm production that is sold" 
-*replace value_farm_prod_sold = 0 if value_farm_prod_sold==. & value_farm_production!=.
+replace value_farm_prod_sold = 0 if value_farm_prod_sold==. & value_farm_production!=. 
 
 *Agricultural households
 recode crop_income livestock_income farm_area tlu_today land_size farm_size_agland value_farm_prod_sold (.=0)
@@ -4599,19 +4531,20 @@ else {
 
 ********Currency Conversion Factors*********
 gen ccf_loc = (1/$Tanzania_NPS_W5_infl_adj) 
-lab var ccf_loc "currency conversion factor - 2017 $NGN"
+lab var ccf_loc "currency conversion factor - 2021 $NGN"
 gen ccf_usd = ccf_loc/$Tanzania_NPS_W5_exchange_rate 
-lab var ccf_usd "currency conversion factor - 2017 $USD"
+lab var ccf_usd "currency conversion factor - 2021 $USD"
 gen ccf_1ppp = ccf_loc/$Tanzania_NPS_W5_cons_ppp_dollar
-lab var ccf_1ppp "currency conversion factor - 2017 $Private Consumption PPP"
+lab var ccf_1ppp "currency conversion factor - 2021 $Private Consumption PPP"
 gen ccf_2ppp = ccf_loc/$Tanzania_NPS_W5_gdp_ppp_dollar
-lab var ccf_2ppp "currency conversion factor - 2017 $GDP PPP"
+lab var ccf_2ppp "currency conversion factor - 2021 $GDP PPP"
 
 gen poverty_under_190 = daily_percap_cons < $Tanzania_NPS_W5_poverty_190
 la var poverty_under_190 "Household per-capita conumption is below $1.90 in 2011 $ PPP"
 gen poverty_under_215 = daily_percap_cons < $Tanzania_NPS_W5_poverty_215
 la var poverty_under_215 "Household per-capita consumption is below $2.15 in 2017 $ PPP"
 gen poverty_under_npl = daily_percap_cons < $Tanzania_NPS_W5_poverty_npl
+la var poverty_under_npl "Household per-capita consumption is under the estimated national poverty line"
 gen poverty_under_300 = daily_percap_cons < $Tanzania_NPS_W5_poverty_300
 la var poverty_under_300 "Household per-capita consumption is below $3.00 in 2021 $ PPP"
 
@@ -4675,7 +4608,7 @@ capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2
 */ 71 "Mali EACI Wave 1" 72 "Mali EACI Wave 2" /*
 */ 81 "Niger ECVMA Wave 1" 82 "Niger ECVMA Wave 2"
 
-gen ssp = (farm_size_agland <= 2 & farm_size_agland != 0) & (nb_largerum_today <= 10 & nb_smallrum_today <= 10 & nb_chickens_today <= 50) & ag_hh==1
+gen ssp = (farm_size_agland <= 2 & farm_size_agland != 0) & (nb_largerum_today <= 10 & nb_smallrum_today <= 10 & nb_chickens_today <= 50) if ag_hh==1
 
 saveold "${Tanzania_NPS_W5_final_data}/Tanzania_NPS_W5_household_variables.dta", replace
 
@@ -4799,13 +4732,13 @@ foreach v of varlist  plot_productivity  plot_labor_prod {
 }	
 	
 gen ccf_loc = (1/$Tanzania_NPS_W5_infl_adj) 
-lab var ccf_loc "currency conversion factor - 2017 $TSH"
+lab var ccf_loc "currency conversion factor - 2021 $TSH"
 gen ccf_usd = ccf_loc/$Tanzania_NPS_W5_exchange_rate 
-lab var ccf_usd "currency conversion factor - 2017 $USD"
+lab var ccf_usd "currency conversion factor - 2021 $USD"
 gen ccf_1ppp = ccf_loc/$Tanzania_NPS_W5_cons_ppp_dollar
-lab var ccf_1ppp "currency conversion factor - 2017 $Private Consumption PPP"
+lab var ccf_1ppp "currency conversion factor - 2021 $Private Consumption PPP"
 gen ccf_2ppp = ccf_loc/$Tanzania_NPS_W5_gdp_ppp_dollar
-lab var ccf_2ppp "currency conversion factor - 2017 $GDP PPP"
+lab var ccf_2ppp "currency conversion factor - 2021 $GDP PPP"
 
 global monetary_val plot_value_harvest plot_productivity plot_labor_prod  //ALT note: check 895 missing values?
 
@@ -4816,15 +4749,15 @@ foreach p of varlist $monetary_val {
 	local lw_`p' : var lab w_`p'
 }
 	local l`p' : var lab `p' 
-	lab var `p'_1ppp "`l`p'' (2017 $ Pvt Cons PPP)"
-	lab var `p'_2ppp "`l`p'' (2017 $ GDP PPP)"
-	lab var `p'_usd "`l`p'' (2017 $ USD)"
-	lab var `p'_loc "`l`p'' (2017 TSH)"  
+	lab var `p'_1ppp "`l`p'' (2021 $ Pvt Cons PPP)"
+	lab var `p'_2ppp "`l`p'' (2021 $ GDP PPP)"
+	lab var `p'_usd "`l`p'' (2021 $ USD)"
+	lab var `p'_loc "`l`p'' (2021 TSH)"  
 	lab var `p' "`l`p'' (TSH)"  
-	lab var w_`p'_1ppp "`lw_`p'' (2017 $ Pvt Cons PPP)"
-	lab var w_`p'_2ppp "`lw_`p'' (2017 $ GDP PPP)"
-	lab var w_`p'_usd "`lw_`p'' (2017 $ USD)"
-	lab var w_`p'_loc "`lw_`p'' (2017 TSH)"
+	lab var w_`p'_1ppp "`lw_`p'' (2021 $ Pvt Cons PPP)"
+	lab var w_`p'_2ppp "`lw_`p'' (2021 $ GDP PPP)"
+	lab var w_`p'_usd "`lw_`p'' (2021 $ USD)"
+	lab var w_`p'_loc "`lw_`p'' (2021 TSH)"
 	lab var w_`p' "`lw_`p'' (TSH)"  
 }
 

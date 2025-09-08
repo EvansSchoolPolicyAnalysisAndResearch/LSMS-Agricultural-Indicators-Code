@@ -1258,7 +1258,7 @@ gen inorg_fert_kg = qty*(itemcode==1)+qty*(itemcode==2)
 gen org_fert_kg = qty*(itemcode==5)
 gen pest_kg = qty*input=="pest"
 gen herb_kg = qty*input=="herb"
-collapse (sum) *kg, by(hhid plot_id)
+collapse (sum) *kg, by(ea hhid plot_id)
 save "${Nigeria_GHS_W3_created_data}/Nigeria_GHS_W3_input_quantities.dta", replace
 
 //Get area planted first
@@ -2496,8 +2496,8 @@ save "${Nigeria_GHS_W3_created_data}/Nigeria_GHS_W3_livestock_diseases.dta", rep
 
 
 use "${Nigeria_GHS_W3_created_data}/Nigeria_GHS_W3_all_plots.dta", clear
-keep hhid plot_id crop_code use_imprv_seed use_hybrid_seed
-merge m:1 hhid plot_id using "${Nigeria_GHS_W3_created_data}/Nigeria_GHS_W3_input_quantities.dta", nogen
+keep ea hhid plot_id crop_code use_imprv_seed use_hybrid_seed
+merge m:1 ea hhid plot_id using "${Nigeria_GHS_W3_created_data}/Nigeria_GHS_W3_input_quantities.dta", nogen
 foreach i in inorg_fert org_fert pest herb {
 	recode `i'_kg (.=0)
 	gen use_`i'= `i'_kg > 0

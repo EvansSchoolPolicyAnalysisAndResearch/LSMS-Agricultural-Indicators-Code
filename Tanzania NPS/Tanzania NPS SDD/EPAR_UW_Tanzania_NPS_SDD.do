@@ -4181,12 +4181,12 @@ merge 1:1 sdd_hhid using "${Tanzania_NPS_SDD_created_data}/Tanzania_NPS_SDD_shan
 
 /*OUT DYA.10.30.2020*/ 
 *Farm Production 
-recode value_crop_production value_livestock_products value_slaughtered  value_lvstck_sold (.=0)
-egen value_farm_production = rowtotal(value_crop_production value_livestock_products value_slaughtered value_lvstck_sold)
+
+egen value_farm_production = rowtotal(value_crop_production value_livestock_products value_slaughtered value_lvstck_sold) 
 lab var value_farm_production "Total value of farm production (crops + livestock products)"
-egen value_farm_prod_sold = rowtotal(value_crop_sales sales_livestock_products value_livestock_sales)
+egen value_farm_prod_sold = rowtotal(value_crop_sales sales_livestock_products value_livestock_sales) 
 lab var value_farm_prod_sold "Total value of farm production that is sold" 
-*replace value_farm_prod_sold = 0 if value_farm_prod_sold==. & value_farm_production!=.
+replace value_farm_prod_sold = 0 if value_farm_prod_sold==. & value_farm_production!=. 
 
 *Agricultural households
 recode crop_income livestock_income farm_area tlu_today land_size farm_size_agland value_farm_prod_sold (.=0)
@@ -4850,19 +4850,20 @@ else {
 
 ********Currency Conversion Factors*********
 gen ccf_loc = (1/$Tanzania_NPS_SDD_infl_adj) 
-lab var ccf_loc "currency conversion factor - 2017 $NGN"
+lab var ccf_loc "currency conversion factor - 2021 $NGN"
 gen ccf_usd = ccf_loc/$Tanzania_NPS_SDD_exchange_rate 
-lab var ccf_usd "currency conversion factor - 2017 $USD"
+lab var ccf_usd "currency conversion factor - 2021 $USD"
 gen ccf_1ppp = ccf_loc/$Tanzania_NPS_SDD_cons_ppp_dollar
-lab var ccf_1ppp "currency conversion factor - 2017 $Private Consumption PPP"
+lab var ccf_1ppp "currency conversion factor - 2021 $Private Consumption PPP"
 gen ccf_2ppp = ccf_loc/$Tanzania_NPS_SDD_gdp_ppp_dollar
-lab var ccf_2ppp "currency conversion factor - 2017 $GDP PPP"
+lab var ccf_2ppp "currency conversion factor - 2021 $GDP PPP"
 
 gen poverty_under_190 = daily_percap_cons < $Tanzania_NPS_SDD_poverty_190
 la var poverty_under_190 "Household per-capita conumption is below $1.90 in 2011 $ PPP"
 gen poverty_under_215 = daily_percap_cons < $Tanzania_NPS_SDD_poverty_215
 la var poverty_under_215 "Household per-capita consumption is below $2.15 in 2017 $ PPP"
 gen poverty_under_npl = daily_percap_cons < $Tanzania_NPS_SDD_poverty_npl
+la var poverty_under_npl "Household per-capita consumption is under the estimated national poverty line"
 gen poverty_under_300 = daily_percap_cons < $Tanzania_NPS_SDD_poverty_300
 la var poverty_under_300 "Household per-capita consumption is below $3.00 in 2021 $ PPP"
 
@@ -5063,13 +5064,13 @@ foreach v of varlist  plot_productivity  plot_labor_prod {
 
 *Currency Conversion Factors
 gen ccf_loc = (1/$Tanzania_NPS_SDD_infl_adj) 
-lab var ccf_loc "currency conversion factor - 2017 $NGN"
+lab var ccf_loc "currency conversion factor - 2021 $NGN"
 gen ccf_usd = ccf_loc/$Tanzania_NPS_SDD_exchange_rate 
-lab var ccf_usd "currency conversion factor - 2017 $USD"
+lab var ccf_usd "currency conversion factor - 2021 $USD"
 gen ccf_1ppp = ccf_loc/$Tanzania_NPS_SDD_cons_ppp_dollar
-lab var ccf_1ppp "currency conversion factor - 2017 $Private Consumption PPP"
+lab var ccf_1ppp "currency conversion factor - 2021 $Private Consumption PPP"
 gen ccf_2ppp = ccf_loc/$Tanzania_NPS_SDD_gdp_ppp_dollar
-lab var ccf_2ppp "currency conversion factor - 2017 $GDP PPP"
+lab var ccf_2ppp "currency conversion factor - 2021 $GDP PPP"
 	
 global monetary_val plot_value_harvest plot_productivity plot_labor_prod 
 foreach p of varlist $monetary_val {

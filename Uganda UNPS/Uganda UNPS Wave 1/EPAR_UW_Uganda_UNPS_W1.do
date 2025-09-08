@@ -19,7 +19,7 @@
 *All the raw data, questionnaires, and basic information documents are available for downloading free of charge at the following link
 *http://microdata.worldbank.org/index.php/catalog/1001
 
-*Throughout the do-file, we sometimes use the shorthand LSMS to refer to the Tanzania National Panel Survey.
+*Throughout the do-file, we sometimes use the shorthand LSMS to refer to the Uganda National Panel Survey.
 
 
 *Summary of Executing the Master do.file
@@ -29,7 +29,7 @@
 *The processed files include all households, individuals, and plots in the sample.
 *Toward the end of the do.file, a block of code estimates summary statistics (mean, standard error of the mean, minimum, first quartile, median, third quartile, maximum) 
 *of final indicators, restricted to the rural households only, disaggregated by gender of head of household or plot manager.
-*The results are outputted in the excel file "Uganda_NPS_W1_summary_stats.xlsx" in the "Tanzania TNPS - LSMS-ISA - Wave 4 (2014-15)" within the "Final DTA files" folder. //EFW 1.22.19 Update this with new file paths
+*The results are outputted in the excel file "Uganda_NPS_W1_summary_stats.xlsx" in the "final_data" subfolder of the "Final DTA Files" folder.
 *It is possible to modify the condition  "if rural==1" in the portion of code following the heading "SUMMARY STATISTICS" to generate all summary statistics for a different sub_population.
 
 
@@ -4208,12 +4208,11 @@ global empty_vars $empty_vars disease_animal* disease_*
 merge 1:1 HHID using  "${Uganda_NPS_W1_created_data}/Uganda_NPS_W1_shannon_diversity_index.dta", nogen keep(1 3)
 
 *Farm Production 
-recode value_crop_production value_livestock_products value_slaughtered  value_lvstck_sold (.=0)
-egen value_farm_production = rowtotal(value_crop_production value_livestock_products value_slaughtered value_lvstck_sold)
+egen value_farm_production = rowtotal(value_crop_production value_livestock_products value_slaughtered value_lvstck_sold) 
 lab var value_farm_production "Total value of farm production (crops + livestock products)"
-egen value_farm_prod_sold = rowtotal(value_crop_sales sales_livestock_products value_livestock_sales)
+egen value_farm_prod_sold = rowtotal(value_crop_sales sales_livestock_products value_livestock_sales) 
 lab var value_farm_prod_sold "Total value of farm production that is sold" 
-*replace value_farm_prod_sold = 0 if value_farm_prod_sold==. & value_farm_production!=.
+replace value_farm_prod_sold = 0 if value_farm_prod_sold==. & value_farm_production!=. 
 
 *Agricultural households
 recode crop_income livestock_income farm_area tlu_today land_size farm_size_agland value_farm_prod_sold (.=0)
@@ -4914,13 +4913,13 @@ replace bottom_40_peraeq = 1 if r(r1) > w_daily_peraeq_cons & rural==1
 
 ****Currency Conversion Factors***
 gen ccf_loc = (1/$Uganda_NPS_W1_inflation) 
-lab var ccf_loc "currency conversion factor - 2017 $UGX"
+lab var ccf_loc "currency conversion factor - 2021 $UGX"
 gen ccf_usd = ccf_loc/$Uganda_NPS_W1_exchange_rate
-lab var ccf_usd "currency conversion factor - 2017 $USD"
+lab var ccf_usd "currency conversion factor - 2021 $USD"
 gen ccf_1ppp = ccf_loc/$Uganda_NPS_W1_cons_ppp_dollar
-lab var ccf_1ppp "currency conversion factor - 2017 $Private Consumption PPP"
+lab var ccf_1ppp "currency conversion factor - 2021 $Private Consumption PPP"
 gen ccf_2ppp = ccf_loc/$Uganda_NPS_W1_gdp_ppp_dollar
-lab var ccf_2ppp "currency conversion factor - 2017 $GDP PPP"
+lab var ccf_2ppp "currency conversion factor - 2021 $GDP PPP"
 
 
 *Poverty indicators 
@@ -4976,7 +4975,7 @@ keep HHID fhh poverty* clusterid strataid *weight* /*wgt*/ region /*regurb*/ dis
 *SAW 3/14/23 Need to check for the ones available in Uganda but not in Nigeria.
 
 
-gen ssp = (farm_size_agland <= 2 & farm_size_agland != 0) & (nb_cows_today <= 10 & nb_smallrum_today <= 10 & nb_chickens_today <= 50)
+gen ssp = (farm_size_agland <= 2 & farm_size_agland != 0) & (nb_cows_today <= 10 & nb_smallrum_today <= 10 & nb_chickens_today <= 50) & ag_hh==1  
 
 ren weight weight_orig 
 ren weight_pop_rururb weight
@@ -5216,13 +5215,13 @@ foreach p of global monetary_val {
 
 ****Currency Conversion Factors***
 gen ccf_loc = (1/$Uganda_NPS_W1_inflation) 
-lab var ccf_loc "currency conversion factor - 2017 $UGX"
+lab var ccf_loc "currency conversion factor - 2021 $UGX"
 gen ccf_usd = ccf_loc/$Uganda_NPS_W1_exchange_rate
-lab var ccf_usd "currency conversion factor - 2017 $USD"
+lab var ccf_usd "currency conversion factor - 2021 $USD"
 gen ccf_1ppp = ccf_loc/$Uganda_NPS_W1_cons_ppp_dollar
-lab var ccf_1ppp "currency conversion factor - 2017 $Private Consumption PPP"
+lab var ccf_1ppp "currency conversion factor - 2021 $Private Consumption PPP"
 gen ccf_2ppp = ccf_loc/$Uganda_NPS_W1_gdp_ppp_dollar
-lab var ccf_2ppp "currency conversion factor - 2017 $GDP PPP"
+lab var ccf_2ppp "currency conversion factor - 2021 $GDP PPP"
 
 
 global monetary_val plot_value_harvest plot_productivity  plot_labor_prod 

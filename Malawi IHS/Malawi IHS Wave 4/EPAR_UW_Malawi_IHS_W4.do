@@ -24,18 +24,15 @@
 *Summary of Executing the Master do.file
 *-----------
 *This Master do.file constructs selected indicators using the Malawi LSMS data set.
-*Using data files from within the "378 - LSMS Burkina Faso, Malawi, Uganda" folder within the "raw_data" folder, 
-*the do.file first constructs common and intermediate variables, saving dta files when appropriate 
-*in R:\Project\EPAR\Working Files\378 - LSMS Burkina Faso, Malawi, Uganda\malawi-wave4-2019\code
-*These variables are then brought together at the household, plot, or individual level, saving dta files at each level when available 
-*at the file path R:\Project\EPAR\Working Files\378 - LSMS Burkina Faso, Malawi, Uganda\malawi-wave4-2019\created_data
+*Using data files from within the raw_data folder, the do file first combines the panel and cross-sectional 
+*variables with a constructed panel identifier, saving the results to the temp_data folder within the Final DTA Files folder.
+*It then constructs common and intermediate variables, saving dta files in Final DTA Files/created_data  when appropriate 
+*These variables are then brought together at the household, plot, or individual level, saving dta files
+*in Final DTA Files/final_data
 
 *The processed files include all households, individuals, and plots in the sample where possible.
-*Toward the end of the do.file, a block of code estimates summary statistics (mean, standard error of the mean, minimum, first quartile, median, third quartile, maximum) 
-*of final indicators, restricted to the rural households only, disaggregated by gender of head of household or plot manager.
-*The results will be outputted in the excel file "MWI_IHS_IHPS_W4_summary_stats.xlsx" at the file path "\\netid.washington.edu\wfs\EvansEPAR\Project\EPAR\Working Files\378 - LSMS Burkina Faso, Malawi, Uganda\malawi-wave4-2019\created_data"
-*It is possible to modify the condition  "if rural==1" in the portion of code following the heading "SUMMARY STATISTICS" to generate all summary statistics for a different sub_population.
-
+*The final line of the do file calls the Summary Statistics file in the project folder and computes population-level
+*summaries for a large list of indicators. The results are also provided in the data repository and this line can be commented out to save time.
  
 /*
 OUTLINE OF THE DO.FILE
@@ -792,9 +789,9 @@ gen dm1_gender=female+1 if id_no==1
 gen dm1_id = indiv if id_no==1
 preserve 
 keep hhid garden_id plot_id indiv season female //for individual manager input use 
-save "${MWI_IHS_IHPS_W4_created_data}\Malawi_IHS_IHPS_W4_dm_ids.dta", replace
+save "${MWI_IHS_IHPS_W4_created_data}\MWI_IHS_IHPS_W4_dm_ids.dta", replace
 restore
-collapse (mean) female (firstnm) dm1_gender, by(hhid garden_id plot_id season)
+collapse (mean) female (firstnm) dm1_gender dm1_id, by(hhid garden_id plot_id season)
 gen dm_gender =3 if female !=.
 replace dm_gender = 1 if female==0
 replace dm_gender = 2 if female==1
@@ -989,7 +986,7 @@ save "${MWI_IHS_IHPS_W4_created_data}\MWI_IHS_IHPS_W4_rights_hh.dta", replac
 	recode season (.=1) //dry season 
 	append using "${MWI_IHS_IHPS_W4_appended_data}/ag_mod_q.dta"
 	//drop case_id
-	//merge m:1 hhid using "${MWI_IHS_IHPS_W4_created_data}\Malawi_IHS_IHPS_W4_hhids.dta", keepusing(case_id) keep(1 3)
+	//merge m:1 hhid using "${MWI_IHS_IHPS_W4_created_data}\MWI_IHS_IHPS_W4_hhids.dta", keepusing(case_id) keep(1 3)
 	recode season (.=2) //tree or permanent crop
 	lab var season "season: 0=rainy, 1=dry, 2=tree crop"
 	label define season 0 "rainy" 1 "dry" 2 "tree or permanent crop"
@@ -1007,6 +1004,13 @@ save "${MWI_IHS_IHPS_W4_created_data}\MWI_IHS_IHPS_W4_rights_hh.dta", replac
 	ren ag_i03 sold_value
 	replace sold_value=ag_o03 if sold_value==. & ag_o03!=.
 	replace sold_value=ag_q03 if sold_value==. & ag_q03!=.
+	egen aggregate_sold_value=rowtotal(ag_i13 ag_i22) 
+	egen aggregate_sold_value2=rowtotal(ag_o13 ag_o22)
+	egen aggregate_sold_value3=rowtotal(ag_q13 ag_q22)
+	replace aggregate_sold_value=aggregate_sold_value2 if aggregate_sold_value2!=0
+	replace aggregate_sold_value = aggregate_sold_value3 if aggregate_sold_value3!=0
+	recode sold_value (.=0)
+	replace sold_value = aggregate_sold_value if aggregate_sold_value > sold_value //small number of overall changes
 	rename crop_code crop_code_long 
 
 	
@@ -1635,6 +1639,22 @@ ren ag_k46b1 wagehiredmale
 	ren wagehired wagehired_plot
 	tempfile plot_wages 
 	save `plot_wages'
+	preserve
+	drop if gender=="child" | season==1 //Only considering adult wages during the main season here
+	gen wage_paid_aglabor_male = wagehired if gender=="male"
+	gen wage_paid_aglabor_female=wagehired if gender=="female"
+	collapse (mean) wage_paid_aglabor_male wage_paid_aglabor_female wage_paid_aglabor=wagehired, by(hhid)
+	gen hired_all=. 
+	la var hired_all "Number of person-days for hired laborers (cannot construct)"
+	gen hired_female=.
+	la var hired_female "Number of person-days for female laborers (cannot construct)"
+	gen hired_male = .
+	la var hired_male "Number of person-days for male laborers (cannot construct)"
+	lab var wage_paid_aglabor "Daily agricultural wage paid for hired labor (local currency)"
+	lab var wage_paid_aglabor_female "Daily agricultural wage paid for hired labor - female workers(local currency)"
+	lab var wage_paid_aglabor_male "Daily agricultural wage paid for hired labor - male workers (local currency)"
+	save "${MWI_IHS_IHPS_W4_created_data}/MWI_IHS_IHPS_W4_ag_wage.dta", replace
+	restore
 	collapse (mean) wagehired=wagehired_plot, by(hhid season gender)
 	merge m:1 hhid using "${MWI_IHS_IHPS_W4_created_data}/MWI_IHS_IHPS_W4_weights.dta", nogen keep(1 3)
 	gen obs=1
@@ -3103,7 +3123,7 @@ replace condition= ag_o02c if condition==.
 replace condition=3 if condition==.
 tostring hhid, format(%18.0f) replace
 recast str50 hhid, force 
-merge m:1 hhid using "${MWI_IHS_IHPS_W4_created_data}\Malawi_IHS_IHPS_W4_weights.dta", nogen keepusing(region district ta rural ea weight) keep(1 3)
+merge m:1 hhid using "${MWI_IHS_IHPS_W4_created_data}\MWI_IHS_IHPS_W4_weights.dta", nogen keepusing(region district ta rural ea weight) keep(1 3)
 //unshelled kilogram should be converted to shelled 
 ***We merge Crop Sold Conversion Factor at the crop-unit-regional level***
 drop if qty == 0 | qty ==.
@@ -4545,7 +4565,7 @@ ren *kg *kg_
 ren ha_planted ha_planted_
 ren ha_irr ha_irr_
 reshape wide *_, i(hhid plot_id garden_id season) j(dm_gender2) string
-//merge in weights merge m:1 hhid using "${MWI_IHS_IHPS_W4_created_data}/Malawi_IHS_IHPS_W3_weights.dta", nogen // keep(1 3) 
+//merge in weights merge m:1 hhid using "${MWI_IHS_IHPS_W4_created_data}/MWI_IHS_IHPS_W3_weights.dta", nogen // keep(1 3) 
 collapse (sum) ha_planted_* *kg* ha_irr_*, by(hhid)
 foreach i in `vars' {
 	egen `i' = rowtotal(`i'_*)
@@ -5627,7 +5647,7 @@ collapse (mean) price_index_district=price_indexL [aw=weight], by(district regio
 fillin district intmonth intyear 
 bys district : egen regnm = min(region)
 replace region = regnm if region==.
-merge m:1 region intmonth intyear using "${MWI_IHS_IHPS_W4_created_data}/Malawi_IHS_IHPS_W4_price_index_lookup_region.dta", nogen keep (3)
+merge m:1 region intmonth intyear using "${MWI_IHS_IHPS_W4_created_data}/MWI_IHS_IHPS_W4_price_index_lookup_region.dta", nogen keep (3)
 gen price_index=price_index_district
 replace price_index=price_index_region if price_index ==.
 keep district intmonth intyear price_index
@@ -5645,8 +5665,8 @@ reshape long interviewdate, i(district hhid) j(int_mod) string
 gen intmonth= regexs(2) if regexm(interviewdate, "([0-9]{4})-([0-9]{2})-([0-9]{2})")
 gen intyear = regexs(1) if regexm(interviewdate, "([0-9]{4})-([0-9]{2})-([0-9]{2})")
 destring intmonth intyear, replace
-merge m:1 district intmonth intyear using "${MWI_IHS_IHPS_W4_created_data}/Malawi_IHS_IHPS_W4_price_index_lookup.dta", nogen keep(1 3) 
-save "${MWI_IHS_IHPS_W4_created_data}/Malawi_IHS_IHPS_W4_price_index_lookup_module.dta", replace
+merge m:1 district intmonth intyear using "${MWI_IHS_IHPS_W4_created_data}/MWI_IHS_IHPS_W4_price_index_lookup.dta", nogen keep(1 3) 
+save "${MWI_IHS_IHPS_W4_created_data}/MWI_IHS_IHPS_W4_price_index_lookup_module.dta", replace
 
 use "${MWI_IHS_IHPS_W4_appended_data}\hh_mod_g1.dta", clear
 preserve 
@@ -5680,7 +5700,7 @@ gen size_own=hh_g06c
 ren hh_g02 itemcode
 //recode qty* (.=0)
 //drop if qty_purchase==0 & qty_own==0 & qty_gift==0
-merge m:1 hhid using "${MWI_IHS_IHPS_W4_created_data}\Malawi_IHS_IHPS_W4_weights.dta", nogen keepusing(weight region district ta ea)
+merge m:1 hhid using "${MWI_IHS_IHPS_W4_created_data}\MWI_IHS_IHPS_W4_weights.dta", nogen keepusing(weight region district ta ea)
 keep hhid weight price_unit unit* qty* size* itemcode region district ta ea
 gen country = "MWI" 
 save "${MWI_IHS_IHPS_W4_created_data}/MWI_IHS_IHPS_W4_cons_value.dta", replace
@@ -5703,7 +5723,7 @@ gen obs_weight=weight
 	restore
 	}
 	
-use "${MWI_IHS_IHPS_W4_created_data}/Malawi_IHS_IHPS_W4_cons_value.dta", clear
+use "${MWI_IHS_IHPS_W4_created_data}/MWI_IHS_IHPS_W4_cons_value.dta", clear
 drop price_unit 
 gen price_unit=.
 //recode price_unit (0=.)
@@ -5719,7 +5739,7 @@ foreach i in country region district ta ea hhid {
 replace price_unit = price_unit_hhid if price_unit_hhid !=. 
 replace price_unit = price_unit_country if price_unit==.
 gen val_fdcons=price_unit*qty
-save "${MWI_IHS_IHPS_W4_created_data}/Malawi_IHS_IHPS_W4_food_consumption_items.dta", replace 
+save "${MWI_IHS_IHPS_W4_created_data}/MWI_IHS_IHPS_W4_food_consumption_items.dta", replace 
 gen val_alc=val_fdcons if inrange(itemcode, 911,916)
 replace val_fdcons=. if inrange(itemcode, 911,916)
 collapse (sum) val_fdcons val_alc, by (hhid) 
@@ -5742,9 +5762,9 @@ append using "${MWI_IHS_IHPS_W4_appended_data}\hh_mod_g1.dta"
 append using "${MWI_IHS_IHPS_W4_appended_data}\hh_mod_g2.dta"
 append using "${MWI_IHS_IHPS_W4_appended_data}\hh_mod_g3.dta"
 replace int_mod="g" if int_mod==""
-append using "${MWI_IHS_IHPS_W4_created_data}/Malawi_IHS_IHPS_W4_food_consumption.dta"
+append using "${MWI_IHS_IHPS_W4_created_data}/MWI_IHS_IHPS_W4_food_consumption.dta"
 append using `othfoods'
-merge m:1 hhid int_mod using "${MWI_IHS_IHPS_W4_created_data}/Malawi_IHS_IHPS_W4_price_index_lookup_module.dta", nogen keep(1 3) 
+merge m:1 hhid int_mod using "${MWI_IHS_IHPS_W4_created_data}/MWI_IHS_IHPS_W4_price_index_lookup_module.dta", nogen keep(1 3) 
 
 //Alc/Tobacco (April 2019 price) annual consumption. Tobacco and alcohol for the past week is calculated for the whole year (52 weeks). Therefore, measures are multiplied by 52. 
 gen rexp_cat02=hh_i03*52 if inlist(hh_i02, 103) //Tobacco
@@ -5794,7 +5814,7 @@ foreach v in `vars' {
 }
 collapse (sum) rexp*, by(hhid)
 recode rexp* (0=.)
-merge 1:1 hhid using "${MWI_IHS_IHPS_W4_created_data}/Malawi_IHS_IHPS_W4_weights.dta", nogen keep (1 3)
+merge 1:1 hhid using "${MWI_IHS_IHPS_W4_created_data}/MWI_IHS_IHPS_W4_weights.dta", nogen keep (1 3)
 /*
 //Winsorize at top 1% (approximation of the WB strategy?)
 foreach v in `vars' {
@@ -5926,7 +5946,7 @@ save "${MWI_IHS_IHPS_W4_created_data}\MWI_IHS_IHPS_W4_hh_assets.dta", replace
 ********************************************************************************
 //setting up empty variable list: create these with a value of missing and then recode all of these to missing at the end of the HH section (some may be recoded to 0 in this section)
 global empty_vars ""
-//use "${MWI_IHS_IHPS_W4_created_data}/Malawi_IHS_IHPS_W4_hhids.dta", clear
+//use "${MWI_IHS_IHPS_W4_created_data}/MWI_IHS_IHPS_W4_hhids.dta", clear
 use "${MWI_IHS_IHPS_W4_created_data}/MWI_IHS_IHPS_W4_weights.dta", clear
 
 *Gross crop income 
@@ -6166,9 +6186,9 @@ merge 1:1 hhid using "${MWI_IHS_IHPS_W4_created_data}/MWI_IHS_IHPS_W4_shannon_di
 
 *Farm Production 
 recode value_crop_production  value_livestock_products /*value_slaughtered */value_livestock_sales (.=0)
-gen value_farm_production = value_crop_production + value_livestock_products + /*value_slaughtered */value_livestock_sales
+egen value_farm_production = rowtotal(value_crop_production value_livestock_products value_livestock_sales)
 lab var value_farm_production "Total value of farm production (crops + livestock products)"
-gen value_farm_prod_sold = value_crop_sales + sales_livestock_products + value_livestock_sales
+egen value_farm_prod_sold = rowtotal(value_crop_sales sales_livestock_products value_livestock_sales)
 lab var value_farm_prod_sold "Total value of farm production that is sold" 
 replace value_farm_prod_sold = 0 if value_farm_prod_sold==. & value_farm_production!=. 
 
@@ -6833,8 +6853,8 @@ keep hhid fhh clusterid strataid *weight* *wgt* region district ta ea rural farm
 */ *value_livestock_products* *value_livestock_sales* *total_cons* nb_cattle_today nb_largerum_today nb_cows_today nb_smallrum_today nb_poultry_today nb_chickens_today bottom_40_percap bottom_40_peraeq /*
 */ ccf_loc ccf_usd ccf_1ppp ccf_2ppp *sales_livestock_products area_plan* area_harv*  value_pro* *_rate* *value_sal* *inter* panel
 
-
-gen ssp = (farm_size_agland <= 2 & farm_size_agland != 0) & (nb_cows_today <= 10 & nb_smallrum_today <= 10 & nb_chickens_today <= 50)
+recode nb_cows_today nb_smallrum_today nb_chickens_today (.=0) if ag_hh==1
+gen ssp = (farm_size_agland <= 2 & farm_size_agland != 0) & (nb_cows_today <= 10 & nb_smallrum_today <= 10 & nb_chickens_today <= 50) if ag_hh==1
 
 
 //////////Identifier Variables ////////
@@ -6875,7 +6895,7 @@ merge 1:1 hhid indiv using "${MWI_IHS_IHPS_W4_created_data}/MWI_IHS_IHPS_W4_farm
 merge 1:1 hhid indiv using "${MWI_IHS_IHPS_W4_created_data}/MWI_IHS_IHPS_W4_farmer_vaccine.dta", nogen  keep(1 3)
 
 *Land rights - data not available
-//merge 1:1 hhid case_id indiv using "${MWI_IHS_IHPS_W4_created_data}/Malawi_IHS_IHPS_W4_land_rights_ind.dta", nogen
+//merge 1:1 hhid case_id indiv using "${MWI_IHS_IHPS_W4_created_data}/MWI_IHS_IHPS_W4_land_rights_ind.dta", nogen
 //recode formal_land_rights_f (.=0) if female==1	
 gen formal_land_rights_f =.
 la var formal_land_rights_f "Individual has documentation of land rights (at least one plot) - Women only"

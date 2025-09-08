@@ -4,7 +4,7 @@
 
 *Author(s)		: Didier Alia & C. Leigh Anderson; uw.eparx@uw.edu
 				  
-*Date			: March 31st, 2025
+*Date			: September 5th, 2025
 *Dataset version: ETH_2011_ERSS_v02_M_Stata8
 ----------------------------------------------------------------------------------------------------------------------------------------------------*/
 
@@ -1210,9 +1210,9 @@ gen ha_harvest= ha_planted*pct_harvest
 	
 	gen qty_harv_kg = ph_s9q12_a //kilos
 	gen qty_harv_g = ph_s9q12_a/1000 //grams
-	egen qty_harv= rowtotal(qty_harv_kg qty_harv_g)
-	replace qty_harv=. if qty_harv_kg==. & qty_harv_g==.
-	replace quant_harv_kg = qty_harv if quant_harv_kg==.
+	egen kg_harvest= rowtotal(qty_harv_kg qty_harv_g)
+	replace kg_harvest=. if qty_harv_kg==. & qty_harv_g==.
+	//replace quant_harv_kg = qty_harv if quant_harv_kg==.
 
 * Merge in price per unit and price per kg - generated from S11
 	foreach i in region zone woreda kebele ea hhid {
@@ -1231,7 +1231,7 @@ gen ha_harvest= ha_planted*pct_harvest
 
 	
 	* VALUE HARVEST
-	gen value_harvest = quant_harv_kg*price_kg
+	gen value_harvest = kg_harvest*price_kg
 	
 
 	
@@ -1239,7 +1239,7 @@ gen ha_harvest= ha_planted*pct_harvest
 	bys hhid holder_id parcel_id plot_id : egen area_plan = sum(ha_planted)
 	gen percent_inputs = ha_planted / area_plan
 	drop if parcel_id == ""
-	keep region zone woreda kebele ea hhid holder_id parcel_id plot_id purestand /*crops_plot*/ crop_code val* quant* cultivated ha_planted ha_harvest number_trees_planted percent_inputs months_grown /*reason_loss*/ field_size /*gps_meas*/ lost*
+	keep region zone woreda kebele ea hhid holder_id parcel_id plot_id purestand /*crops_plot*/ crop_code val* kg_harvest cultivated ha_planted ha_harvest number_trees_planted percent_inputs months_grown /*reason_loss*/ field_size /*gps_meas*/ lost*
 	merge m:1 hhid holder_id parcel_id plot_id using "${Ethiopia_ESS_W1_created_data}/Ethiopia_ESS_W1_plot_decision_makers.dta", nogen keep(1 3) keepusing(dm*) // 105 not matched
 
 	order region zone woreda kebele ea hhid holder_id parcel_id plot_id crop_code
@@ -2065,7 +2065,7 @@ use "${Ethiopia_ESS_W1_created_data}/Ethiopia_ESS_W1_all_plots.dta", clear
 	keep if purestand==1
 	merge 1:1 hhid parcel_id plot_id using "${Ethiopia_ESS_W1_created_data}/Ethiopia_ESS_W1_plot_decision_makers.dta", nogen keep(1 3) keepusing(dm_gender)
 	ren ha_planted monocrop_ha
-	ren quant_harv_kg kgs_harv_mono
+	ren kg_harvest kgs_harv_mono
 	ren value_harvest val_harv_mono
 
 forvalues k=1(1)$nb_topcrops  {		
@@ -3864,7 +3864,7 @@ save "${Ethiopia_ESS_W1_created_data}/Ethiopia_ESS_W1_trees.dta", replace
 use "${Ethiopia_ESS_W1_created_data}/Ethiopia_ESS_W1_all_plots.dta", clear
 //Legacy stuff- agquery gets handled above.
 gen no_harvest=ha_harvest==.
-ren quant_harv_kg harvest 
+ren kg_harvest harvest 
 ren ha_planted area_plan
 ren ha_harvest area_harv 
 gen mixed = "inter"  //Note to adjust this for lost crops 
@@ -5123,10 +5123,10 @@ global empty_vars $empty_vars lost_disease*
 merge 1:1 hhid using "${Ethiopia_ESS_W1_created_data}/Ethiopia_ESS_W1_shannon_diversity_index.dta", nogen keep(1 3)
 
 *Farm Production (NGA)
-recode value_crop_production  value_livestock_products value_slaughtered  value_lvstck_sold (.=0)
-gen value_farm_production = value_crop_production + value_livestock_products + value_slaughtered + value_lvstck_sold
+// recode value_crop_production  value_livestock_products value_slaughtered  value_lvstck_sold (.=0)
+egen value_farm_production = rowtotal(value_crop_production value_livestock_products value_slaughtered value_lvstck_sold)
 lab var value_farm_production "Total value of farm production (crops + livestock products)"
-gen value_farm_prod_sold = value_crop_sales + sales_livestock_products + value_livestock_sales 
+egen value_farm_prod_sold = rowtotal(value_crop_sales sales_livestock_products value_livestock_sales)
 lab var value_farm_prod_sold "Total value of farm production that is sold" 
 replace value_farm_prod_sold = 0 if value_farm_prod_sold==. & value_farm_production!=.
 
@@ -5782,13 +5782,13 @@ replace bottom_40_peraeq = 1 if r(r1) > w_daily_peraeq_cons & rural==1
 
 ****Currency Conversion Factors*** (ETH)
 gen ccf_loc = 1 / $Ethiopia_ESS_W1_inflation
-lab var ccf_loc "currency conversion factor - 2017 $ETB"
+lab var ccf_loc "currency conversion factor - 2021 $ETB"
 gen ccf_usd = ccf_loc / $Ethiopia_ESS_W1_exchange_rate 
-lab var ccf_usd "currency conversion factor - 2017 $USD"
+lab var ccf_usd "currency conversion factor - 2021 $USD"
 gen ccf_1ppp = ccf_loc / $Ethiopia_ESS_W1_cons_ppp_dollar
-lab var ccf_1ppp "currency conversion factor - 2017 $Private Consumption PPP"
+lab var ccf_1ppp "currency conversion factor - 2021 $Private Consumption PPP"
 gen ccf_2ppp = ccf_loc / $Ethiopia_ESS_W1_gdp_ppp_dollar
-lab var ccf_2ppp "currency conversion factor - 2017 $GDP PPP"
+lab var ccf_2ppp "currency conversion factor - 2021 $GDP PPP"
 
 gen poverty_under_190 = (daily_percap_cons < $Ethiopia_ESS_W1_poverty_190)
 la var poverty_under_190 "Household per-capita consumption is below $1.90 in 2011 $ PPP"
@@ -5819,7 +5819,7 @@ keep hhid fhh clusterid strataid *weight* *wgt* region zone woreda town subcity 
 */ ccf_loc ccf_usd ccf_1ppp ccf_2ppp *sales_livestock_products nb_cows_today lvstck_holding_srum  nb_smallrum_today nb_chickens_today  *value_pro* *value_sal* /*
 */ /*DYA 10.6.2020*/ *value_livestock_sales*  *w_value_farm_production* *value_slaughtered* *value_lvstck_sold* *value_crop_sales* *sales_livestock_products* *value_livestock_sales* animals_lost12months /*MGM 8.29.2024: adding in additional indicators for ATA estimates*/ hh_work_age hh_women hh_adult_women tlu_today use_* crop_rotation *rate* *ha_* fcs* rcsi* 
 
-gen ssp = (farm_size_agland <= 2 & farm_size_agland != 0) & (nb_cows_today <= 10 & nb_smallrum_today <= 10 & nb_chickens_today <= 50) // This line is for HH vars only; rest for all three
+gen ssp = (farm_size_agland <= 2 & farm_size_agland != 0) & (nb_cows_today <= 10 & nb_smallrum_today <= 10 & nb_chickens_today <= 50) if ag_hh==1 // This line is for HH vars only; rest for all three
 ren weight weight_sample
 ren weight_pop_rururb weight
 la var weight_sample "Original survey weight"
