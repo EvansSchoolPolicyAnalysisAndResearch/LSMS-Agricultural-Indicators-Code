@@ -4926,13 +4926,13 @@ replace bottom_40_peraeq = 1 if r(r1) > w_daily_peraeq_cons & rural==1
 
 ****Currency Conversion Factors***
 gen ccf_loc = (1/$Nigeria_GHS_W1_inflation) 
-lab var ccf_loc "currency conversion factor - 2017 $NGN"
+lab var ccf_loc "currency conversion factor - 2021 $NGN"
 gen ccf_usd = ccf_loc/$Nigeria_GHS_W1_exchange_rate 
-lab var ccf_usd "currency conversion factor - 2017 $USD"
+lab var ccf_usd "currency conversion factor - 2021 $USD"
 gen ccf_1ppp = ccf_loc/$Nigeria_GHS_W1_cons_ppp_dollar
-lab var ccf_1ppp "currency conversion factor - 2017 $Private Consumption PPP"
+lab var ccf_1ppp "currency conversion factor - 2021 $Private Consumption PPP"
 gen ccf_2ppp = ccf_loc/$Nigeria_GHS_W1_gdp_ppp_dollar
-lab var ccf_2ppp "currency conversion factor - 2017 $GDP PPP"
+lab var ccf_2ppp "currency conversion factor - 2021 $GDP PPP"
 
 *Poverty indicators 
 gen poverty_under_190 = (daily_percap_cons < $Nigeria_GHS_W1_poverty_190)
@@ -5046,7 +5046,7 @@ foreach v in $topcropname_area {
 	gen male_hybrid_seed_`v'=all_hybrid_seed_`v' if female==0
 }
 
-
+/*
 *create missing crop variables (no wheat or beans)
 foreach x of varlist *maize* {
 foreach c in wheat beans {
@@ -5056,7 +5056,8 @@ foreach c in wheat beans {
 }
 
 unab cropvars : *seed* *beans*
-global empty_vars formal_land_rights_f women_diet number_foodgroup  `cropvars' 
+*/
+global empty_vars formal_land_rights_f women_diet number_foodgroup
 *replace empty vars with missing 
 foreach v in $empty_vars {
     capture replace `v' = .

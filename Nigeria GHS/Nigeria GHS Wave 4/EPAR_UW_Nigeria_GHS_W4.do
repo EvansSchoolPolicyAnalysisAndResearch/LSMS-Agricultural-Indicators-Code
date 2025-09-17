@@ -157,12 +157,12 @@ global Nigeria_GHS_W4_euro_exchange 418.7
 global Nigeria_GHS_W4_poverty_190 (1.90*79.531*(1+(267.512-110.84)/110.84)) //~365 N
 global Nigeria_GHS_W4_poverty_npl 376.52 //ALT 06.18.2020: Nigeria's NBS defines poverty as living below 376 N/day. Included for comparison purposes.
 global Nigeria_GHS_W4_poverty_215 (2.15*(1.249 * 112.0983276))  //New 2023 WB poverty threshold, works out to 273 N - a substantial drop largely because inflation was about 100% between 2011 and 2017
-global Nigeria_GHS_W4_poverty_300 3.00*($Nigeria_GHS_W4_infl_adj * $Nigeria_GHS_W4_cons_ppp_dollar) //New 2025 WB poverty threshold, ~690 N
+global Nigeria_GHS_W4_poverty_300 (3.00*($Nigeria_GHS_W4_infl_adj * $Nigeria_GHS_W4_cons_ppp_dollar )) //New 2025 WB poverty threshold, ~690 N
 
 //These values from Bai, Y., et al. (2021) Cost and affordability of nutritious diets at retail prices: Evidence from 177 countries. Food Policy 99. doi:https://doi.org/10.1016/j.foodpol.2020.101983
 //CoCA is cost of a calorically adequate diet in PPP$ (minimum number of calories needed for survival); CoNA is cost of a nutritionally adequate diet, i.e., the minimum expenditure required to get RDIs of macro and micronutrients. 
-global Nigeria_GHS_W4_CoCA_diet 134.21 * 0.63 //2019 PPP$ 
-global Nigeria_GHS_W4_CoNA_diet 134.21 * 1.24
+global Nigeria_GHS_W4_CoCA_diet (134.21 * 0.63) //2019 PPP$ 
+global Nigeria_GHS_W4_CoNA_diet (134.21 * 1.24)
 ********************************************************************************
 *THRESHOLDS FOR WINSORIZATION
 ********************************************************************************
@@ -6963,13 +6963,13 @@ la var poverty_under_1_9 "Household has a per capita conumption of under $1.90 i
 */
 //ALT Update START
 gen ccf_loc = (1/$Nigeria_GHS_W4_infl_adj) 
-lab var ccf_loc "currency conversion factor - 2017 $NGN"
+lab var ccf_loc "currency conversion factor - 2021 $NGN"
 gen ccf_usd = ccf_loc/$Nigeria_GHS_W4_exchange_rate 
-lab var ccf_usd "currency conversion factor - 2017 $USD"
+lab var ccf_usd "currency conversion factor - 2021 $USD"
 gen ccf_1ppp = ccf_loc/$Nigeria_GHS_W4_cons_ppp_dollar
-lab var ccf_1ppp "currency conversion factor - 2017 $Private Consumption PPP"
+lab var ccf_1ppp "currency conversion factor - 2021 $Private Consumption PPP"
 gen ccf_2ppp = ccf_loc/$Nigeria_GHS_W4_gdp_ppp_dollar
-lab var ccf_2ppp "currency conversion factor - 2017 $GDP PPP"
+lab var ccf_2ppp "currency conversion factor - 2021 $GDP PPP"
 
 gen poverty_under_190 = (daily_percap_cons < $Nigeria_GHS_W4_poverty_190)
 la var poverty_under_190 "Household per-capita conumption is below $1.90 in 2011 $ PPP"
@@ -6995,7 +6995,7 @@ replace bottom_40_peraeq = 1 if r(r1) > w_daily_peraeq_cons & rural==1
 *generating clusterid and strataid
 gen clusterid=ea
 gen strataid=state
-
+/*
 *create missing crop variables (no cowpea or yam)
 foreach x of varlist *maize* {
 	foreach c in wheat beans {
@@ -7005,7 +7005,7 @@ foreach x of varlist *maize* {
 }
 
 global empty_vars $empty_vars *wheat* *beans* 
-
+*/
 *Recode to missing any variables that cannot be created in this instrument
 *replace empty vars with missing
 foreach v of varlist $empty_vars { 
@@ -7270,13 +7270,13 @@ foreach v of varlist  plot_productivity  plot_labor_prod {
 }		
 
 gen ccf_loc = (1/$Nigeria_GHS_W4_infl_adj) 
-lab var ccf_loc "currency conversion factor - 2017 $NGN"
+lab var ccf_loc "currency conversion factor - 2021 $NGN"
 gen ccf_usd = ccf_loc/$Nigeria_GHS_W4_exchange_rate 
-lab var ccf_usd "currency conversion factor - 2017 $USD"
+lab var ccf_usd "currency conversion factor - 2021 $USD"
 gen ccf_1ppp = ccf_loc/$Nigeria_GHS_W4_cons_ppp_dollar
-lab var ccf_1ppp "currency conversion factor - 2017 $Private Consumption PPP"
+lab var ccf_1ppp "currency conversion factor - 2021 $Private Consumption PPP"
 gen ccf_2ppp = ccf_loc/$Nigeria_GHS_W4_gdp_ppp_dollar
-lab var ccf_2ppp "currency conversion factor - 2017 $GDP PPP"
+lab var ccf_2ppp "currency conversion factor - 2021 $GDP PPP"
 
 
 global monetary_val plot_value_harvest plot_productivity  plot_labor_prod 
@@ -7286,20 +7286,20 @@ foreach p of global monetary_val {
 	gen `p'_usd = `p' * ccf_usd 
 	gen `p'_loc =  `p' * ccf_loc 
 	local l`p' : var lab `p' 
-	lab var `p'_1ppp "`l`p'' (2017 $ Private Consumption PPP)"
-	lab var `p'_2ppp "`l`p'' (2017 $ GDP PPP)"
-	lab var `p'_usd "`l`p'' (2017$ USD)"
-	lab var `p'_loc "`l`p'' (2017 NGN)" 
+	lab var `p'_1ppp "`l`p'' (2021 $ Private Consumption PPP)"
+	lab var `p'_2ppp "`l`p'' (2021 $ GDP PPP)"
+	lab var `p'_usd "`l`p'' (2021$ USD)"
+	lab var `p'_loc "`l`p'' (2021 NGN)" 
 	lab var `p' "`l`p'' (NGN)"  
 	gen w_`p'_1ppp = w_`p' * ccf_1ppp
 	gen w_`p'_2ppp = w_`p' * ccf_2ppp
 	gen w_`p'_usd = w_`p' * ccf_usd
 	gen w_`p'_loc = w_`p' * ccf_loc
 	local lw_`p' : var lab w_`p'
-	lab var w_`p'_1ppp "`lw_`p'' (2017 $ Private Consumption PPP)"
-	lab var w_`p'_2ppp "`lw_`p'' (2017 $ GDP PPP)"
-	lab var w_`p'_usd "`lw_`p'' (2017 $ USD)"
-	lab var w_`p'_loc "`lw_`p'' (2017 NGN)" 
+	lab var w_`p'_1ppp "`lw_`p'' (2021 $ Private Consumption PPP)"
+	lab var w_`p'_2ppp "`lw_`p'' (2021 $ GDP PPP)"
+	lab var w_`p'_usd "`lw_`p'' (2021 $ USD)"
+	lab var w_`p'_loc "`lw_`p'' (2021 NGN)" 
 	lab var w_`p' "`lw_`p'' (NGN)" 
 }
 

@@ -151,7 +151,7 @@ global Nigeria_GHS_W5_exchange_rate 460.301		//https://www.ceicdata.com/en/indic
 global Nigeria_GHS_W5_gdp_ppp_dollar 146.72 //115.95	//https://data.worldbank.org/indicator/PA.NUS.PPP //We report PPP in constant 2017 values, for comparison to the poverty line. //updated to 2021
 global Nigeria_GHS_W5_cons_ppp_dollar 155.72 //114.82		//https://data.worldbank.org/indicator/PA.NUS.PRVT.PP 
 //global Nigeria_GHS_W5_infl_adj = (643.8/214.2) //2017 to 2024, reference for $2.15 poverty line and PPP conversions 
-global Nigeria_GHS_W5_infl_adj = 524.9/354.3 //2021 to 2024
+global Nigeria_GHS_W5_infl_adj = (524.9/354.3) //2021 to 2024
 //Base year should be 2024, but only 2023 is available as of most recent update
 global Nigeria_GHS_W5_pound_exchange 790.44     //https://www.exchange-rates.org/exchange-rate-history/gbp-ngn-2023
 global Nigeria_GHS_W5_euro_exchange 850         //https://www.poundsterlinglive.com/history/EUR-NGN-2023
@@ -161,8 +161,8 @@ global Nigeria_GHS_W5_euro_exchange 850         //https://www.poundsterlinglive.
 //Per W3, we convert WB's international poverty threshold to 2011$ using the PA.NUS.PRVT.PP WB info then inflate to the last year of the survey using CPI
 global Nigeria_GHS_W5_poverty_190 (1.90*79.531*(524.9/110.84)) //~715 N
 global Nigeria_GHS_W5_poverty_npl (376.52*524.9/267.5) //ALT 06.18.2020: Nigeria's NBS defines poverty as living below 376 N/day in 2019. Included for comparison purposes; adjusted for inflation although it is not clear if that happens internally.
-global Nigeria_GHS_W5_poverty_215 (2.15* 524.9/214.2 * 114.82)  //New 2023 WB poverty threshold, works out to ~600 N
-global Nigeria_GHS_W5_poverty_300 (3.00*$Nigeria_GHS_W5_infl_adj * $Nigeria_GHS_W5_cons_ppp_dollar) //New 2025 WB poverty threshold, ~690 N
+global Nigeria_GHS_W5_poverty_215 (2.15* (524.9/214.2) * 114.82)  //New 2023 WB poverty threshold, works out to ~600 N
+global Nigeria_GHS_W5_poverty_300 (3.00*$Nigeria_GHS_W5_infl_adj * $Nigeria_GHS_W5_cons_ppp_dollar ) //New 2025 WB poverty threshold, ~690 N
 
 //These values from Bai, Y., et al. (2021) Cost and affordability of nutritious diets at retail prices: Evidence from 177 countries. Food Policy 99. doi:https://doi.org/10.1016/j.foodpol.2020.101983
 //CoCA is cost of a calorically adequate diet in PPP$ (minimum number of calories needed for survival); CoNA is cost of a nutritionally adequate diet, i.e., the minimum expenditure required to get RDIs of macro and micronutrients. 
@@ -6616,13 +6616,13 @@ gen adulteq_weight=adulteq*weight_pop_rururb
 
 //ALT Update START
 gen ccf_loc = (1/$Nigeria_GHS_W5_infl_adj) 
-lab var ccf_loc "currency conversion factor - 2017 $NGN"
+lab var ccf_loc "currency conversion factor - 2021 $NGN"
 gen ccf_usd = ccf_loc/$Nigeria_GHS_W5_exchange_rate 
-lab var ccf_usd "currency conversion factor - 2017 $USD"
+lab var ccf_usd "currency conversion factor - 2021 $USD"
 gen ccf_1ppp = ccf_loc/$Nigeria_GHS_W5_cons_ppp_dollar
-lab var ccf_1ppp "currency conversion factor - 2017 $Private Consumption PPP"
+lab var ccf_1ppp "currency conversion factor - 2021 $Private Consumption PPP"
 gen ccf_2ppp = ccf_loc/$Nigeria_GHS_W5_gdp_ppp_dollar
-lab var ccf_2ppp "currency conversion factor - 2017 $GDP PPP"
+lab var ccf_2ppp "currency conversion factor - 2021 $GDP PPP"
 
 gen poverty_under_190 = daily_percap_cons < $Nigeria_GHS_W5_poverty_190
 la var poverty_under_190 "Household per-capita conumption is below $1.90 in 2011 $ PPP"

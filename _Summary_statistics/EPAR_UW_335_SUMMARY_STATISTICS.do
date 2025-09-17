@@ -11,10 +11,10 @@ global directory "../../_Summary_statistics"
 **************
 *SUMMARY STATISTICS
 ************** 
-global topcropname_area_yield maize rice wheat sorgum millet /*mill*/ pmill beanc cowpea grdnt beans yam swtptt cassav banana teff barley coffee sesame hsbean nueg cotton sunflr pigpea cocoa soy mangos mungbn avocad potato cashew jute	/* Eventually beanc will replace cowpea
+global topcropname_area_yield maize rice wheat sorgum millet /*mill*/ pmill beanc cowpea grdnt beans yam swtptt cassav banana teff barley coffee sesame hsbean nueg cotton sunflr pigpea cocoa soy mangos mungbn avocad potato cashew jute tobaco /* Eventually beanc will replace cowpea
 */ maize_k rice_k wheat_k jute_k maize_r rice_r wheat_r jute_r
 
-global topcropname_area maize rice wheat sorgum millet pmill beanc cowpea grdnt beans yam swtptt cassav banana teff barley coffee sesame hsbean nueg cotton sunflr pigpea cocoa soy mangos mungbn avocad potato cashew jute
+global topcropname_area maize rice wheat sorgum millet pmill beanc cowpea grdnt beans yam swtptt cassav banana teff barley coffee sesame hsbean nueg cotton sunflr pigpea cocoa soy mangos mungbn avocad potato cashew jute tobaco
  
 global gender male female mixed
 /*

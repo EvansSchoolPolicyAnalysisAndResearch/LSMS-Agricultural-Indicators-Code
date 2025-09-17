@@ -138,9 +138,9 @@ global Nigeria_GHS_W2_inflation 0.380751		// 2017: 134.9/214.2, 2021: 134.9/354.
 //Poverty threshold calculation
 //Per W3, we convert WB's international poverty threshold to 2011$ using the PA.NUS.PRVT.PP WB info then inflate to the last year of the survey using CPI
 global Nigeria_GHS_W2_poverty_190 ((1.90*83.58) * (134.9/110.8))
-global Nigeria_GHS_W2_poverty_npl 376.52 * $Nigeria_GHS_W2_inflation //ALT: To do: adjust for inflation
-global Nigeria_GHS_W2_poverty_215 2.15*(0.587791 * 112.0983276)  //New 2023 WB poverty threshold
-global Nigeria_GHS_W2_poverty_300 3*($Nigeria_GHS_W2_inflation * $Nigeria_GHS_W2_cons_ppp_dollar)  //New 2025 WB poverty threshold
+global Nigeria_GHS_W2_poverty_npl (376.52 * $Nigeria_GHS_W2_inflation ) //ALT: To do: adjust for inflation
+global Nigeria_GHS_W2_poverty_215 (2.15*(0.587791 * 112.0983276))  //New 2023 WB poverty threshold
+global Nigeria_GHS_W2_poverty_300 (3*($Nigeria_GHS_W2_inflation * $Nigeria_GHS_W2_cons_ppp_dollar ))  //New 2025 WB poverty threshold
 
 ********************************************************************************
 *THRESHOLDS FOR WINSORIZATION
@@ -5208,13 +5208,13 @@ gen adulteq_weight=adulteq*weight_pop_rururb
 
 ****Currency Conversion Factors***
 gen ccf_loc = (1/$Nigeria_GHS_W2_inflation) 
-lab var ccf_loc "currency conversion factor - 2017 $NGN"
+lab var ccf_loc "currency conversion factor - 2021 $NGN"
 gen ccf_usd = ccf_loc/$Nigeria_GHS_W2_exchange_rate 
-lab var ccf_usd "currency conversion factor - 2017 $USD"
+lab var ccf_usd "currency conversion factor - 2021 $USD"
 gen ccf_1ppp = ccf_loc/$Nigeria_GHS_W2_cons_ppp_dollar
-lab var ccf_1ppp "currency conversion factor - 2017 $Private Consumption PPP"
+lab var ccf_1ppp "currency conversion factor - 2021 $Private Consumption PPP"
 gen ccf_2ppp = ccf_loc/$Nigeria_GHS_W2_gdp_ppp_dollar
-lab var ccf_2ppp "currency conversion factor - 2017 $GDP PPP"
+lab var ccf_2ppp "currency conversion factor - 2021 $GDP PPP"
 
 *Rural poverty headcount ratio
 
@@ -5484,13 +5484,13 @@ foreach v of varlist  plot_productivity  plot_labor_prod {
 
 ****Currency Conversion Factors***
 gen ccf_loc = (1/$Nigeria_GHS_W2_inflation) 
-lab var ccf_loc "currency conversion factor - 2017 $NGN"
+lab var ccf_loc "currency conversion factor - 2021 $NGN"
 gen ccf_usd = ccf_loc/$Nigeria_GHS_W2_exchange_rate 
-lab var ccf_usd "currency conversion factor - 2017 $USD"
+lab var ccf_usd "currency conversion factor - 2021 $USD"
 gen ccf_1ppp = ccf_loc/$Nigeria_GHS_W2_cons_ppp_dollar
-lab var ccf_1ppp "currency conversion factor - 2017 $Private Consumption PPP"
+lab var ccf_1ppp "currency conversion factor - 2021 $Private Consumption PPP"
 gen ccf_2ppp = ccf_loc/$Nigeria_GHS_W2_gdp_ppp_dollar
-lab var ccf_2ppp "currency conversion factor - 2017 $GDP PPP"
+lab var ccf_2ppp "currency conversion factor - 2021 $GDP PPP"
 
 global monetary_val plot_value_harvest plot_productivity  plot_labor_prod 
 foreach p of global monetary_val {
@@ -5499,20 +5499,20 @@ foreach p of global monetary_val {
 	gen `p'_usd = `p' * ccf_usd 
 	gen `p'_loc =  `p' * ccf_loc 
 	local l`p' : var lab `p' 
-	lab var `p'_1ppp "`l`p'' (2017 $ Private Consumption PPP)"
-	lab var `p'_2ppp "`l`p'' (2017 $ GDP PPP)"
-	lab var `p'_usd "`l`p'' (2017$ USD)"
-	lab var `p'_loc "`l`p'' (2017 NGN)" 
+	lab var `p'_1ppp "`l`p'' (2021 $ Private Consumption PPP)"
+	lab var `p'_2ppp "`l`p'' (2021 $ GDP PPP)"
+	lab var `p'_usd "`l`p'' (2021$ USD)"
+	lab var `p'_loc "`l`p'' (2021 NGN)" 
 	lab var `p' "`l`p'' (NGN)"  
 	gen w_`p'_1ppp = w_`p' * ccf_1ppp
 	gen w_`p'_2ppp = w_`p' * ccf_2ppp
 	gen w_`p'_usd = w_`p' * ccf_usd
 	gen w_`p'_loc = w_`p' * ccf_loc
 	local lw_`p' : var lab w_`p'
-	lab var w_`p'_1ppp "`lw_`p'' (2017 $ Private Consumption PPP)"
-	lab var w_`p'_2ppp "`lw_`p'' (2017 $ GDP PPP)"
-	lab var w_`p'_usd "`lw_`p'' (2017 $ USD)"
-	lab var w_`p'_loc "`lw_`p'' (2017 NGN)" 
+	lab var w_`p'_1ppp "`lw_`p'' (2021 $ Private Consumption PPP)"
+	lab var w_`p'_2ppp "`lw_`p'' (2021 $ GDP PPP)"
+	lab var w_`p'_usd "`lw_`p'' (2021 $ USD)"
+	lab var w_`p'_loc "`lw_`p'' (2021 NGN)" 
 	lab var w_`p' "`lw_`p'' (NGN)" 
 }
  

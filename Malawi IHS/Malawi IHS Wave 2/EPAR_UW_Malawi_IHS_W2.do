@@ -243,9 +243,10 @@ paprika                         *               *
 other							*				*
 */
 
-global topcropname_area "maize tobacc grdnt pigpea nkhwni beans sorgum soy rice cotton swtptt pmill"
-global topcrop_area "1 5 11 36 42 34 32 35 17 37 28 33" //corresponding numeric crop codes
-global comma_topcrop_area "1, 5, 11, 36, 42, 34, 32, 35, 17, 37, 28, 33"
+
+global topcropname_area   "maize sorgum pigpea tobaco soy grdnt beans rice cotton swtptt pmill cassav mangos" 
+global topcrop_area       "1 32 36 5 35 11 34 17 37 28 33 49 52" 
+global comma_topcrop_area "1, 32, 36, 5, 35, 11, 34, 17, 37, 28, 33, 49, 52"
 global nb_topcrops : list sizeof global(topcropname_area) // Gets the current length of the global macro list "topcropname_area" 
 
 //display "$nb_topcrops"
@@ -4588,15 +4589,26 @@ save "${MWI_IHPS_W2_created_data}\MWI_IHPS_W2_ownasset.dta", replace
 *CROP YIELDS*
 ********************************************************************************
 use "${MWI_IHPS_W2_created_data}\MWI_IHPS_W2_all_plots.dta", clear
-gen number_trees_planted_mango = number_trees_planted if crop_code == 52
-recode crop_code ( 53 54 56 57 58 59 60 61 62 63 64=100) // recode to "other fruit":  mango, orange, papaya, avocado, guava, lemon, tangerine, peach, poza, masuku, masau, pineapple
-gen number_trees_planted_other_fruit = number_trees_planted if crop_code == 100
-gen number_trees_planted_cassava = number_trees_planted if crop_code == 49
-gen number_trees_planted_tea = number_trees_planted if crop_code == 50
-gen number_trees_planted_coffee = number_trees_planted if crop_code == 51 
-recode number_trees_planted_mango number_trees_planted_other_fruit number_trees_planted_cassava number_trees_planted_tea number_trees_planted_coffee (.=0)
-collapse (sum) number_trees_planted*, by(hhid)
-save "${MWI_IHPS_W2_created_data}\MWI_IHPS_W2_trees.dta", replace
+// gen number_trees_planted_mango = number_trees_planted if crop_code == 52
+// recode crop_code ( 53 54 56 57 58 59 60 61 62 63 64=100) // recode to "other fruit":  mango, orange, papaya, avocado, guava, lemon, tangerine, peach, poza, masuku, masau, pineapple
+// gen number_trees_planted_other_fruit = number_trees_planted if crop_code == 100
+// gen number_trees_planted_cassava = number_trees_planted if crop_code == 49
+// gen number_trees_planted_tea = number_trees_planted if crop_code == 50
+// gen number_trees_planted_coffee = number_trees_planted if crop_code == 51 
+// recode number_trees_planted_mango number_trees_planted_other_fruit number_trees_planted_cassava number_trees_planted_tea number_trees_planted_coffee (.=0)
+// collapse (sum) number_trees_planted*, by(hhid)
+// save "${MWI_IHPS_W2_created_data}\MWI_IHPS_W2_trees.dta", replace
+gen grew_=1
+gen harvested_ = (kg_harvest!=0 & kg_harvest!=.) | (ha_harvest!=0 & ha_harvest!=.)
+collapse (max) grew_ harvested_, by(hhid crop_code)
+merge m:1 crop_code using "${MWI_IHPS_W2_created_data}\MWI_IHPS_W2_cropname_table.dta", nogen keep(3)
+keep hhid crop_name grew_ harvested_
+fillin hhid crop_name
+drop _fillin
+recode grew_ harvested_ (.=0)
+reshape wide grew_ harvested_, i(hhid) j(crop_name) string
+tempfile grew_crops
+save `grew_crops'
 
 use "${MWI_IHPS_W2_created_data}\MWI_IHPS_W2_all_plots.dta", clear
 gen no_harvest=ha_harvest==.
@@ -4635,7 +4647,7 @@ gen no_harvest=ha_harvest==.
  local suffix : subinstr local vars2 "area_plan_" "", all
  foreach var in `suffix' {
  	replace area_plan_`var' = . if area_plan_`var'==0
- 	replace harvest_`var'=. if area_plan_`var'==. | (harvest_`var'==0 & no_harvest==1)
+ 	replace harvest_`var'=. if /*area_plan_`var'==. |*/ (harvest_`var'==0 & no_harvest==1)
  	replace area_harv_`var'=. if area_plan_`var'==. | (area_harv_`var'==0 & no_harvest==1)
  }
  drop no_harvest
@@ -4713,11 +4725,17 @@ gen kgs_harvest_ = harvest_
 drop crop_code*
 unab vars : *_
 reshape wide `vars', i(hhid) j(crop_name) string
-merge 1:1 hhid using "${MWI_IHPS_W2_created_data}\MWI_IHPS_W2_trees.dta"
-collapse (sum) harvest* area_harv*  area_plan* total_planted_area* total_harv_area* kgs_harvest*   value_harv* value_sold* number_trees_planted*  , by(hhid) 
-recode harvest*   area_harv* area_plan* kgs_harvest* total_planted_area* total_harv_area*    value_harv* value_sold* (0=.)
-egen kgs_harvest = rowtotal(kgs_harvest_*)
-la var kgs_harvest "Quantity harvested of all crops (kgs) (household) (summed accross all seasons)" 
+// merge 1:1 hhid using "${MWI_IHPS_W2_created_data}\MWI_IHPS_W2_trees.dta"
+// collapse (sum) harvest* area_harv*  area_plan* total_planted_area* total_harv_area* kgs_harvest*   value_harv* value_sold* number_trees_planted*  , by(hhid) 
+// recode harvest*   area_harv* area_plan* kgs_harvest* total_planted_area* total_harv_area*    value_harv* value_sold* (0=.)
+collapse (sum) harvest* area_harv*  area_plan* total_planted_area* total_harv_area* kgs_harvest*   value_harv* value_sold* , by(hhid) 
+merge 1:1 hhid using `grew_crops'
+recode area_plan* (0=.)
+foreach p of global topcropname_area { 
+	recode harvest*_`p' area_harv*_`p' kgs_harvest*_`p' total_planted_area*_`p' total_harv_area*_`p' value_harv*_`p' value_sold*_`p' (0=.) if grew_`p' == 0 
+}
+// egen kgs_harvest = rowtotal(kgs_harvest_*)
+// la var kgs_harvest "Quantity harvested of all crops (kgs) (household) (summed accross all seasons)" 
 
 *ren variables
 foreach p of global topcropname_area {
@@ -4764,12 +4782,12 @@ foreach p of global topcropname_area {
 	lab var area_plan_inter_mixed_`p' "Area planted  of `p' (ha) - intercrop (mixed-managed plots)"
 }
  
-foreach p of global topcropname_area {
-	gen grew_`p'=(total_harv_area_`p'!=. & total_harv_area_`p'!=.0 ) | (total_planted_area_`p'!=. & total_planted_area_`p'!=.0)
-	lab var grew_`p' "1=Household grew `p'" 
-	gen harvested_`p'= (total_harv_area_`p'!=. & total_harv_area_`p'!=.0 )
-	lab var harvested_`p' "1= Household harvested `p'"
-}
+// foreach p of global topcropname_area {
+// 	gen grew_`p'=(total_harv_area_`p'!=. & total_harv_area_`p'!=.0 ) | (total_planted_area_`p'!=. & total_planted_area_`p'!=.0)
+// 	lab var grew_`p' "1=Household grew `p'" 
+// 	gen harvested_`p'= (total_harv_area_`p'!=. & total_harv_area_`p'!=.0 )
+// 	lab var harvested_`p' "1= Household harvested `p'"
+// }
 save "${MWI_IHPS_W2_created_data}/MWI_IHPS_W2_yield_hh_crop_level.dta", replace
 
 * VALUE OF CROP PRODUCTION 
@@ -5110,7 +5128,7 @@ ren ea ea_id
 merge m:1 ea_id hhid using "${MWI_IHPS_W2_appended_data}/ConsAggW2.dta", nogen keep(3)
 gen annual_val_fdcons=(val_fdcons*52)
 save "${MWI_IHPS_W2_created_data}/MWI_IHPS_W2_agg_consumption.dta", replace 
-
+/* To fix: right now this is a very large file.
 use "${MWI_IHPS_W2_appended_data}\hh_mod_i1_13.dta", clear
 append using "${MWI_IHPS_W2_appended_data}\hh_mod_i2_13.dta"
 append using "${MWI_IHPS_W2_appended_data}\hh_mod_j_13.dta"
@@ -5138,7 +5156,7 @@ ren rexp* rexp*new
 merge m:1 hhid using "${MWI_IHPS_W2_appended_data}/ConsAggW2.dta", nogen keep (3)
 *Our method produces differnces from the World Bank consumption method. This code allows you to compare both panel and cross section. 
 save "${MWI_IHPS_W2_created_data}/MWI_IHPS_W2_aggregate_consumption.dta", replace
-
+*/
 *first get adult equivalent
 use "${MWI_IHPS_W2_appended_data}/ConsAggW2.dta", clear
 collapse (sum) adulteq, by(hhid)
@@ -5269,36 +5287,37 @@ lab var crop_income "Net crop revenue (value of production minus crop expenses)"
 *Top crop costs by area planted
 foreach c in $topcropname_area {
 	capture confirm file "${MWI_IHPS_W2_created_data}/MWI_IHPS_W2_inputs_`c'.dta" 
-	if _rc==0 { 
-	merge 1:1 hhid  using "${MWI_IHPS_W2_created_data}/MWI_IHPS_W2_inputs_`c'.dta", nogen //All expenses are in here now.
-	merge 1:1 hhid  using "${MWI_IHPS_W2_created_data}/MWI_IHPS_W2_`c'_monocrop_hh_area.dta", nogen
-	}
+	if _rc==0 merge 1:1 hhid  using "${MWI_IHPS_W2_created_data}/MWI_IHPS_W2_inputs_`c'.dta", nogen //All expenses are in here now.
+	capture confirm file "${MWI_IHPS_W2_created_data}/MWI_IHPS_W2_`c'_monocrop_hh_area.dta"
+	if _rc==0 merge 1:1 hhid  using "${MWI_IHPS_W2_created_data}/MWI_IHPS_W2_`c'_monocrop_hh_area.dta", nogen
 }
 
 global empty_crops ""
 
 foreach c in $topcropname_area {
-capture confirm var `c'_monocrop //Check to make sure this isn't empty.
-if !_rc {
-	egen `c'_exp = rowtotal(val_*_`c'_hh) //Only explicit costs for right now; add "exp" and "imp" tag to variables to disaggregate in future 
+	la var `c'_monocrop_ha "Total `c' monocrop hectares planted - Household"	
+	foreach v in herb inorg labor orgfert pest plotrent {
+		capture confirm var val_`v'_`c'_hh
+		if _rc {
+			gen val_`v'_`c'_hh=.
+		}
+	}
+	egen num_miss = rmiss(val_*_`c'_hh)	
+	egen `c'_exp = rowtotal(val_*_`c'_hh) if num_miss!=6 //Only explicit costs for right now; add "exp" and "imp" tag to variables to disaggregate in future; will be missing if all subcategories are missing.
 	lab var `c'_exp "Crop production costs(explicit)-Monocrop `c' plots only"
-	la var `c'_monocrop_ha "Total `c' monocrop hectares planted - Household"		
+		
 	*disaggregate by gender of plot manager
 	foreach i in male female mixed{
-		egen `c'_exp_`i' = rowtotal(val_*_`c'_`i')
+		egen `c'_exp_`i' = rowtotal(val_*_`c'_`i') if num_miss!=6
 		local l`c'_exp : var lab `c'_exp
 		la var `c'_exp_`i' "`l`c'_exp' - `i' managed plots"
 	}
 	replace `c'_exp = . if `c'_monocrop_ha==.			// set to missing if the household does not have any monocropped plots
-	foreach i in male female mixed{
+	foreach i in male female mixed {
 		replace `c'_exp_`i' = . if `c'_monocrop_ha_`i'==.
 			}
+	drop num_miss
 	}
-	else {
-		global empty_crops $empty_crops `c'
-	}
-		
-}
 
 
 merge 1:1 hhid using  "${MWI_IHPS_W2_created_data}/MWI_IHPS_W2_land_rights_hh.dta", nogen
@@ -5435,7 +5454,7 @@ merge 1:1 hhid  using "${MWI_IHPS_W2_created_data}/MWI_IHPS_W2_fertilizer_applic
 *Agricultural wage rate
 merge 1:1 hhid  using "${MWI_IHPS_W2_created_data}/MWI_IHPS_W2_ag_wage.dta", nogen
 *Crop yields 
-merge 1:1 hhid  using "${MWI_IHPS_W2_created_data}/MWI_IHPS_W2_yield_hh_crop_level.dta", nogen
+// merge 1:1 hhid  using "${MWI_IHPS_W2_created_data}/MWI_IHPS_W2_yield_hh_crop_level.dta", nogen
 *Total area planted and harvested accross all crops, plots, and seasons
 merge 1:1 hhid  using "${MWI_IHPS_W2_created_data}/MWI_IHPS_W2_hh_area_planted_harvested_allcrops.dta", nogen
 *Household diet
@@ -5521,11 +5540,11 @@ lab  var fishing_hh "1= Household has some fishing income"
 *Recoding missings to 0 for households growing crops
 recode grew* (.=0)
 *all rural households growing specific crops 
-forvalues k=1(1)$nb_topcrops {
-	local cn: word `k' of $topcropname_area
-	recode value_harv_`cn' value_sold_`cn' kgs_harvest_`cn' total_planted_area_`cn' total_harv_area_`cn' `cn'_exp (.=0) if grew_`cn'==1
-	recode value_harv_`cn' value_sold_`cn' kgs_harvest_`cn' total_planted_area_`cn' total_harv_area_`cn' `cn'_exp (nonmissing=.) if grew_`cn'==0
-}
+// forvalues k=1(1)$nb_topcrops {
+// 	local cn: word `k' of $topcropname_area
+// 	recode value_harv_`cn' value_sold_`cn' kgs_harvest_`cn' total_planted_area_`cn' total_harv_area_`cn' `cn'_exp (.=0) if grew_`cn'==1
+// 	recode value_harv_`cn' value_sold_`cn' kgs_harvest_`cn' total_planted_area_`cn' total_harv_area_`cn' `cn'_exp (nonmissing=.) if grew_`cn'==0
+// }
 
 *all rural households engaged in livestcok production of a given species //data not available
 foreach i in lrum srum poultry{
@@ -6193,7 +6212,6 @@ capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2
 */ 71 "Mali EACI Wave 1" 72 "Mali EACI Wave 2" /*
 */ 81 "Niger ECVMA Wave 1" 82 "Niger ECVMA Wave 2"
 saveold "${MWI_IHPS_W2_final_data}/MWI_IHPS_W2_household_variables.dta", replace // NOTE TO DEV: filename MWI... is intentionally different from standard file naming format. Keep MWI for Summary Stat file compatibility
-
 ********************************************************************************
 *INDIVIDUAL LEVEL VARIABLES*
 ********************************************************************************
