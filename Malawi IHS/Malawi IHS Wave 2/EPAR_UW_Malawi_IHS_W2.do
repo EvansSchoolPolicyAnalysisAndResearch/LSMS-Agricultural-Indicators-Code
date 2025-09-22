@@ -3303,10 +3303,11 @@ append using "${MWI_IHPS_W2_appended_data}/hh_mod_r_13.dta"
 append using "${MWI_IHPS_W2_appended_data}/hh_mod_o_13.dta"
 merge m:1 hhid using `hh_maize_prices'  //need maize prices for calculating cash value of free maize 
 rename hh_p0a income_source
-gen rental_income=1 if inlist(income_source, 106, 107, 108, 109) // non-ag land rental, house/apt rental, shope/store rental, vehicle rental
-gen pension_investment_income=1 if income_source==105| income_source==104 // pension & savings/interest/investment income
-gen asset_sale_income=1 if inlist(income_source, 110,111,112) // real estate sales, non-ag hh asset sale income, hh ag/fish asset sale income
-gen other_income=1 if inlist(income_source, 113, 114, 115) // inheritance, lottery, other income
+
+gen rental_income=hh_p02 if inlist(income_source, 106, 107, 108, 109) // non-ag land rental, house/apt rental, shope/store rental, vehicle rental
+gen pension_investment_income=hh_p02 if income_source==105| income_source==104 // pension & savings/interest/investment income
+gen asset_sale_income=hh_p02 if inlist(income_source, 110,111,112) // real estate sales, non-ag hh asset sale income, hh ag/fish asset sale income
+gen other_income=hh_p02 if inlist(income_source, 113, 114, 115) // inheritance, lottery, other income
 rename hh_r0a prog_code
 gen assistance_cash= hh_r02a if inlist(prog_code, 1031, 1032,104,108,1091,111,112) // Cash from MASAF, Non-MASAF pub. works, 
 *inputs-for-work, sec. level scholarships, tert. level. scholarships, dir. Cash Tr. from govt, DCT other
@@ -3314,8 +3315,8 @@ gen assistance_food= hh_r02b if inlist(prog_code, 102, 1032) // Cash value of in
 replace assistance_food=hh_r02c*price_kg if prog_code==101 // cash value of free maize, imputed from hh. median prices. 
 gen assistance_inkind=hh_r02b if inlist(prog_code, 1031, 104, 108, 1091, 111, 112) // cash value of in-kind assistance from MASAF
 * inputs-for-work, scholarships (sec. & tert.), direct cash transfers (govt & other)
-gen cash_received=1 if income_source== 101 // Cash transfers/gifts from indivs. 
-gen inkind_gifts_received=1 if inlist(income_source, 102,103) // Food & In-kind transfers/gifts from indivs.
+gen cash_received=hh_p02 if income_source== 101 // Cash transfers/gifts from indivs. 
+gen inkind_gifts_received=hh_p02 if inlist(income_source, 102,103) // Food & In-kind transfers/gifts from indivs.
 rename hh_o14 cash_remittance //Module O in MW2
 rename hh_o17 in_kind_remittance //Module O in MW2
 recode rental_income pension_investment_income asset_sale_income other_income assistance_cash assistance_food assistance_inkind cash_received inkind_gifts_received cash_remittance in_kind_remittance (.=0)
