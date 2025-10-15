@@ -148,7 +148,7 @@ set maxvar 8000
 // set directories
 * These paths correspond to the folders where the raw data files are located 
 * and where the created data and final data will be stored.
-global directory "../.."
+global directory "../.." 
 global Uganda_NPS_W2_raw_data 	"$directory/Uganda UNPS/Uganda UNPS Wave 2/Raw DTA Files"
 global Uganda_NPS_W2_created_data "$directory/Uganda UNPS/Uganda UNPS Wave 2/Final DTA Files/created_data"
 global Uganda_NPS_W2_final_data  "$directory/Uganda UNPS/Uganda UNPS Wave 2/Final DTA Files/final_data"
@@ -3827,15 +3827,15 @@ save "${Uganda_NPS_W2_created_data}/Uganda_NPS_W2_shannon_diversity_index.dta", 
 ********************************************************************************
                           * CONSUMPTION *
 ********************************************************************************
-use "${Uganda_NPS_W2_raw_data}/UNPS 2011-12 Consumption Aggregate.dta", clear
+use "${Uganda_NPS_W2_raw_data}/pov2010_11.dta", clear
 *gen nrrexp = cpexp30 * (100.000000 / 66.67894615) // (CPI 2010&11 / CPI 2005&06) 2010/2005
 gen nrrexp = cpexp30 * (116.5643496 / 71.55362795) // (CPI 2010&11 / CPI 2005&06) 2011/2006
 ren nrrexp  total_cons 
 *ren cpexp30  total_cons 
 ren equiv adulteq
 ren welfare peraeq_cons
-ren HHID hhid
-tostring hhid, format(%18.0f) replace
+ren hh hhid
+tostring hhid district, format(%18.0f) replace
 merge 1:1 hhid using "${Uganda_NPS_W2_created_data}/Uganda_NPS_W2_hhsize.dta", nogen keep(1 3)
 gen percapita_cons = (total_cons / hh_members)
 gen daily_peraeq_cons = peraeq_cons/30
@@ -3846,13 +3846,13 @@ lab var percapita_cons "Consumption per capita, in 05/06 prices, spatially and t
 lab var daily_peraeq_cons "Daily consumption per adult equivalent, in 05/06 prices, spatially and temporally adjusted in 11/12"
 lab var daily_percap_cons "Daily consumption per capita, in 05/06 prices, spatially and temporally adjusted in 11/12" 
 
-keep hhid total_cons peraeq_cons percapita_cons daily_peraeq_cons daily_percap_cons adulteq
+keep hhid poor total_cons peraeq_cons percapita_cons daily_peraeq_cons daily_percap_cons adulteq
 save "${Uganda_NPS_W2_created_data}/Uganda_NPS_W2_consumption.dta", replace
 
 **We create an adulteq dataset for summary statistics sections
-use "${Uganda_NPS_W2_raw_data}/UNPS 2011-12 Consumption Aggregate.dta", clear
+use "${Uganda_NPS_W2_raw_data}/pov2010_11", clear
 rename equiv adulteq
-rename HHID hhid
+rename hh hhid
 keep hhid adulteq
 tostring hhid, format(%18.0f) replace
 save "${Uganda_NPS_W2_created_data}/Uganda_NPS_W2_hh_adulteq.dta", replace
@@ -3862,18 +3862,15 @@ save "${Uganda_NPS_W2_created_data}/Uganda_NPS_W2_hh_adulteq.dta", replace
 ********************************************************************************
 
 use "${Uganda_NPS_W2_raw_data}/GSEC15B", clear
-rename hh HHID
 rename h15bq5 fd_home
 rename h15bq7 fd_awayhome
 rename h15bq9 fd_ownp
 rename h15bq11 fd_gift
 egen food_total = rowtotal(fd*) 
-collapse (sum) fd* food_total, by(HHID)
-duplicates report HHID
-tostring HHID, format(%18.0f) replace
-merge 1:1 HHID using "${Uganda_NPS_W2_raw_data}/UNPS 2011-12 Consumption Aggregate.dta", nogen keep(1 3)
-ren HHID hhid
-tostring hhid, format(%18.0f) replace
+collapse (sum) fd* food_total, by(hh)
+merge 1:1 hh using "${Uganda_NPS_W2_raw_data}/pov2010_11.dta", nogen keep(1 3)
+ren hh hhid
+tostring hhid district, format(%18.0f) replace
 merge 1:1 hhid using "${Uganda_NPS_W2_created_data}/Uganda_NPS_W2_hhsize.dta", nogen keep(1 3)
 drop if equiv ==.
 recode fd* food_total (0=.)
@@ -4891,13 +4888,7 @@ la var poverty_under_215 "Household per-capita consumption is below $2.15 in 201
 gen poverty_under_300 = (daily_percap_cons < $Uganda_NPS_W2_poverty_300)
 la var poverty_under_300 "Household per-capita consumption is below $3.00 in 2021 $ PPP"
 
-rename hhid HHID
-*We merge the national poverty line provided by the World bank 
-tostring HHID, format(%18.0f) replace
-merge 1:1 HHID using "${Uganda_NPS_W2_raw_data}/UNPS 2011-12 Consumption Aggregate.dta", keep(1 3) nogen 
-*gen poverty_under_npl = daily_percap_cons < $Nigeria_GHS_W1_poverty_nbs
 rename poor poverty_under_npl
-rename HHID hhid
 la var poverty_under_npl "Household per-capita consumption is below national poverty line in 05/06 PPP prices"
 
 *generating clusterid and strataid

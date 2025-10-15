@@ -3874,7 +3874,7 @@ ren nrrexp  total_cons
 *ren cpexp30  total_cons 
 ren equiv_m adulteq
 ren welfare peraeq_cons
-ren hhid HHID
+rename hhid HHID
 tostring HHID, format(%18.0f) replace
 merge 1:1 HHID using "${Uganda_NPS_W1_created_data}/Uganda_NPS_W1_weights.dta", nogen keep(1 3) // all merges 
 
@@ -3890,8 +3890,9 @@ keep HHID total_cons peraeq_cons percapita_cons daily_peraeq_cons daily_percap_c
 save "${Uganda_NPS_W1_created_data}/Uganda_NPS_W1_consumption.dta", replace
 
 **We create an adulteq dataset for summary statistics sections
-use "${Uganda_NPS_W1_raw_data}/UNPS 2009-10 Consumption Aggregate.dta", clear
+use "${Uganda_NPS_W1_raw_data}/pov2009_10", clear
 rename equiv adulteq
+rename hhid HHID
 keep HHID adulteq
 tostring HHID, format(%18.0f) replace
 save "${Uganda_NPS_W1_created_data}/Uganda_NPS_W1_hh_adulteq.dta", replace
@@ -3906,11 +3907,13 @@ rename h15bq5 fd_home
 rename h15bq7 fd_awayhome
 rename h15bq9 fd_ownp
 rename h15bq11 fd_gift
+rename HHID hhid
 egen food_total = rowtotal(fd*) 
-collapse (sum) fd* food_total, by(HHID)
-duplicates report HHID
-merge 1:1 HHID using "${Uganda_NPS_W1_raw_data}/UNPS 2009-10 Consumption Aggregate.dta", nogen keep(1 3)
-tostring HHID, format(%18.0f) replace
+collapse (sum) fd* food_total, by(hhid)
+duplicates report hhid
+merge 1:1 hhid using "${Uganda_NPS_W1_raw_data}/pov2009_10.dta", nogen keep(1 3)
+tostring hhid, format(%18.0f) replace
+rename hhid HHID
 merge 1:1 HHID using "${Uganda_NPS_W1_created_data}/Uganda_NPS_W1_weights.dta", nogen keep(1 3)
 drop if equiv ==.
 recode fd* food_total (0=.)
