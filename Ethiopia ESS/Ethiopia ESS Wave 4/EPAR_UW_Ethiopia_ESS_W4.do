@@ -2998,6 +2998,124 @@ lab var ext_reach_private "1 = Household reached by extension services - private
 lab var ext_reach_ict "1 = Household reached by extension services through ICT"
 save "${Ethiopia_ESS_W4_created_data}/Ethiopia_ESS_W4_any_ext.dta", replace
 
+********************************************************************************
+* SEED SOURCES *
+********************************************************************************
+use "${Ethiopia_ESS_W4_temp_data}/sect5_pp_w4.dta", clear
+gen crop_code=s5q0B
+
+//set globals
+global source relative village market govt microf ngo coop 
+	  
+* home saved seeds 
+gen saved_seed=(s5q16==1) if s5q16!=.
+ren s5q17 savedseed_kg
+* free seeds 
+gen free_seed=(s5q12==1) if s5q12!=.
+ren s5q13 freeseed_kg	
+* purchased seed
+gen purchased_seed=(s5q02==1) if s5q02!=.
+ren s5q04 purchasedseed_kg
+
+* purchased seed sources 
+replace s5q03_1=s5q03_2 if s5q03_1==. & s5q03_2!=.
+gen purch_relative=(s5q03_1==7 | s5q03_1==8) if s5q03_1!=.
+gen purch_village=(s5q03_1==11) if s5q03_1!=.
+gen purch_market=(s5q03_1==5 | s5q03_1==6) if s5q03_1!=.
+gen purch_govt=(s5q03_1==3) if s5q03_1!=.
+gen purch_microf=(s5q03_1==999) if s5q03_1!=.
+gen purch_ngo=(s5q03_1==10) if s5q03_1!=.
+gen purch_coop=(s5q03_1==1 | s5q03_1==2 | s5q03_1==4) if s5q03_1!=.
+
+//save seed sources for AgQuery
+preserve
+	collapse (max) purch_* *_seed (sum) *_kg, by (hhid crop_code)
+	
+// 	reshape long purch_, i(hhid crop_code) j(sources) string
+// 	drop if purch_ == 0
+// 	drop purch_
+	
+	egen totalseedkg=rowtotal(savedseed_kg freeseed_kg purchasedseed_kg) if savedseed_kg!=. | freeseed_kg!=. | purchasedseed_kg!=.
+	gen share_savedkg=(savedseed_kg/totalseedkg) if savedseed_kg!=. & totalseedkg!=.
+	gen share_freekg=(freeseed_kg/totalseedkg) if freeseed_kg!=. & totalseedkg!=.
+	gen share_purchasedkg=(purchasedseed_kg/totalseedkg) if purchasedseed_kg!=. & totalseedkg!=.
+	
+	 * reconcile if households dont report seed source but quantity of seed from different sources is reported
+	egen seeduse=rowtotal(saved_seed free_seed purchased_seed) if (saved_seed!=. | free_seed!=. | purchased_seed!=.)
+	for var *_seed: replace X=. if X==0 & seeduse==0
+	for var *_seed: replace X=0 if X==. & (seeduse==1 | seeduse==2 | seeduse==3)
+  
+	replace saved_seed=1 if saved_seed==. & share_savedkg>=0 & share_savedkg!=.
+	replace free_seed=1 if free_seed==. & share_freekg>=0 & share_freekg!=.
+	replace purchased_seed=1 if purchased_seed==. & share_purchasedkg>=0 & share_purchasedkg!=.
+	  
+	* reconcile shares if households only report using seeds from a single source but dont report actual quantity of seed used
+	replace share_savedkg=1 if share_savedkg==. & saved_seed==1 & seeduse==1
+	replace share_freekg=1 if share_freekg==. & free_seed==1 & seeduse==1
+	replace share_purchasedkg=1 if share_purchasedkg==. & purchased_seed==1 & seeduse==1
+	  
+	replace share_savedkg=0 if share_savedkg==. & (share_freekg==1 | share_purchasedkg==1)
+	replace share_freekg=0 if share_freekg==. & (share_savedkg==1 | share_purchasedkg==1)
+	replace share_purchasedkg=0 if share_purchasedkg==. & (share_savedkg==1 | share_freekg==1)
+	
+	save "${Ethiopia_ESS_W4_created_data}/Ethiopia_ESS_W4_seed_sources_long.dta", replace
+restore
+
+forvalues k=1(1)$nb_topcrops {
+	local c: word `k' of $topcrop_area
+	local cn: word `k' of $topcropname_area
+	gen crop_`cn' =crop_code if crop_code ==`c'
+	gen saved_`cn' =0
+	replace saved_`cn'=saved_seed if crop_code ==`c'
+	gen savedkg_`cn' =0
+	replace savedkg_`cn'=savedseed_kg if crop_code ==`c'
+	gen free_`cn' =0
+	replace free_`cn' =free_seed if crop_code ==`c'
+	gen freekg_`cn' = 0
+	replace freekg_`cn' =freeseed_kg if crop_code == `c'
+	gen purchased_`cn' =0
+	replace purchased_`cn' =purchased_seed if crop_code == `c'
+	gen purchasedkg_`cn' =0
+	replace purchasedkg_`cn' =purchasedseed_kg if crop_code == `c'
+ 	foreach source of global source {
+		gen purch_`source'_`cn' = purch_`source' if crop_code==`c'
+	}	
+}
+ren crop_code cropcode
+order hhid crop_* saved* free* purchased*
+collapse (max) crop_* saved_* free_* purchased_* purch_* (sum) savedkg_* freekg_* purchasedkg_* *_kg, by (hhid)
+ 
+egen totalseedkg=rowtotal(savedseed_kg freeseed_kg purchasedseed_kg) if savedseed_kg!=. | freeseed_kg!=. | purchasedseed_kg!=.
+gen share_savedkg=(savedseed_kg/totalseedkg) if savedseed_kg!=. & totalseedkg!=.
+gen share_freekg=(freeseed_kg/totalseedkg) if freeseed_kg!=. & totalseedkg!=.
+gen share_purchasedkg=(purchasedseed_kg/totalseedkg) if purchasedseed_kg!=. & totalseedkg!=.
+ 
+merge 1:1 hhid using "${Ethiopia_ESS_W4_created_data}\Ethiopia_ESS_W4_hhids.dta", nogen keep(2 3)
+
+* reconcile if households dont report seed source but quantity of seed from different sources is reported
+egen seeduse=rowtotal(saved_seed free_seed purchased_seed) if (saved_seed!=. | free_seed!=. | purchased_seed!=.)
+for var *_seed: replace X=. if X==0 & seeduse==0
+for var *_seed: replace X=0 if X==. & (seeduse==1 | seeduse==2 | seeduse==3)
+  
+replace saved_seed=1 if saved_seed==. & share_savedkg>=0 & share_savedkg!=.
+replace free_seed=1 if free_seed==. & share_freekg>=0 & share_freekg!=.
+replace purchased_seed=1 if purchased_seed==. & share_purchasedkg>=0 & share_purchasedkg!=.
+  
+* reconcile shares if households only report using seeds from a single source but dont report actual quantity of seed used
+replace share_savedkg=1 if share_savedkg==. & saved_seed==1 & seeduse==1
+replace share_freekg=1 if share_freekg==. & free_seed==1 & seeduse==1
+replace share_purchasedkg=1 if share_purchasedkg==. & purchased_seed==1 & seeduse==1
+  
+replace share_savedkg=0 if share_savedkg==. & (share_freekg==1 | share_purchasedkg==1)
+replace share_freekg=0 if share_freekg==. & (share_savedkg==1 | share_purchasedkg==1)
+replace share_purchasedkg=0 if share_purchasedkg==. & (share_savedkg==1 | share_freekg==1)
+ 
+ forvalues k=1(1)$nb_topcrops {
+	local cn: word `k' of $topcropname_area
+	for var purch_*_`cn' : replace X=0 if X==. & purchased_`cn'==1	
+ }
+
+save "${Ethiopia_ESS_W4_created_data}\Ethiopia_ESS_W4_seed_sources.dta", replace
 
 ********************************************************************************
 * MOBILE OWNERSHIP*
@@ -4681,6 +4799,7 @@ merge 1:1 hhid using "${Ethiopia_ESS_W4_created_data}/Ethiopia_ESS_W4_input_use.
 merge 1:1 hhid using "${Ethiopia_ESS_W4_created_data}/Ethiopia_ESS_W4_imprvseed_crop.dta", nogen keep(1 3)
 merge 1:1 hhid using "${Ethiopia_ESS_W4_created_data}/Ethiopia_ESS_W4_any_ext.dta", nogen keep(1 3)
 //merge 1:1 hhid using "${Ethiopia_ESS_W4_created_data}/Ethiopia_ESS_w4_irrigation.dta", nogen keep(1 3) keepusing(*irr*) // MGM 9.18.2024: added for ATA indicators
+merge 1:1 hhid using "${Ethiopia_ESS_W4_created_data}/Ethiopia_ESS_W4_seed_sources.dta", nogen keep(1 3)
 merge 1:1 hhid using "${Ethiopia_ESS_W4_created_data}/Ethiopia_ESS_W4_fin_serv.dta", nogen keep(1 3) //MGM 5.21.2024 - this file does not exist for ETH W4 and cannot be constructed!
 ren use_imprv_seed imprv_seed_use //ALT 02.03.22: Should probably fix code to align this with other inputs.
 ren use_hybrid_seed hybrid_seed_use

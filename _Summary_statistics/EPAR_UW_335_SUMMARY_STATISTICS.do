@@ -49,7 +49,7 @@ foreach instrument of global list_instruments {
 			global topcrop_monetary $topcrop_monetary `v'_exp_`g' `v'_exp_ha_`g' `v'_exp_kg_`g'
 		}
 	}
-
+	
 	global value_harv_vars =""
 	foreach v of varlist value_harv* {
 		global value_harv_vars $value_harv_vars `v'
@@ -273,19 +273,19 @@ foreach instrument of global list_instruments {
 	*/ hhs_little hhs_moderate hhs_severe hhs_total w_dist_agrodealer /*
 	*/ encs encs0Ha encs01Ha encs12Ha encs24Ha encs4Ha_ num_crops_hh num_crops_hh0Ha num_crops_hh01Ha num_crops_hh12Ha num_crops_hh24Ha num_crops_hh4Ha_ num_crops_hh02Ha num_crops_hh04Ha/*
 	*/ multiple_crops multiple_crops0Ha multiple_crops01Ha multiple_crops12Ha multiple_crops24Ha multiple_crops4Ha_ multiple_crops02Ha multiple_crops04Ha/*
-	*/ imprv_seed_use
+	*/ imprv_seed_use /*
+	*/ saved_seed free_seed purchased_seed savedseed_kg freeseed_kg purchasedseed_kg totalseedkg share_savedkg share_freekg share_purchasedkg seeduse
 
 	foreach cn in $topcropname_area {
 		*Check if the variable exists and if not generate it with values equal to 0
-		foreach v in imprv_seed hybrid_seed {
+		foreach v in imprv_seed hybrid_seed saved savedkg free freekg purchased purchasedkg purch_relative purch_village purch_market purch_govt purch_microf purch_ngo purch_coop {
 			capture confirm variable `v'_`cn'
 			if _rc {
 				qui gen `v'_`cn'=0
 			}
 		}
-		global household_vars1 $household_vars1 imprv_seed_`cn' hybrid_seed_`cn' 
+		global household_vars1 $household_vars1 imprv_seed_`cn' hybrid_seed_`cn' saved_`cn' savedkg_`cn' free_`cn' freekg_`cn' purchased_`cn' purchasedkg_`cn' purch_relative_`cn' purch_village_`cn' purch_market_`cn' purch_govt_`cn' purch_microf_`cn' purch_ngo_`cn' purch_coop_`cn'
 	}
-
 	global final_indicator1 ""
 	foreach v of global household_vars1 {
 		capture confirm variable `v'

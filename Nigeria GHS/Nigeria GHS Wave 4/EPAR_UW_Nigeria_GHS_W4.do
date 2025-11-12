@@ -2855,6 +2855,124 @@ preserve
 restore
 
 ********************************************************************************
+* SEED SOURCES *
+********************************************************************************
+use  "${Nigeria_GHS_W4_raw_data}\sect11e1_plantingw4.dta", clear
+ren cropcode crop_code
+
+//create globals
+global source relative village market govt microf ngo coop
+
+* home saved seeds 
+gen saved_seed=(s11eq4==1) if s11eq4!=.
+ren s11eq6a savedseed_kg
+ * free seeds 
+gen free_seed=(s11eq8==1) if s11eq8!=.
+ren s11eq10a freeseed_kg
+* purchased seed
+gen purchased_seed=(s11eq14==1) if s11eq14!=.
+ren s11eq18a purchasedseed_kg
+
+*purchased seed sources
+gen purch_relative=(s11eq22a==1 | s11eq22a==2) if s11eq22a!=.
+gen purch_village=(s11eq22a==3 | s11eq22a==4) if s11eq22a!=.
+gen purch_market=(s11eq22a==5 | s11eq22a==6 | s11eq22a==7) if s11eq22a!=.
+gen purch_govt=(s11eq22a==8 | s11eq22a==9) if s11eq22a!=.
+gen purch_microf=(s11eq22a==999) if s11eq22a!=.
+gen purch_ngo=(s11eq22a==999) if s11eq22a!=.
+gen purch_coop=(s11eq22a==999) if s11eq22a!=.
+
+preserve
+	collapse (max) purch_* *_seed (sum) *_kg, by (hhid crop_code)
+// 	reshape long purch_, i(hhid crop_code) j(sources) string
+// 	drop if purch_ == 0
+// 	drop purch_
+	
+	egen totalseedkg=rowtotal(savedseed_kg freeseed_kg purchasedseed_kg) if savedseed_kg!=. | freeseed_kg!=. | purchasedseed_kg!=.
+	gen share_savedkg=(savedseed_kg/totalseedkg) if savedseed_kg!=. & totalseedkg!=.
+	gen share_freekg=(freeseed_kg/totalseedkg) if freeseed_kg!=. & totalseedkg!=.
+	gen share_purchasedkg=(purchasedseed_kg/totalseedkg) if purchasedseed_kg!=. & totalseedkg!=.
+	
+	* reconcile if households dont report seed source but quantity of seed from different sources is reported
+	egen seeduse=rowtotal(saved_seed free_seed purchased_seed) if (saved_seed!=. | free_seed!=. | purchased_seed!=.)
+	for var *_seed: replace X=. if X==0 & seeduse==0
+	for var *_seed: replace X=0 if X==. & (seeduse==1 | seeduse==2 | seeduse==3)
+  
+	replace saved_seed=1 if saved_seed==. & share_savedkg>=0 & share_savedkg!=.
+	replace free_seed=1 if free_seed==. & share_freekg>=0 & share_freekg!=.
+	replace purchased_seed=1 if purchased_seed==. & share_purchasedkg>=0 & share_purchasedkg!=.
+  
+	* reconcile shares if households only report using seeds from a single source but dont report actual quantity of seed used
+	replace share_savedkg=1 if share_savedkg==. & saved_seed==1 & seeduse==1
+	replace share_freekg=1 if share_freekg==. & free_seed==1 & seeduse==1
+	replace share_purchasedkg=1 if share_purchasedkg==. & purchased_seed==1 & seeduse==1
+  
+	replace share_savedkg=0 if share_savedkg==. & (share_freekg==1 | share_purchasedkg==1)
+	replace share_freekg=0 if share_freekg==. & (share_savedkg==1 | share_purchasedkg==1)
+	replace share_purchasedkg=0 if share_purchasedkg==. & (share_savedkg==1 | share_freekg==1)
+	
+	save "${Nigeria_GHS_W4_created_data}\Nigeria_GHS_W4_seed_sources_long.dta", replace
+restore
+
+//generate crop_names for wide
+forvalues k=1(1)$nb_topcrops {
+	local c: word `k' of $topcrop_area
+	local cn: word `k' of $topcropname_area
+	gen crop_`cn' =crop_code if crop_code ==`c'
+	gen saved_`cn' =0
+	replace saved_`cn'=saved_seed if crop_code ==`c'
+	gen savedkg_`cn' =0
+	replace savedkg_`cn'=savedseed_kg if crop_code ==`c'
+	gen free_`cn' =0
+	replace free_`cn' =free_seed if crop_code ==`c'
+	gen freekg_`cn' = 0
+	replace freekg_`cn' =freeseed_kg if crop_code == `c'
+	gen purchased_`cn' =0
+	replace purchased_`cn' =purchased_seed if crop_code == `c'
+	gen purchasedkg_`cn' =0
+	replace purchasedkg_`cn' =purchasedseed_kg if crop_code == `c'
+	foreach source of global source {
+		gen purch_`source'_`cn' = purch_`source' if crop_code == `c'
+	}
+}
+ren crop_code cropcode
+order hhid crop_* saved* free* purchased* purch_*
+
+collapse (max) crop_* saved_* free_* purchased_* purch_* (sum) savedkg_* freekg_* purchasedkg_* *_kg, by (hhid)
+ 
+egen totalseedkg=rowtotal(savedseed_kg freeseed_kg purchasedseed_kg) if savedseed_kg!=. | freeseed_kg!=. | purchasedseed_kg!=.
+gen share_savedkg=(savedseed_kg/totalseedkg) if savedseed_kg!=. & totalseedkg!=.
+gen share_freekg=(freeseed_kg/totalseedkg) if freeseed_kg!=. & totalseedkg!=.
+gen share_purchasedkg=(purchasedseed_kg/totalseedkg) if purchasedseed_kg!=. & totalseedkg!=.
+ 
+merge 1:1 hhid using "${Nigeria_GHS_W4_created_data}\Nigeria_GHS_W4_weights.dta", nogen keep(2 3)
+  
+* reconcile if households dont report seed source but quantity of seed from different sources is reported
+egen seeduse=rowtotal(saved_seed free_seed purchased_seed) if (saved_seed!=. | free_seed!=. | purchased_seed!=.)
+for var *_seed: replace X=. if X==0 & seeduse==0
+for var *_seed: replace X=0 if X==. & (seeduse==1 | seeduse==2 | seeduse==3)
+  
+replace saved_seed=1 if saved_seed==. & share_savedkg>=0 & share_savedkg!=.
+replace free_seed=1 if free_seed==. & share_freekg>=0 & share_freekg!=.
+replace purchased_seed=1 if purchased_seed==. & share_purchasedkg>=0 & share_purchasedkg!=.
+  
+* reconcile shares if households only report using seeds from a single source but dont report actual quantity of seed used
+replace share_savedkg=1 if share_savedkg==. & saved_seed==1 & seeduse==1
+replace share_freekg=1 if share_freekg==. & free_seed==1 & seeduse==1
+replace share_purchasedkg=1 if share_purchasedkg==. & purchased_seed==1 & seeduse==1
+  
+replace share_savedkg=0 if share_savedkg==. & (share_freekg==1 | share_purchasedkg==1)
+replace share_freekg=0 if share_freekg==. & (share_savedkg==1 | share_purchasedkg==1)
+replace share_purchasedkg=0 if share_purchasedkg==. & (share_savedkg==1 | share_freekg==1)
+  
+forvalues k=1(1)$nb_topcrops {
+	local cn: word `k' of $topcropname_area
+	for var purch_*_`cn' : replace X=0 if X==. & purchased_`cn'==1	
+}
+
+save "${Nigeria_GHS_W4_created_data}\Nigeria_GHS_W4_seed_sources.dta", replace
+
+********************************************************************************
 * REACHED BY AG EXTENSION *
 ********************************************************************************
 *Extension
@@ -6166,6 +6284,8 @@ replace use_inorg_fert=. if farm_area==0 | farm_area==. // Area cultivated this 
 recode ext_reach* (0 1=.) if (value_crop_production==0 & livestock_income==0 & (farm_area==0 | farm_area==.) &  tlu_today==0) //ALT 01.26.21: Changed & to | for farm_area
 replace imprv_seed_use=. if farm_area==.
 global empty_vars $empty_vars hybrid_seed*
+
+merge 1:1 hhid using "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_seed_sources.dta", nogen keep (1 3)
 
 *Milk productivity
 merge 1:1 hhid using "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_milk_animals.dta", nogen keep(1 3)
