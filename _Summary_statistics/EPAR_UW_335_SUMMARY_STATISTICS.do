@@ -1454,7 +1454,6 @@ foreach instrument of global list_instruments {
 		global final_indicator11 $final_indicator11 grew_`v' grew_`v'01Ha grew_`v'12Ha grew_`v'24Ha grew_`v'4Ha	grew_`v'02Ha grew_`v'04Ha	
 	}
 	*Adding in final (non-crop) variables
-	global final_indicator11 ""
 	global final_indicator11 $final_indicator11 /*
 	*/ agactivities_hh ag_hh crop_hh livestock_hh fishing_hh /*
 	*/ w_liters_milk_produced w_value_milk_produced_1ppp w_value_milk_produced_2ppp w_value_milk_produced_loc /*
