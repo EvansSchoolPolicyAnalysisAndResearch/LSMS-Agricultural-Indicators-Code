@@ -162,9 +162,9 @@ clear matrix
 clear mata			
 set more off
 set maxvar 8000	
-ssc install findname  // need this user-written ado file for some commands to work
+capture ssc install findname  // need this user-written ado file for some commands to work
 
-global directory "../.." //Update this to match the path to your local repo
+global directory "../.."
 
 *These paths correspond to the folders where the raw data files are located and where the created data and final data will be stored.
 global Tanzania_NPS_W2_raw_data 	    	"$directory/Tanzania NPS/Tanzania NPS Wave 2/Raw DTA Files"
@@ -195,7 +195,7 @@ global wins_upper_thres 99							//  Threshold for winzorization at the top of t
 *GLOBALS OF PRIORITY CROPS //change these globals if you are interested in different crops
 ********************************************************************************
 ////Limit crop names in variables to 6 characters or the variable names will be too long! 
-global topcropname_area "maize rice wheat sorgum pmill grdnt bencwp yam swtptt cassav banana cotton sunflr pigpea"
+global topcropname_area "maize rice wheat sorgum pmill grdnt beanc yam swtptt cassav banana cotton sunflr pigpea"
 global topcrop_area "11 12 16 13 14 43 931 24 22 21 71 50 41 34"
 global comma_topcrop_area "11, 12, 16, 13, 14, 43, 931, 24, 22, 21, 71, 50, 41, 34"
 global topcropname_area_full "maize rice wheat sorghum pearl-millet groundnuts beans-cowpeas yam sweet-potato cassava banana cotton sunflower pigeon-peas"
@@ -581,13 +581,13 @@ recode ha_planted_adj (0=.)
 replace ha_planted = ha_planted_adj if ha_planted_adj!=.
 
 //Harvest
-gen kgs_harvest = ag4a_15
-replace kgs_harvest = ag6a_08 if kgs_harvest==.
-replace kgs_harvest = ag6b_08 if kgs_harvest==.
+gen kg_harvest = ag4a_15
+replace kg_harvest = ag6a_08 if kg_harvest==.
+replace kg_harvest = ag6b_08 if kg_harvest==.
 //Only 3 obs are not finished with harvest
-replace kgs_harvest = ag4b_15 if kgs_harvest==.
-replace kgs_harvest = kgs_harvest/(1-ag4a_14/100) if ag4b_12==2 & ag4a_14 < 100 //There are several observations ranging from 200-9000
-replace kgs_harvest = kgs_harvest/(1-ag4b_14/100) if ag4b_12==2 & ag4b_14 < 100
+replace kg_harvest = ag4b_15 if kg_harvest==.
+replace kg_harvest = kg_harvest/(1-ag4a_14/100) if ag4b_12==2 & ag4a_14 < 100 //There are several observations ranging from 200-9000
+replace kg_harvest = kg_harvest/(1-ag4b_14/100) if ag4b_12==2 & ag4b_14 < 100
 	//Rescale harvest area 
 gen over_harvest = ha_harvest > ha_planted & ha_planted!=.
 gen lost_plants = ag4a_17==1 | ag6a_09==1 | ag4b_17==1 | ag6b_09==1
@@ -595,7 +595,7 @@ gen lost_plants = ag4a_17==1 | ag6a_09==1 | ag4b_17==1 | ag6b_09==1
 replace ha_harvest = ha_planted if over_harvest==1 & lost_plants==0 
 replace ha_harvest = ha_planted if ag4a_09==2 | ag4b_09==2 //"Was area harvested less than area planted? 2=no"
 replace ha_harvest = ha_planted if permcrop==1 & over_harvest==1 //Lack of information to deal with permanent crops, so rescaling to ha_planted
-replace ha_harvest = 0 if kgs_harvest==. 
+replace ha_harvest = 0 if kg_harvest==. 
 //Remaining observations at this point have (a) recorded preharvest losses (b) have still harvested some crop, and (c) have area harvested greater than area planted, likely because estimated area > GPS-measured area. We can conclude that the area_harvested should be less than the area planted; one possible scaling factor could be area_harvested over estimated area planted.
 gen ha_harvest_adj = ha_harvest/est_ha_planted * ha_planted if over_harvest==1 & lost_plants==1 
 replace ha_harvest = ha_harvest_adj if ha_harvest_adj !=. & ha_harvest_adj<= ha_harvest
@@ -604,13 +604,13 @@ replace ha_harvest = ha_planted if ha_harvest_adj !=. & ha_harvest_adj > ha_harv
 /*
 ren ag4a_16 value_harvest
 replace value_harvest=ag4b_16 if value_harvest==.
-gen val_kg = value_harvest/kgs_harvest
+gen val_kg = value_harvest/kg_harvest
 //Bringing in the permanent crop price data.
 merge m:1 y2_hhid crop_code using "${Tanzania_NPS_W2_created_data}/Tanzania_NPS_W2_crop_sales.dta", nogen keep(1 3) keepusing(price_kg)
 replace price_kg = val_kg if price_kg==.
 drop val_kg
 ren price_kg val_kg //Use observed sales prices where available, farmer estimated values where not 
-gen obs=kgs_harvest>0 & kgs_harvest!=.
+gen obs=kg_harvest>0 & kg_harvest!=.
 merge m:1 y2_hhid using "${Tanzania_NPS_W2_created_data}/Tanzania_NPS_W2_hhids.dta", nogen keep(1 3)
 gen plotweight=ha_planted*weight
 foreach i in region district ward ea y2_hhid {
@@ -632,7 +632,7 @@ foreach i in country region district ward ea {
 	replace val_kg = val_kg_`i' if obs_`i'_kg >9
 }
 	replace val_kg = val_kg_y2_hhid if val_kg_y2_hhid!=.
-	replace value_harvest=val_kg*kgs_harvest if value_harvest==.
+	replace value_harvest=val_kg*kg_harvest if value_harvest==.
 */
 merge m:1 hhid using "${Tanzania_NPS_W2_created_data}/Tanzania_NPS_W2_hhids.dta"
 //ren y2_hhid hhid
@@ -648,15 +648,15 @@ foreach i in country region district ward ea {
 }
 	
 	replace val_kg_hhid = val_kg if val_kg_hhid==.
-	gen value_harvest=val_kg*kgs_harvest 
-	gen value_harvest_hh = val_kg_hhid * kgs_harvest
+	gen value_harvest=val_kg*kg_harvest 
+	gen value_harvest_hh = val_kg_hhid * kg_harvest
 	replace value_harvest = ag4a_16 if value_harvest==.
 	replace value_harvest = ag4b_16 if value_harvest==.
 
 
 preserve
 //ren hhid y2_hhid
-collapse (mean) price_kg=val_kg [aw=kgs_harvest], by(hhid crop_code) //get household prices for crops 
+collapse (mean) price_kg=val_kg [aw=kg_harvest], by(hhid crop_code) //get household prices for crops 
 save "${Tanzania_NPS_W2_created_data}/Tanzania_NPS_W2_hh_crop_prices.dta", replace
 restore
 	
@@ -666,7 +666,7 @@ preserve
 	collapse (sum) value_harvest /*(max) month_harv*/, by(hhid plot_id season)
 	save "${Tanzania_NPS_W2_created_data}/Tanzania_NPS_W2_plot_value_prod.dta", replace //Needed to estimate plot rent values
 restore
-	//collapse (sum) kgs_harvest value_harvest ha_planted ha_harvest number_trees_planted (min) purestand, by(region district ward ea y2_hhid plot_id crop_code field_size season) 
+	//collapse (sum) kg_harvest value_harvest ha_planted ha_harvest number_trees_planted (min) purestand, by(region district ward ea y2_hhid plot_id crop_code field_size season) 
 	//	merge m:1 y2_hhid plot_id using "${Tanzania_NPS_W2_created_data}/Tanzania_NPS_W2_plot_decision_makers.dta", nogen keep(1 3) keepusing(dm_gender)
 	//ren hhid y2_hhid
     gen lost_drought = inlist(ag4a_10, 1) | inlist(ag4b_10, 1)
@@ -675,7 +675,8 @@ restore
 	
 gen n_crops=1
 	gen no_harvest=ha_harvest==. 
-	collapse (max) no_harvest  (sum) kgs_harvest imprv_seed_use value_harvest* ha_planted ha_harvest number_trees_planted n_crops (min) purestand, by(region district season ward ea hhid plot_id crop_code field_size total_ha_planted)  
+	gen no_conv=kg_harvest==. & ha_harvest!=. & ha_harvest!=0
+	collapse (max) no_harvest  (sum) kg_harvest imprv_seed_use value_harvest* ha_planted ha_harvest number_trees_planted n_crops no_conv (min) purestand, by(region district season ward ea hhid plot_id crop_code field_size total_ha_planted)  
 		merge m:1 hhid plot_id season using "${Tanzania_NPS_W2_created_data}/Tanzania_NPS_W2_plot_decision_makers.dta", nogen keep(3) keepusing(dm*) //Drops the 3 hhs  we filtered out earlier
 		gen percent_field = ha_planted/total_ha_planted
 		gen percent_inputs = percent_field if percent_field!=0
@@ -689,14 +690,14 @@ gen n_crops=1
 		
 		//Combining beans and cowpeas together into a single crop_code. 
 		tab crop_code if crop_code==31 | crop_code==32 
-		recode crop_code (31 32=931) //recoding for new consolidated crop bencwp (931) for combined beans and cowpeas 
+		recode crop_code (31 32=931) //recoding for new consolidated crop beanc (931) for combined beans and cowpeas 
 		label define crop_code 931 "Beans-Cowpeas", add
 		label values crop_code crop_code
 		tab crop_code if crop_code==931 // Check if crops combined 
 		
-		replace ha_harvest=. if (ha_harvest==0 & no_harvest==1) | (ha_harvest==0 & kgs_harvest>0 & kgs_harvest!=.)
-   replace kgs_harvest = . if kgs_harvest==0 & no_harvest==1
-   drop no_harvest
+		replace ha_harvest=. if (ha_harvest==0 & no_harvest==1) | (ha_harvest==0 & kg_harvest>0 & kg_harvest!=.)
+   replace kg_harvest = . if kg_harvest==0 & no_harvest==1
+   //drop no_harvest
    gen ha_harv_yld=ha_harvest if ha_planted >=0.05 & !inlist(crop_code, 302,303,304,305,306,19) //Excluding nonfood crops & seaweed 
    gen ha_plan_yld=ha_planted if ha_planted >=0.05 & !inlist(crop_code, 302,303,304,305,306,19) 
 	save "${Tanzania_NPS_W2_created_data}/Tanzania_NPS_W2_all_plots.dta",replace
@@ -996,7 +997,7 @@ use "${Tanzania_NPS_W2_created_data}/Tanzania_NPS_W2_all_plots.dta", clear
 
 use "${Tanzania_NPS_W2_created_data}/Tanzania_NPS_W2_all_plots.dta", clear
 	ren ha_planted monocrop_ha
-	ren kgs_harvest kgs_harv_mono
+	ren kg_harvest kgs_harv_mono
 	ren value_harvest val_harv_mono
 	tab crop_code if crop_code==931
 	collapse (sum) *mono*, by(hhid plot_id crop_code dm_gender season)
@@ -1143,24 +1144,24 @@ use "${Tanzania_NPS_W2_created_data}/Tanzania_NPS_W2_all_plots.dta", clear
 gen value_harvest_imputed = value_harvest
 lab var value_harvest_imputed "Imputed value of crop production"
 
-collapse (sum) value_harvest_imputed kgs_harvest, by (hhid crop_code)
+collapse (sum) value_harvest_imputed kg_harvest, by (hhid crop_code)
 merge 1:1 hhid crop_code using "${Tanzania_NPS_W2_created_data}/Tanzania_NPS_W2_crop_sales.dta", nogen 
 tab crop_code if crop_code==931
 preserve
-	recode  value_harvest_imputed value_sold kgs_harvest quantity_sold (.=0)
-	recode crop_code (31 32=931) //recoding for new consolidated crop bencwp (931) for combined beans and cowpeas 
+	recode  value_harvest_imputed value_sold kg_harvest quantity_sold (.=0)
+	recode crop_code (31 32=931) //recoding for new consolidated crop beanc (931) for combined beans and cowpeas 
 		//label define crop_code 931 "Beans-Cowpeas", add
 		//label values crop_code crop_code
 		tab crop_code if crop_code==931 
 		
-	collapse (sum) value_harvest_imputed value_sold kgs_harvest quantity_sold , by (hhid crop_code)
+	collapse (sum) value_harvest_imputed value_sold kg_harvest quantity_sold , by (hhid crop_code)
 	ren value_harvest_imputed value_crop_production
 	lab var value_crop_production "Gross value of crop production, summed over main and season"
 	ren value_sold value_crop_sales
 	lab var value_crop_sales "Value of crops sold so far, summed over main and season"
-	lab var kgs_harvest "Kgs harvested of this crop, summed over main and season"
+	lab var kg_harvest "Kgs harvested of this crop, summed over main and season"
 	ren quantity_sold kgs_sold
-	gen price_kg = value_crop_production/kgs_harvest
+	gen price_kg = value_crop_production/kg_harvest
 	lab var price_kg "Estimated household value of crop per kg, from sales and imputed values" //ALT 07.22.21: Added this var to make the crop processing value calculations work.
 	lab var kgs_sold "Kgs sold of this crop, summed over main and season"
 	save "${Tanzania_NPS_W2_created_data}/Tanzania_NPS_W2_hh_crop_values_production.dta", replace
@@ -1203,7 +1204,7 @@ replace value_lost = ag5a_23 if value_lost==.
 replace value_lost = ag5b_23 if value_lost==.
 recode value_lost (.=0)
 ren zaocode crop_code
-recode crop_code (31 32=931) //recoding for new consolidated crop bencwp (931) for combined beans and cowpeas 
+recode crop_code (31 32=931) //recoding for new consolidated crop beanc (931) for combined beans and cowpeas 
 		label define crop_code 931 "Beans-Cowpeas", add
 		label values crop_code crop_code
 		tab crop_code if crop_code==931 
@@ -2491,7 +2492,7 @@ append using "${Tanzania_NPS_W2_raw_data}/AG_SEC4B.dta"
 recode season (.=1)
 ren plotnum plot_id 
 ren zaocode crop_code
-recode crop_code (31 32=931) //recoding for new consolidated crop bencwp (931) for combined beans and cowpeas 
+recode crop_code (31 32=931) //recoding for new consolidated crop beanc (931) for combined beans and cowpeas 
 		label define crop_code 931 "Beans-Cowpeas", add
 		label values crop_code crop_code
 		tab crop_code if crop_code==931 
@@ -2512,7 +2513,7 @@ recode use* (.=0)
 
 preserve
 ren imprv_seed_use imprv_seed_ 
-//recode crop_code (31 32=931) //recoding for new consolidated crop bencwp (931) for combined beans and cowpeas 
+//recode crop_code (31 32=931) //recoding for new consolidated crop beanc (931) for combined beans and cowpeas 
 		//label define crop_code 931 "Beans-Cowpeas", add
 		//label values crop_code crop_code
 		//tab crop_code if crop_code==931 
@@ -2529,7 +2530,7 @@ merge m:m hhid plot_id season using "${Tanzania_NPS_W2_created_data}/Tanzania_NP
 preserve
 ren imprv_seed_use all_imprv_seed_
 gen all_hybrid_seed_ =.
-//recode crop_code (31 32=931) //recoding for new consolidated crop bencwp (931) for combined beans and cowpeas 
+//recode crop_code (31 32=931) //recoding for new consolidated crop beanc (931) for combined beans and cowpeas 
 		//label define crop_code 931 "Beans-Cowpeas", add
 		//label values crop_code crop_code
 		//tab crop_code if crop_code==931 
@@ -3132,8 +3133,8 @@ tempfile trees
 save `trees'
 use "${Tanzania_NPS_W2_created_data}/Tanzania_NPS_W2_all_plots.dta", clear
 *ren cropcode crop_code
-gen no_harvest=ha_harvest==.
-gen harvest=kgs_harvest if season==0  & ha_plan_yld !=.
+*gen no_harvest=ha_harvest==.
+gen harvest=kg_harvest if season==0  & ha_plan_yld !=.
 gen area_plan=ha_plan_yld if season==0
 gen area_harv = ha_harv_yld if season==0 
 gen mixed = "inter"  //Note to adjust this for lost crops 
@@ -3156,7 +3157,7 @@ foreach i in harvest area_plan area_harv {
 	}
 }
 
-collapse (sum) harvest* area* kgs_harvest (max) no_harvest, by(hhid crop_code)
+collapse (sum) harvest* area* kg_harvest (max) no_harvest, by(hhid crop_code)
 unab vars : harvest* area*
 foreach var in `vars' {
 	replace `var' = . if `var'==0 & no_harvest==1
@@ -3171,7 +3172,7 @@ foreach var in `suffix' {
 	replace harvest_`var'=. if area_plan_`var'==. | (harvest_`var'==0 & no_harvest==1)
 	replace area_harv_`var'=. if area_plan_`var'==. | (area_harv_`var'==0 & no_harvest==1)
 }
-//Bencwp has been coded at this point. Beans (31) and Cowpeas (32) do not exist due to the recode. 
+//beanc has been coded at this point. Beans (31) and Cowpeas (32) do not exist due to the recode. 
 drop no_harvest
 save "${Tanzania_NPS_W2_created_data}/Tanzania_NPS_W2_hh_crop_area_plan.dta", replace
 preserve
@@ -3186,14 +3187,14 @@ restore
 *Yield at the household level
 //ALT 07.21.21: Code continues here as written in W4
 use "${Tanzania_NPS_W2_created_data}/Tanzania_NPS_W2_crop_harvest_area_yield.dta", clear
-recode crop_code (31 32=931) //recoding for new consolidated crop bencwp (931) for combined beans and cowpeas 
+recode crop_code (31 32=931) //recoding for new consolidated crop beanc (931) for combined beans and cowpeas 
 		//label define crop_code 931 "Beans-Cowpeas", add
 		//label values crop_code crop_code
 		tab crop_code if crop_code==931 
 		
 merge m:1 crop_code using "${Tanzania_NPS_W2_created_data}/Tanzania_NPS_W2_cropname_table.dta", nogen keep(3)
 merge 1:1 hhid crop_code using "${Tanzania_NPS_W2_created_data}/Tanzania_NPS_W2_hh_crop_values_production.dta", nogen keep(1 3) 
-recode crop_code (31 32=931) //recoding for new consolidated crop bencwp (931) for combined beans and cowpeas 
+recode crop_code (31 32=931) //recoding for new consolidated crop beanc (931) for combined beans and cowpeas 
 		//label define crop_code 931 "Beans-Cowpeas", add
 		//label values crop_code crop_code
 		tab crop_code
@@ -3202,7 +3203,7 @@ recode crop_code (31 32=931) //recoding for new consolidated crop bencwp (931) f
 ren value_crop_production value_harv_
 ren value_crop_sales value_sold_
 ren kgs_sold kgs_sold_
-ren kgs_harvest kgs_harvest_
+ren kg_harvest kg_harvest_
 foreach i in harvest area {
 	ren `i'* `i'*_
 }
@@ -3212,15 +3213,15 @@ drop /*crop_code*/ price_kg
 unab vars : *_ crop_code
 reshape wide `vars', i(hhid) j(crop_name) string
 merge 1:1 hhid using `trees', nogen
-egen kgs_harvest = rowtotal(kgs_harvest_*)
+egen kg_harvest = rowtotal(kg_harvest_*)
 egen kgs_sold = rowtotal(kgs_sold_*)
-la var kgs_harvest "Quantity harvested of all crops (kgs) (household) (summed accross all seasons)"
+la var kg_harvest "Quantity harvested of all crops (kgs) (household) (summed accross all seasons)"
 //lab var kgs_sold "Kgs sold (household) (all seasons)" //Do we need this here?
 //Removing the LRS SRS tagging as they are moot now. 
 foreach p of global topcropname_area {
 	lab var value_harv_`p' "Value harvested of `p' (household)" 
 	lab var value_sold_`p' "Value sold of `p' (household)" 
-	lab var kgs_harvest_`p'  "Harvest of `p' (kgs) (household) (all seasons)" 
+	lab var kg_harvest_`p'  "Harvest of `p' (kgs) (household) (all seasons)" 
 	lab var kgs_sold_`p'  "Quantity sold of `p' (kgs) (household) (all seasons)" 
 	lab var total_harv_area_`p'  "Total area harvested of `p' (ha) (household) (all seasons)" 
 	lab var total_planted_area_`p'  "Total area planted of `p' (ha) (household) (all seasons)" 
@@ -3282,13 +3283,13 @@ foreach p of global topcropname_area {
 }
 
 foreach p of global topcropname_area {
-	recode kgs_harvest_`p' (.=0) if grew_`p'==1 
+	recode kg_harvest_`p' (.=0) if grew_`p'==1 
 	recode value_sold_`p' (.=0) if grew_`p'==1 
 	recode value_harv_`p' (.=0) if grew_`p'==1 
 }
 
-ds kgs_harvest*
-sum kgs_harvest_* value_sold* value_harv*
+ds kg_harvest*
+sum kg_harvest_* value_sold* value_harv*
 
 //Check from here if any crops get dropped. Looks like the loop assumes that none was sold if certain crops aren't being recoded earlier and therefore doesn't compute them in the loop.
 //Drop everything that isn't crop-related - changing to make this location-independent.
@@ -3922,7 +3923,7 @@ global empty_vars $empty_vars *liters_per_cow *liters_per_buffalo *costs_dairy_p
 //merge 1:1 y2_hhid using "${Tanzania_NPS_W2_created_data}/Tanzania_NPS_W2_ag_wage.dta", nogen //ALT: No longer necessary 
 *Crop yields 
 merge 1:1 hhid using "${Tanzania_NPS_W2_created_data}/Tanzania_NPS_W2_yield_hh_crop_level.dta", nogen 
-sum value_crop_production value_crop_sales value_harv* value_sold* kgs_harvest* kgs_harv_mono* total_planted_area* total_harv_area* //Check to see if all crop-related variables are being computed here
+sum value_crop_production value_crop_sales value_harv* value_sold* kg_harvest* kgs_harv_mono* total_planted_area* total_harv_area* //Check to see if all crop-related variables are being computed here
  
 *Total area planted and harvested across all crops, plots, and seasons
 merge 1:1 hhid using "${Tanzania_NPS_W2_created_data}/Tanzania_NPS_W2_hh_area_planted_harvested_allcrops.dta", nogen 
@@ -3933,7 +3934,7 @@ merge 1:1 hhid using "${Tanzania_NPS_W2_created_data}/Tanzania_NPS_W2_consumptio
 *Household assets
 //merge 1:1 y2_hhid using "${Tanzania_NPS_W2_created_data}/Tanzania_NPS_W2_hh_assets.dta", nogen
 
- sum value_crop_production value_crop_sales value_harv* value_sold* kgs_harvest* kgs_harv_mono* total_planted_area* total_harv_area* //Check to see if the crop-related values are being retained after the merges
+ sum value_crop_production value_crop_sales value_harv* value_sold* kg_harvest* kgs_harv_mono* total_planted_area* total_harv_area* //Check to see if the crop-related values are being retained after the merges
 
 *Food insecurity
 merge 1:1 hhid using "${Tanzania_NPS_W2_created_data}/Tanzania_NPS_W2_food_insecurity.dta", nogen
@@ -4010,17 +4011,17 @@ foreach c in $empty_crops {
 			}
 }
 
-sum value_crop_production value_crop_sales value_harv* value_sold* kgs_harvest* kgs_harv_mono* total_planted_area* total_harv_area* //Check to see if all crop-related variables are being computed
+sum value_crop_production value_crop_sales value_harv* value_sold* kg_harvest* kgs_harv_mono* total_planted_area* total_harv_area* //Check to see if all crop-related variables are being computed
   
 recode grew* (.=0)
 *all rural households growing specific crops 
 forvalues k=1(1)$nb_topcrops {
 	local cn: word `k' of $topcropname_area
-	recode value_harv_`cn' value_sold_`cn' kgs_harvest_`cn' total_planted_area_`cn' total_harv_area_`cn' `cn'_exp (.=0) if grew_`cn'==1
-	recode value_harv_`cn' value_sold_`cn' kgs_harvest_`cn' total_planted_area_`cn' total_harv_area_`cn' `cn'_exp (nonmissing=.) if grew_`cn'==0
+	recode value_harv_`cn' value_sold_`cn' kg_harvest_`cn' total_planted_area_`cn' total_harv_area_`cn' `cn'_exp (.=0) if grew_`cn'==1
+	recode value_harv_`cn' value_sold_`cn' kg_harvest_`cn' total_planted_area_`cn' total_harv_area_`cn' `cn'_exp (nonmissing=.) if grew_`cn'==0
 }
 
-sum value_crop_production value_crop_sales value_harv* value_sold* kgs_harvest* kgs_harv_mono* total_planted_area* total_harv_area* //Check to see if all crop-related variables are being computed
+sum value_crop_production value_crop_sales value_harv* value_sold* kg_harvest* kgs_harv_mono* total_planted_area* total_harv_area* //Check to see if all crop-related variables are being computed
  
  *households engaged in monocropped production of specific crops
  foreach cn in $topcropname_area {
@@ -4044,7 +4045,7 @@ foreach i in lrum srum poultry{
 	recode lost_disease_`i' disease_animal_`i' (.=0) if lvstck_holding_`i'==1	
 }
  
- sum value_crop_production value_crop_sales value_harv* value_sold* kgs_harvest* kgs_harv_mono* total_planted_area* total_harv_area* //Check to see if all crop-related variables are being computed
+ sum value_crop_production value_crop_sales value_harv* value_sold* kg_harvest* kgs_harv_mono* total_planted_area* total_harv_area* //Check to see if all crop-related variables are being computed
  
 *households engaged in crop production
 recode cost_expli_hh value_crop_production value_crop_sales labor_hired labor_family farm_size_agland all_area_harvested all_area_planted (.=0) if crop_hh==1
@@ -4063,12 +4064,12 @@ recode costs_dairy liters_milk_produced value_milk_produced (nonmissing=.) if da
 recode eggs_total_year value_eggs_produced (.=0) if egg_hh==1
 recode eggs_total_year value_eggs_produced (nonmissing=.) if egg_hh==0
 
-sum value_crop_production value_crop_sales value_harv* value_sold* kgs_harvest* kgs_harv_mono* total_planted_area* total_harv_area* //Check to see if all crop-related variables are being computed
+sum value_crop_production value_crop_sales value_harv* value_sold* kg_harvest* kgs_harv_mono* total_planted_area* total_harv_area* //Check to see if all crop-related variables are being computed
 
 global gender "female male mixed"
 *Variables winsorized at the top 1% only 
 global wins_var_top1 /*
-*/ value_crop_production value_crop_sales value_harv* value_sold* kgs_harvest* kgs_harv_mono* total_planted_area* total_harv_area* /*
+*/ value_crop_production value_crop_sales value_harv* value_sold* kg_harvest* kgs_harv_mono* total_planted_area* total_harv_area* /*
 */ labor_hired labor_family /*
 */ animals_lost12months* mean_12months* lost_disease* /* 
 */ liters_milk_produced costs_dairy /*
@@ -4534,9 +4535,9 @@ recode ext_reach* (nonmissing=.) if crop_hh==0 & livestock_hh==0
 forvalues k=1(1)$nb_topcrops {
 	local cn: word `k' of $topcropname_area
 	recode imprv_seed_`cn' hybrid_seed_`cn' /*
-	*/ w_value_harv_`cn' w_value_sold_`cn' w_kgs_harvest_`cn' w_total_planted_area_`cn' w_total_harv_area_`cn' (.=0) if grew_`cn'==1
+	*/ w_value_harv_`cn' w_value_sold_`cn' w_kg_harvest_`cn' w_total_planted_area_`cn' w_total_harv_area_`cn' (.=0) if grew_`cn'==1
 	recode imprv_seed_`cn' hybrid_seed_`cn' /*
-	*/ w_value_harv_`cn' w_value_sold_`cn' w_kgs_harvest_`cn' w_total_planted_area_`cn' w_total_harv_area_`cn' (nonmissing=.) if grew_`cn'==0
+	*/ w_value_harv_`cn' w_value_sold_`cn' w_kg_harvest_`cn' w_total_planted_area_`cn' w_total_harv_area_`cn' (nonmissing=.) if grew_`cn'==0
 }
 	
 *all rural households growing specific crops (in the long rainy season)
@@ -4665,7 +4666,7 @@ keep hhid fhh clusterid strataid *weight* *wgt* region region_name district dist
 */ encs* num_crops_* multiple_crops* imprv_seed_* hybrid_seed_* *labor_total *farm_area *labor_productivity* *land_productivity* /*
 */ *wage_paid_aglabor* *labor_hired ar_h_wgt_* *yield_hv_* ar_pl_wgt_* *yield_pl_* *liters_per_* /*milk_animals*/ /*poultry_owned*/ *costs_dairy* *cost_per_lit* *cost*/*
 */ *egg_poultry_year* *inorg_fert_kg* *ha_planted* *cost_expli* *cost_expli_ha* *monocrop_ha* *kgs_harv_mono* *cost_total_ha* poverty_under_*/*
-*/ *_exp* poverty* *value_crop_production* *value_harv* *value_crop_sales* *value_sold* *kgs_harvest* *total_planted_area* *total_harv_area* /*
+*/ *_exp* poverty* *value_crop_production* *value_harv* *value_crop_sales* *value_sold* *kg_harvest* *total_planted_area* *total_harv_area* /*
 */ *all_area_* grew_* agactivities_hh ag_hh crop_hh livestock_hh fishing_hh *_milk_produced* *eggs_total_year *value_eggs_produced* /*
 */ *value_livestock_products* *value_livestock_sales* total_cons nb_cattle_today nb_poultry_today bottom_40_percap bottom_40_peraeq /*
 */ ccf_loc ccf_usd ccf_1ppp ccf_2ppp *sales_livestock_products *value_pro* *value_sal*  /*DYA 10.6.2020*/ *value_livestock_sales*  *w_value_farm_production* *value_slaughtered* *value_lvstck_sold* *value_crop_sales* *sales_livestock_products* *value_livestock_sales* nb*

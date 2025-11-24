@@ -159,13 +159,12 @@ set more off
 clear matrix	
 clear mata	
 set maxvar 8000	
-ssc install findname // need this user-written ado file for some commands to work
+capture ssc install findname // need this user-written ado file for some commands to work
 
 *****************************
 ***** SET DIRECTOREIS *******
 *****************************
 global directory "../.."
-
 global MWI_IHPS_W2_raw_data "$directory\Malawi IHS\Malawi IHS Wave 2\Raw DTA Files"
 global MWI_IHPS_W2_final_data "$directory\Malawi IHS\Malawi IHS Wave 2\Final DTA Files\final_data" 
 global MWI_IHPS_W2_appended_data "$directory\Malawi IHS\Malawi IHS Wave 2\Final DTA Files\temp_data"
@@ -226,7 +225,7 @@ irish potato					*				*
 finger millet					*
 sorghum* (32)					*               *
 peral millet* (33)				*
-beans* (34)						*				*
+beanc* (34)						*				*
 soyabean						*
 pigeon pea						*               *
 cotton							*
@@ -244,7 +243,7 @@ other							*				*
 */
 
 
-global topcropname_area   "maize sorgum pigpea tobaco soy grdnt beans rice cotton swtptt pmill cassav mangos" 
+global topcropname_area   "maize sorgum pigpea tobaco soy grdnt beanc rice cotton swtptt pmill cassav mangos" 
 global topcrop_area       "1 32 36 5 35 11 34 17 37 28 33 49 52" 
 global comma_topcrop_area "1, 32, 36, 5, 35, 11, 34, 17, 37, 28, 33, 49, 52"
 global nb_topcrops : list sizeof global(topcropname_area) // Gets the current length of the global macro list "topcropname_area" 
@@ -768,7 +767,7 @@ use "${directory}\Malawi IHS\Nonstandard Unit Conversion Factors\caloric_convers
 	la var crop_code_perm "Unique crop codes for trees/ permanent crops"
 	
 	replace crop_code_long=crop_code_perm if crop_code_long==. & crop_code_perm!=.
-	label define relabel 1 "MAIZE LOCAL" 2 "MAIZE COMPOSITE/OPV" 3 "MAIZE HYBRID" 4 "MAIZE HYBRID RECYCLED" 5 "TOBACCO BURLEY" 6 "TOBACCO FLUE CURED" 7 "TOBACCO NNDF" 8 "TOBACCOSDF" 9 "TOBACCO ORIENTAL" 10 "OTHER TOBACCO (SPECIFY)" 11 "GROUNDNUT CHALIMBANA" 12 "GROUNDNUT CG7" 13 "GROUNDNUT MANIPINTA" 14 "GROUNDNUT MAWANGA" 15 "GROUNDNUT JL24" 16 "OTHER GROUNDNUT(SPECIFY)" 17 "RISE LOCAL" 18 "RISE FAYA" 19 "RISE PUSSA" 20 "RISE TCG10" 21 "RISE IET4094 (SENGA)" 22 "RISE WAMBONE" 23 "RISE KILOMBERO" 24 "RISE ITA" 25 "RISE MTUPATUPA" 26 "OTHER RICE(SPECIFY)"  28 "SWEET POTATO" 29 "IRISH [MALAWI] POTATO" 30 "WHEAT" 34 "BEANS" 35 "SOYABEAN" 36 "PIGEONPEA(NANDOLO" 37 "COTTON" 38 "SUNFLOWER" 39 "SUGAR CANE" 40 "CABBAGE" 41 "TANAPOSI" 42 "NKHWANI" 43 "THERERE/OKRA" 44 "TOMATO" 45 "ONION" 46 "PEA" 47 "PAPRIKA" 48 "OTHER (SPECIFY)" /*cleaning up these existing labels*/ 27 "GROUND BEAN (NZAMA)" 31 "FINGER MILLET (MAWERE)" 32 "SORGHUM" 33 "PEARL MILLET (MCHEWERE)" /*now creating unique codes for tree crops*/ 49 "CASSAVA" 50 "TEA" 51 "COFFEE" 52 "MANGO" 53 "ORANGE" 54 "PAWPAW/PAPAYA" 55 "BANANA" 56 "AVOCADO" 57 "GUAVA" 58 "LEMON" 59 "NAARTJE (TANGERINE)" 60 "PEACH" 61 "POZA (CUSTADE APPLE)" 62 "MASUKU (MEXICAN APPLE)" 63 "MASAU" 64 "PINEAPPLE" 65 "MACADEMIA" /*adding other specified crop codes*/ 105 "MAIZE GREEN" 203 "SWEET POTATO WHITE" 204 "SWEET POTATO ORANGE" 207 "PLANTAIN" 208 "COCOYAM (MASIMBI)" 301 "BEAN, WHITE" 302 "BEAN, BROWN" 308 "COWPEA (KHOBWE)" 405 "CHINESE CABBAGE" 409 "CUCUMBER" 410 "PUMPKIN" 1800 "FODDER TREES" 1900 "FERTILIZER TREES" 2000 "FUEL WOOD TREES", modify
+	label define relabel 1 "MAIZE LOCAL" 2 "MAIZE COMPOSITE/OPV" 3 "MAIZE HYBRID" 4 "MAIZE HYBRID RECYCLED" 5 "TOBACCO BURLEY" 6 "TOBACCO FLUE CURED" 7 "TOBACCO NNDF" 8 "TOBACCOSDF" 9 "TOBACCO ORIENTAL" 10 "OTHER TOBACCO (SPECIFY)" 11 "GROUNDNUT CHALIMBANA" 12 "GROUNDNUT CG7" 13 "GROUNDNUT MANIPINTA" 14 "GROUNDNUT MAWANGA" 15 "GROUNDNUT JL24" 16 "OTHER GROUNDNUT(SPECIFY)" 17 "RISE LOCAL" 18 "RISE FAYA" 19 "RISE PUSSA" 20 "RISE TCG10" 21 "RISE IET4094 (SENGA)" 22 "RISE WAMBONE" 23 "RISE KILOMBERO" 24 "RISE ITA" 25 "RISE MTUPATUPA" 26 "OTHER RICE(SPECIFY)"  28 "SWEET POTATO" 29 "IRISH [MALAWI] POTATO" 30 "WHEAT" 34 "BEANC" 35 "SOYABEAN" 36 "PIGEONPEA(NANDOLO" 37 "COTTON" 38 "SUNFLOWER" 39 "SUGAR CANE" 40 "CABBAGE" 41 "TANAPOSI" 42 "NKHWANI" 43 "THERERE/OKRA" 44 "TOMATO" 45 "ONION" 46 "PEA" 47 "PAPRIKA" 48 "OTHER (SPECIFY)" /*cleaning up these existing labels*/ 27 "GROUND BEAN (NZAMA)" 31 "FINGER MILLET (MAWERE)" 32 "SORGHUM" 33 "PEARL MILLET (MCHEWERE)" /*now creating unique codes for tree crops*/ 49 "CASSAVA" 50 "TEA" 51 "COFFEE" 52 "MANGO" 53 "ORANGE" 54 "PAWPAW/PAPAYA" 55 "BANANA" 56 "AVOCADO" 57 "GUAVA" 58 "LEMON" 59 "NAARTJE (TANGERINE)" 60 "PEACH" 61 "POZA (CUSTADE APPLE)" 62 "MASUKU (MEXICAN APPLE)" 63 "MASAU" 64 "PINEAPPLE" 65 "MACADEMIA" /*adding other specified crop codes*/ 105 "MAIZE GREEN" 203 "SWEET POTATO WHITE" 204 "SWEET POTATO ORANGE" 207 "PLANTAIN" 208 "COCOYAM (MASIMBI)" 301 "BEAN, WHITE" 302 "BEAN, BROWN" 308 "COWPEA (KHOBWE)" 405 "CHINESE CABBAGE" 409 "CUCUMBER" 410 "PUMPKIN" 1800 "FODDER TREES" 1900 "FERTILIZER TREES" 2000 "FUEL WOOD TREES", modify
 	label val crop_code_long relabel 
 	
 	gen value_harvest = sold_value 	// HKS 08.08.23: As per ALT, sold_value ("total value of all crop sales") is what we want for value_harvest, since there is no observed price value data
@@ -848,14 +847,14 @@ use "${directory}\Malawi IHS\Nonstandard Unit Conversion Factors\caloric_convers
 	recode use_hybrid_seed .=0
 
 	replace crop_code_long=crop_code_perm if crop_code_long==. & crop_code_perm!=.
-	label define relabel 1 "MAIZE LOCAL" 2 "MAIZE COMPOSITE/OPV" 3 "MAIZE HYBRID" 4 "MAIZE HYBRID RECYCLED" 5 "TOBACCO BURLEY" 6 "TOBACCO FLUE CURED" 7 "TOBACCO NNDF" 8 "TOBACCOSDF" 9 "TOBACCO ORIENTAL" 10 "OTHER TOBACCO (SPECIFY)" 11 "GROUNDNUT CHALIMBANA" 12 "GROUNDNUT CG7" 13 "GROUNDNUT MANIPINTA" 14 "GROUNDNUT MAWANGA" 15 "GROUNDNUT JL24" 16 "OTHER GROUNDNUT(SPECIFY)" 17 "RISE LOCAL" 18 "RISE FAYA" 19 "RISE PUSSA" 20 "RISE TCG10" 21 "RISE IET4094 (SENGA)" 22 "RISE WAMBONE" 23 "RISE KILOMBERO" 24 "RISE ITA" 25 "RISE MTUPATUPA" 26 "OTHER RICE(SPECIFY)"  28 "SWEET POTATO" 29 "IRISH [MALAWI] POTATO" 30 "WHEAT" 34 "BEANS" 35 "SOYABEAN" 36 "PIGEONPEA(NANDOLO" 37 "COTTON" 38 "SUNFLOWER" 39 "SUGAR CANE" 40 "CABBAGE" 41 "TANAPOSI" 42 "NKHWANI" 43 "THERERE/OKRA" 44 "TOMATO" 45 "ONION" 46 "PEA" 47 "PAPRIKA" 48 "OTHER (SPECIFY)" /*cleaning up these existing labels*/ 27 "GROUND BEAN (NZAMA)" 31 "FINGER MILLET (MAWERE)" 32 "SORGHUM" 33 "PEARL MILLET (MCHEWERE)" /*now creating unique codes for tree crops*/ 49 "CASSAVA" 50 "TEA" 51 "COFFEE" 52 "MANGO" 53 "ORANGE" 54 "PAWPAW/PAPAYA" 55 "BANANA" 56 "AVOCADO" 57 "GUAVA" 58 "LEMON" 59 "NAARTJE (TANGERINE)" 60 "PEACH" 61 "POZA (CUSTADE APPLE)" 62 "MASUKU (MEXICAN APPLE)" 63 "MASAU" 64 "PINEAPPLE" 65 "MACADEMIA" /*adding other specified crop codes*/ 105 "MAIZE GREEN" 203 "SWEET POTATO WHITE" 204 "SWEET POTATO ORANGE" 207 "PLANTAIN" 208 "COCOYAM (MASIMBI)" 301 "BEAN, WHITE" 302 "BEAN, BROWN" 308 "COWPEA (KHOBWE)" 405 "CHINESE CABBAGE" 409 "CUCUMBER" 410 "PUMPKIN" 1800 "FODDER TREES" 1900 "FERTILIZER TREES" 2000 "FUEL WOOD TREES", modify
+	label define relabel 1 "MAIZE LOCAL" 2 "MAIZE COMPOSITE/OPV" 3 "MAIZE HYBRID" 4 "MAIZE HYBRID RECYCLED" 5 "TOBACCO BURLEY" 6 "TOBACCO FLUE CURED" 7 "TOBACCO NNDF" 8 "TOBACCOSDF" 9 "TOBACCO ORIENTAL" 10 "OTHER TOBACCO (SPECIFY)" 11 "GROUNDNUT CHALIMBANA" 12 "GROUNDNUT CG7" 13 "GROUNDNUT MANIPINTA" 14 "GROUNDNUT MAWANGA" 15 "GROUNDNUT JL24" 16 "OTHER GROUNDNUT(SPECIFY)" 17 "RISE LOCAL" 18 "RISE FAYA" 19 "RISE PUSSA" 20 "RISE TCG10" 21 "RISE IET4094 (SENGA)" 22 "RISE WAMBONE" 23 "RISE KILOMBERO" 24 "RISE ITA" 25 "RISE MTUPATUPA" 26 "OTHER RICE(SPECIFY)"  28 "SWEET POTATO" 29 "IRISH [MALAWI] POTATO" 30 "WHEAT" 34 "BEANC" 35 "SOYABEAN" 36 "PIGEONPEA(NANDOLO" 37 "COTTON" 38 "SUNFLOWER" 39 "SUGAR CANE" 40 "CABBAGE" 41 "TANAPOSI" 42 "NKHWANI" 43 "THERERE/OKRA" 44 "TOMATO" 45 "ONION" 46 "PEA" 47 "PAPRIKA" 48 "OTHER (SPECIFY)" /*cleaning up these existing labels*/ 27 "GROUND BEAN (NZAMA)" 31 "FINGER MILLET (MAWERE)" 32 "SORGHUM" 33 "PEARL MILLET (MCHEWERE)" /*now creating unique codes for tree crops*/ 49 "CASSAVA" 50 "TEA" 51 "COFFEE" 52 "MANGO" 53 "ORANGE" 54 "PAWPAW/PAPAYA" 55 "BANANA" 56 "AVOCADO" 57 "GUAVA" 58 "LEMON" 59 "NAARTJE (TANGERINE)" 60 "PEACH" 61 "POZA (CUSTADE APPLE)" 62 "MASUKU (MEXICAN APPLE)" 63 "MASAU" 64 "PINEAPPLE" 65 "MACADEMIA" /*adding other specified crop codes*/ 105 "MAIZE GREEN" 203 "SWEET POTATO WHITE" 204 "SWEET POTATO ORANGE" 207 "PLANTAIN" 208 "COCOYAM (MASIMBI)" 301 "BEAN, WHITE" 302 "BEAN, BROWN" 308 "COWPEA (KHOBWE)" 405 "CHINESE CABBAGE" 409 "CUCUMBER" 410 "PUMPKIN" 1800 "FODDER TREES" 1900 "FERTILIZER TREES" 2000 "FUEL WOOD TREES", modify
 	label val crop_code_long relabel 
 	
 	la var crop_code_long "Unconsolidated crop crops"
 	gen crop_code = crop_code_long //Generic level (without detail)
 	recode crop_code (1 2 3 4=1)(5 6 7 8 9 10=5)(11 12 13 14 15 16=11)(17 18 19 20 21 22 23 24 25 26=17) //1-4=maize ; 5-10=tobacco; 11-16=groundnut; 17-26=rice
 	la var crop_code "Generic level crop code"
-	label define relabel2  1 "MAIZE" 5 "TOBACCO" 11 "GROUNDNUT" 17 "RICE" 28 "SWEET POTATO" 29 "IRISH [MALAWI] POTATO" 30 "WHEAT" 34 "BEANS" 35 "SOYABEAN" 36 "PIGEONPEA(NANDOLO" 37 "COTTON" 38 "SUNFLOWER" 39 "SUGAR CANE" 40 "CABBAGE" 41 "TANAPOSI" 42 "NKHWANI" 43 "THERERE/OKRA" 44 "TOMATO" 45 "ONION" 46 "PEA" 47 "PAPRIKA" 48 "OTHER (SPECIFY)"/*cleaning up these existing labels*/ 27 "GROUND BEAN (NZAMA)" 31 "FINGER MILLET (MAWERE)" 32 "SORGHUM" 33 "PEARL MILLET (MCHEWERE)" /*now creating unique codes for tree crops*/ 49 "CASSAVA" 50 "TEA" 51 "COFFEE" 52 "MANGO" 53 "ORANGE" 54 "PAWPAW/PAPAYA" 55 "BANANA" 56 "AVOCADO" 57 "GUAVA" 58 "LEMON" 59 "NAARTJE (TANGERINE)" 60 "PEACH" 61 "POZA (CUSTADE APPLE)" 62 "MASUKU (MEXICAN APPLE)" 63 "MASAU" 64 "PINEAPPLE" 65 "MACADEMIA" /*adding other specified crop codes*/ 105 "MAIZE GREEN" 203 "SWEET POTATO WHITE" 204 "SWEET POTATO ORANGE" 207 "PLANTAIN" 208 "COCOYAM (MASIMBI)" 301 "BEAN, WHITE" 302 "BEAN, BROWN" 308 "COWPEA (KHOBWE)" 405 "CHINESE CABBAGE" 409 "CUCUMBER" 410 "PUMPKIN" 1800 "FODDER TREES" 1900 "FERTILIZER TREES" 2000 "FUEL WOOD TREES", modify
+	label define relabel2  1 "MAIZE" 5 "TOBACCO" 11 "GROUNDNUT" 17 "RICE" 28 "SWEET POTATO" 29 "IRISH [MALAWI] POTATO" 30 "WHEAT" 34 "BEANC" 35 "SOYABEAN" 36 "PIGEONPEA(NANDOLO" 37 "COTTON" 38 "SUNFLOWER" 39 "SUGAR CANE" 40 "CABBAGE" 41 "TANAPOSI" 42 "NKHWANI" 43 "THERERE/OKRA" 44 "TOMATO" 45 "ONION" 46 "PEA" 47 "PAPRIKA" 48 "OTHER (SPECIFY)"/*cleaning up these existing labels*/ 27 "GROUND BEAN (NZAMA)" 31 "FINGER MILLET (MAWERE)" 32 "SORGHUM" 33 "PEARL MILLET (MCHEWERE)" /*now creating unique codes for tree crops*/ 49 "CASSAVA" 50 "TEA" 51 "COFFEE" 52 "MANGO" 53 "ORANGE" 54 "PAWPAW/PAPAYA" 55 "BANANA" 56 "AVOCADO" 57 "GUAVA" 58 "LEMON" 59 "NAARTJE (TANGERINE)" 60 "PEACH" 61 "POZA (CUSTADE APPLE)" 62 "MASUKU (MEXICAN APPLE)" 63 "MASAU" 64 "PINEAPPLE" 65 "MACADEMIA" /*adding other specified crop codes*/ 105 "MAIZE GREEN" 203 "SWEET POTATO WHITE" 204 "SWEET POTATO ORANGE" 207 "PLANTAIN" 208 "COCOYAM (MASIMBI)" 301 "BEAN, WHITE" 302 "BEAN, BROWN" 308 "COWPEA (KHOBWE)" 405 "CHINESE CABBAGE" 409 "CUCUMBER" 410 "PUMPKIN" 1800 "FODDER TREES" 1900 "FERTILIZER TREES" 2000 "FUEL WOOD TREES", modify
 la val crop_code relabel2	
 	drop if crop_code ==. & crop_code_long ==. //2,273 obs deleted CG 5.28.2025
 
@@ -5043,13 +5042,17 @@ save "${MWI_IHPS_W2_created_data}\MWI_IHPS_W2_shannon_diversity_index.dta", repl
 ******************************************************************************** 
 use "${MWI_IHPS_W2_appended_data}/ConsAggW2.dta", clear
 merge m:1 hhid using "${MWI_IHPS_W2_created_data}\MWI_IHPS_W2_weights.dta", nogen keep (3)
+describe
+//We aren't renaming intmonth and intyear in W1 and W2 as they already exist
 collapse (mean) price_index_region=price_indexL [aw=weight], by(region intmonth)
 save "${MWI_IHPS_W2_created_data}/MWI_IHPS_W2_price_index_lookup_region.dta", replace
 
 use "${MWI_IHPS_W2_appended_data}/ConsAggW2.dta", clear
 merge m:1 hhid using "${MWI_IHPS_W2_created_data}\MWI_IHPS_W2_weights.dta", nogen keep (3)
-collapse (mean) price_index_district=price_indexL [aw=weight], by(district region intmonth)
-fillin region district intmonth
+collapse (mean) price_index_district=price_indexL [aw=weight], by(district region intmonth intyear)
+fillin region district intmonth intyear
+bys district : egen regnm = min(region)
+replace region = regnm if region==.
 merge m:1 region intmonth using "${MWI_IHPS_W2_created_data}/MWI_IHPS_W2_price_index_lookup_region.dta", nogen keep (3)
 gen price_index=price_index_district
 replace price_index=price_index_region if price_index ==.
@@ -5057,18 +5060,35 @@ keep district intmonth price_index
 save "${MWI_IHPS_W2_created_data}/MWI_IHPS_W2_price_index_lookup.dta", replace
 
 use "${MWI_IHPS_W2_appended_data}\hh_mod_g1_13.dta", clear
+preserve 
+gen rexp_cat11=hh_g05 if inrange(hh_g02, 819, 838)
+collapse (sum) rexp_cat11, by(hhid) //restaurants, meals outl
+replace rexp_cat11=rexp_cat11*52 //Annualizing
+gen int_mod="g"
+tempfile othfoods
+save `othfoods'
+restore
+
+drop if hh_g03a==0 | hh_g03a==. | inrange(hh_g02, 820,838)
+ren hh_g03a qty 
+ren hh_g03b unit 
+//ren hh_g03c size
 ren hh_g05 cons_value // how much did you spend? 
 ren hh_g04b unit_purchase //how much came from purchases (unit)?
 ren hh_g04a qty_purchase //how much came from purchases (qty)?
 gen price_unit = cons_value/qty_purchase
 lab var price_unit "Price per unit of food item, estimated from purchases"
-gen unit_gift=hh_g07b
+
+/*
 gen qty_gift=hh_g07a
 gen qty_own =hh_g06a
+gen unit_gift=hh_g07b
 gen unit_own=hh_g06b
+*/
+
 ren hh_g02 itemcode
 recode qty* (.=0)
-drop if qty_purchase==0 & qty_own==0 & qty_gift==0
+drop if qty_purchase==0 
 merge m:1 hhid using "${MWI_IHPS_W2_created_data}\MWI_IHPS_W2_weights.dta", nogen	
 ren ea_id ea
 keep hhid weight price_unit unit* qty* itemcode region district ta ea
@@ -5078,7 +5098,8 @@ save "${MWI_IHPS_W2_created_data}/MWI_IHPS_W2_cons_value.dta", replace
 use "${MWI_IHPS_W2_created_data}/MWI_IHPS_W2_cons_value.dta", clear
 drop if price_unit==0 | price_unit==. 
 gen obs=price_unit!=.
-gen obs_weight = weight*qty_purchase
+*gen obs_weight = weight*qty_purchase
+gen obs_weight=weight
 
 *create a value for the price of each food consumed at different levels
 	foreach i in country region district ta ea hhid {
@@ -5091,7 +5112,13 @@ gen obs_weight = weight*qty_purchase
 	}
 	
 use "${MWI_IHPS_W2_created_data}/MWI_IHPS_W2_cons_value.dta", clear
-reshape long unit qty, i(hhid itemcode price_unit) j(item_source) string
+drop price_unit
+gen price_unit=.
+//recode price_unit (0=.)
+//reshape long unit qty size, i(hhid itemcode price_unit) j(item_source) string
+//replace size=2 if size==.
+//drop if strpos(item_source, "gift") | strpos(item_source, "own")
+//drop if qty==0 | qty==.
 gen price_missing=price_unit==.
 foreach i in country region district ta ea hhid {
 	merge m:1 `i' unit itemcode using `price_`i'_median', nogen keep(1 3)
@@ -5100,7 +5127,15 @@ foreach i in country region district ta ea hhid {
 replace price_unit = price_unit_hhid if price_unit_hhid !=. 
 replace price_unit = price_unit_country if price_unit==.
 gen val_fdcons=price_unit*qty
-collapse (sum) val_fdcons, by (hhid) 
+
+save "${MWI_IHS_IHPS_W2_created_data}/MWI_IHS_IHPS_W2_food_consumption_items.dta", replace 
+gen val_alc=val_fdcons if inrange(itemcode, 911,916)
+replace val_fdcons=. if inrange(itemcode, 911,916)
+collapse (sum) val_fdcons val_alc, by (hhid) 
+gen int_mod = "g"
+gen annual_val_fdcons=(val_fdcons*52)
+gen annual_val_alc = val_alc*52
+save "${MWI_IHS_IHPS_W2_created_data}/MWI_IHS_IHPS_W2_food_consumption.dta", replace
 
 merge m:1 hhid using "${MWI_IHPS_W2_created_data}\MWI_IHPS_W2_hhids.dta", nogen keep (1 3)
 merge m:1 hhid using "${MWI_IHPS_W2_appended_data}\hh_mod_a_filt_13.dta", nogen keep(1 3)	
@@ -5129,35 +5164,72 @@ ren ea ea_id
 merge m:1 ea_id hhid using "${MWI_IHPS_W2_appended_data}/ConsAggW2.dta", nogen keep(3)
 gen annual_val_fdcons=(val_fdcons*52)
 save "${MWI_IHPS_W2_created_data}/MWI_IHPS_W2_agg_consumption.dta", replace 
-/* To fix: right now this is a very large file.
+
 use "${MWI_IHPS_W2_appended_data}\hh_mod_i1_13.dta", clear
 append using "${MWI_IHPS_W2_appended_data}\hh_mod_i2_13.dta"
+gen int_mod = "i"
 append using "${MWI_IHPS_W2_appended_data}\hh_mod_j_13.dta"
+replace int_mod="j" if int_mod==""
 append using "${MWI_IHPS_W2_appended_data}\hh_mod_k_13.dta"
-gen rexp_cat02=hh_i03*52 if inlist(hh_i02, 103) // tobacco, past week
-gen rexp_cat03=hh_j03*4 if inrange(hh_j02, 301, 327) // clothing/footwear
-gen rexp_cat04=hh_i06*12 if inlist(hh_i05, 215, 216, 217, 218, 219) // housing/utilities
-replace rexp_cat04=hh_i03*12 if inlist(hh_i02, 101, 102) // housing/utilities, past month
-replace rexp_cat04=hh_j03*4 if inlist(hh_j02, 328, 329, 330, 331, 333, 338) // housing/utilities
-replace rexp_cat04=hh_k03 if inrange(hh_k02, 401, 410) // housing/utilities
-replace rexp_cat04=hh_k03 if inlist(hh_k02, 420) // housing/utilities
-gen rexp_cat06=hh_i06*12 if inlist(hh_i05, 202, 204, 205, 206, 207) // health
-gen rexp_cat07=hh_i03*52 if inlist(hh_i02, 107, 108, 109) // transport, past week
-replace rexp_cat07=hh_i06*12 if inlist(hh_i05, 212, 213, 214) //transport
-gen rexp_cat08=hh_i03*12 if inlist(hh_i02, 210, 221) // communication, past month
-replace rexp_cat08=hh_i06*12 if inlist(hh_i05, 106) // communication
-gen rexp_cat09=hh_j03*4 if inrange(hh_j02, 334, 337) // recreation
-gen rexp_cat11=hh_j03*4 if inlist(hh_j02, 339) // hotels/restaurants
-gen rexp_cat12=hh_i06*12 if inlist(hh_i05, 201, 203, 209, 211, 220) // misc goods & services
-replace rexp_cat12=hh_i03*52 if inlist(hh_i02, 104, 105) // misc goods & services, past week
-replace rexp_cat12=hh_j03*4 if inlist(hh_j02, 332) // misc goods & services
-replace rexp_cat12=hh_k03 if inrange(hh_k02, 411, 419) // misc goods & services
-keep hhid rexp*
+replace int_mod="k" if int_mod==""
+append using "${MWI_IHPS_W2_appended_data}\hh_mod_g1_13.dta"
+append using "${MWI_IHPS_W2_appended_data}\hh_mod_g2_13.dta"
+append using "${MWI_IHPS_W2_appended_data}\hh_mod_g3_13.dta"
+replace int_mod="g" if int_mod==""
+append using "${MWI_IHPS_W2_created_data}/MWI_IHPS_W2_food_consumption.dta"
+append using `othfoods'
+
+//Alc/Tobacco (April 2013 price) annual consumption. Tobacco and alcohol for the past week is calculated for the whole year (52 weeks). Therefore, measures are multiplied by 52. 
+gen rexp_cat02=hh_i03*52 if inlist(hh_i02, 103) //For tobacco
+replace rexp_cat02=hh_g05*52 if inlist(hh_g02, 908, 911, 913, 914, 915) //For chibuku, bottled or canned beer, traditional beer, wine or commercial liquor, and locally brewed liquor
+
+//Clothing/Footwear (April 2013 price) annual consumption. Clothing is calculated quarterly. Therefore, measures are multiplied by 4. 
+gen rexp_cat03=hh_j03*4 if inrange(hh_j02, 301, 327) //For infant clothing, baby nappies/diapers, boy's trousers, boy's shirts, boy's jackets, boy's undergarments, boy's other clothing, men's trousers, men's shirts, men's jackets, men's undergarments, men's other clothing, girl's blouse/shirt, girl's dress/skirt, girl's undergarments, girl's other clothing, lady's blouse/shirt, chitenje cloth, lady's dress/skirt, lady's undergarments, lady's other clothing, boy's shoes, men's shoes, girl's shoes, lady's shoes, cloth/thread/other sewing material, and laundry, dry cleaning and tailoring fees.
+
+//Communication (April 2013 price) annual consumption. Communication is calcualted weekly and monthly. Therefore, measures are multiplied by 52 and 12. 
+gen rexp_cat08=hh_i03*12 if inlist(hh_i02, 210, 221) //For postage stamps, recharging batteries and cellphones
+replace rexp_cat08=hh_i06*12 if inlist(hh_i05, 106) //For newspapers or magazines
+
+//Health (April 2013 price) annual consumption. Health is calculated monthly. Therefore, measures are multiplied by 12. 
+gen rexp_cat06=hh_i06*12 if inlist(hh_i05, 202, 204, 205, 206, 207) //For bar soap, toothpaste/toothbrush, toilet paper, glycerine/vaseline/skin creams, and other personal products
+
+//Hotels and restaurants (April 2013 price) annual consumption. Hotels and restaurants are calculated weekly and quarterly. Therefore, measures are multiplied by 52 and 4. 
+replace rexp_cat11=hh_j03*4 if inlist(hh_j02, 339) //Lodging in a rest house or hotel
+
+//Housing/Utilities (April 2013 price) annual consumption. Housing is calculated weekly, monthly, quarterly and yearly. Therefore, measures are multiplied by 52, 12, 4, and 1. 
+gen rexp_cat04=hh_i06*12 if inlist(hh_i05, 215, 216, 217, 218, 219) //For wages paid to servants, mortgage, repairs and maintenance to dwelling, repairs to household and personal items, and expenditure on pets
+replace rexp_cat04=hh_i03*12 if inlist(hh_i02, 101, 102) //For charcoal, paraffin or kerosene
+replace rexp_cat04=hh_j03*4 if inlist(hh_j02, 328, 329, 330, 331, 333, 338) //For bowls/glassware/plates/silverware, cooking utensils, cleaning utensils, torch/flashlight, paraffin lamp, house decorations
+replace rexp_cat04=hh_k03 if inrange(hh_k02, 401, 410) //For carpet/rugs/drapes/curtains, linen, mats, mosquito net, mattress, cement, bricks, and construction timber
+replace rexp_cat04=hh_k03 if inlist(hh_k02, 419, 420) //For woodpoles/bamboo, and grass for thatching roof or other use
+
+//Misc Goods and Services (April 2013 price) annual consumption. Misc is calculated weekly, monthly, quarterly, yearly. Therefore, measures are multiplied by 52, 12, 4, and 1. 
+gen rexp_cat12=hh_i06*12 if inlist(hh_i05, 201, 203, 209, 211, 220) //For milling fees/grain, clothes soap, light bulbs, donation, batteries
+replace rexp_cat12=hh_i03*52 if inlist(hh_i02, 104, 105) //For candles, matches
+replace rexp_cat12=hh_j03*4 if inlist(hh_j02, 332) //For umbrella
+replace rexp_cat12=hh_k03 if inrange(hh_k02, 411, 419) //For council rates, insurance, losses to theft, fines or legal fees, lobola (bridewealth) costs, marriage ceremony costs, funeral costs for household members, funeral costs for nonhousehold members
+
+//Recreation (April 2013 price) annual consumption. Recreation is calculated quarterly and yearly. Therefore, measures are multiplied by 4 and 1. 
+gen rexp_cat09=hh_j03*4 if inrange(hh_j02, 334, 337) //For stationery items, books, music/video casette/CD/DVD, tickets for sports/entertainment events
+replace rexp_cat09=hh_k03*1 if inlist(hh_k02, 406, 407) //For sports and hobby equipment/musical instruments, film/film processing/camera
+
+//Transport (April 2013 price) annual consumption. Transport is calculated weekly and monthly. Therefore, measures are multiplied 52 and 12. 
+gen rexp_cat07=hh_i03*52 if inlist(hh_i02, 107, 108, 109) //For bicycle taxi, bus/minibus, and other transport
+replace rexp_cat07=hh_i06*12 if inlist(hh_i05, 212, 213, 214) //For petrol/diesel, motor vehicle service/repair/parts, bicycle service/repair/parts
+
+//keep hhid rexp* visit ea_id
+collapse (sum) rexp*, by(hhid)
+recode rexp* (0=.)
 ren rexp* rexp*new
+merge 1:1 hhid using "${MWI_IHPS_W2_created_data}/MWI_IHPS_W2_weights.dta", nogen keep (1 3)
+
+recode rexp* (.=0)
+ren rexp* rexp*new
+egen expagg_new=rowtotal(rexp*new)
 merge m:1 hhid using "${MWI_IHPS_W2_appended_data}/ConsAggW2.dta", nogen keep (3)
 *Our method produces differnces from the World Bank consumption method. This code allows you to compare both panel and cross section. 
-save "${MWI_IHPS_W2_created_data}/MWI_IHPS_W2_aggregate_consumption.dta", replace
-*/
+save "${MWI_IHPS_W2_created_data}/MWI_IHPS_W2_aggregate_consumption.dta", replace 
+
 *first get adult equivalent
 use "${MWI_IHPS_W2_appended_data}/ConsAggW2.dta", clear
 collapse (sum) adulteq, by(hhid)
@@ -6158,7 +6230,7 @@ gen strataid=district
 gen lost_disease_equine =. 
 gen  w_lost_disease_srum =.
 
-//global empty_vars $empty_vars *wheat* *beans* *lost_disease* w_lost_disease*
+//global empty_vars $empty_vars *wheat* *beanc* *lost_disease* w_lost_disease*
 *Recode to missing any variables that cannot be created in this instrument
 *replace empty vars with missing
 

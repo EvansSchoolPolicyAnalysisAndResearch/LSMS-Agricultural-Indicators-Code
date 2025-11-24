@@ -157,9 +157,9 @@ clear matrix
 clear mata 
 set more off
 set maxvar 8000
+capture ssc install findname 
 
-global directory "../.." //Update this to match the path to your local repo
-
+global directory "../.."
 //set directories
 *These paths correspond to the folders where the raw data files are located and where the created data and final data will be stored.
 global Tanzania_NPS_W1_raw_data "$directory/Tanzania NPS/Tanzania NPS Wave 1\Raw DTA Files"
@@ -206,7 +206,7 @@ global wins_upper_thres 99							//  Threshold for winzorization at the top of t
 *GLOBALS OF PRIORITY CROPS //change these globals if you are interested in different crops
 ********************************************************************************
 ////Limit crop names in variables to 6 characters or the variable names will be too long! 
-global topcropname_area "maize rice wheat sorgum pmill grdnt bencwp yam swtptt cassav banana cotton sunflr pigpea"
+global topcropname_area "maize rice wheat sorgum pmill grdnt beanc yam swtptt cassav banana cotton sunflr pigpea"
 global topcrop_area "11 12 16 13 14 43 931 24 22 21 71 50 41 34"
 global comma_topcrop_area "11, 12, 16, 13, 14, 43, 931, 24, 22, 21, 71, 50, 41, 34"
 global topcropname_area_full "maize rice wheat sorghum pearl-millet groundnuts beans-cowpeas yam sweet-potato cassava banana cotton sunflower pigeon-peas"
@@ -568,7 +568,7 @@ gen val_kg = .
 foreach i in country region district ward ea {
 	replace val_kg = val_kg_`i' if obs_`i'_kg >9
 }
-	
+
 	replace val_kg_hhid = val_kg if val_kg_hhid==.
 	gen value_harvest=val_kg*kg_harvest 
 	gen value_harvest_hh = val_kg_hhid * kg_harvest
@@ -590,10 +590,10 @@ restore
 	gen lost_drought = inlist(s4bq10, 1) | inlist(s4bq10, 1)
 	gen lost_flood = inlist(s4bq10, 2) | inlist(s4bq10, 2) 
 	gen lost_crop = lost_flood | lost_drought	
-	
 	gen n_crops=1
 	gen no_harvest=ha_harvest==. 
-	collapse (max) no_harvest  (sum) kg_harvest use_imprv_seed value_harvest value_harvest_hh ha_planted ha_harvest number_trees_planted n_crops (min) purestand, by(region district season ward ea hhid plot_id crop_code field_size total_ha_planted) 
+	gen no_conv=kg_harvest==. & ha_harvest!=. & ha_harvest!=0
+	collapse (max) no_harvest  (sum) kg_harvest use_imprv_seed value_harvest value_harvest_hh ha_planted ha_harvest number_trees_planted n_crops no_conv (min) purestand, by(region district season ward ea hhid plot_id crop_code field_size total_ha_planted) 
 		merge m:1 hhid plot_id season using "${Tanzania_NPS_W1_created_data}/Tanzania_NPS_W1_plot_decision_makers.dta", nogen keep(1 3) keepusing(dm_gender dm1_gender) //Drops the 3 hhs  we filtered out earlier
 		gen percent_field = ha_planted/total_ha_planted
 		gen percent_inputs = percent_field if percent_field!=0
@@ -614,16 +614,15 @@ restore
 	
 		replace ha_harvest=. if (ha_harvest==0 & no_harvest==1) | (ha_harvest==0 & kg_harvest>0 & kg_harvest!=.)
    replace kg_harvest = . if kg_harvest==0 & no_harvest==1
-   drop no_harvest
+   //drop no_harvest
    gen ha_harv_yld=ha_harvest if ha_planted >=0.05 & !inlist(crop_code, 302,303,304,305,306,19) //Excluding nonfood crops & seaweed 
    gen ha_plan_yld=ha_planted if ha_planted >=0.05 & !inlist(crop_code, 302,303,304,305,306,19) 
 	save "${Tanzania_NPS_W1_created_data}/Tanzania_NPS_W1_all_plots.dta",replace
-
+	
 
 //AT: moving this up here and making it its own file because we use it often below
-	collapse (sum) ha_planted, by(hhid plot_id) //Use planted area for hh-level expenses 
+	collapse (sum) ha_planted no_conv, by(hhid plot_id) //Use planted area for hh-level expenses 
 	save "${Tanzania_NPS_W1_created_data}/Tanzania_NPS_W1_planted_area.dta", replace
-	 
 ********************************************************************************
 * CROP EXPENSES *
 ********************************************************************************
@@ -1043,7 +1042,7 @@ merge 1:1 hhid crop_code using "${Tanzania_NPS_W1_created_data}/Tanzania_NPS_W1_
 tab crop_code if crop_code==931
 preserve
 	recode  value_harvest_imputed value_sold kg_harvest quantity_sold (.=0)
-	recode crop_code (31 32=931) //recoding for new consolidated crop bencwp (931) for combined beans and cowpeas 
+	recode crop_code (31 32=931) //recoding for new consolidated crop beanc (931) for combined beans and cowpeas 
 		//label define crop_code 931 "Beans-Cowpeas", add
 		//label values crop_code crop_code
 		tab crop_code if crop_code==931 
@@ -1088,7 +1087,7 @@ replace value_lost = s5aq17 if value_lost==.
 replace value_lost = s5bq17 if value_lost==.
 recode value_lost (.=0)
 ren zaocode crop_code
-recode crop_code (31 32=931) //recoding for new consolidated crop bencwp (931) for combined beans and cowpeas 
+recode crop_code (31 32=931) //recoding for new consolidated crop beanc (931) for combined beans and cowpeas 
 		label define crop_code 931 "Beans-Cowpeas", add
 		label values crop_code crop_code
 		tab crop_code if crop_code==931 
@@ -1100,9 +1099,6 @@ collapse (sum) value_lost, by (hhid)
 ren value_lost crop_value_lost
 lab var crop_value_lost "Value of crop production that had been lost by the time of survey"
 save "${Tanzania_NPS_W1_created_data}/Tanzania_NPS_W1_crop_losses.dta", replace
-
-
-
 
 ********************************************************************************
 *LIVESTOCK INCOME
@@ -2184,7 +2180,7 @@ append using "${Tanzania_NPS_W1_raw_data}/SEC_4B.dta"
 recode season (.=1)
 ren plotnum plot_id 
 ren zaocode crop_code
-recode crop_code (31 32=931) //recoding for new consolidated crop bencwp (931) for combined beans and cowpeas 
+recode crop_code (31 32=931) //recoding for new consolidated crop beanc (931) for combined beans and cowpeas 
 		label define crop_code 931 "Beans-Cowpeas", add
 		label values crop_code crop_code
 		tab crop_code if crop_code==931 
@@ -2206,7 +2202,7 @@ recode use* (.=0)
 preserve
 keep hhid plot_id crop_code use_imprv_seed season 
 ren use_imprv_seed imprv_seed_ 
-//recode crop_code (31 32=931) //recoding for new consolidated crop bencwp (931) for combined beans and cowpeas 
+//recode crop_code (31 32=931) //recoding for new consolidated crop beanc (931) for combined beans and cowpeas 
 		//label define crop_code 931 "Beans-Cowpeas"
 		//label values crop_code crop_code
 		tab crop_code if crop_code==931 
@@ -2676,7 +2672,7 @@ save `trees'
 
 use "${Tanzania_NPS_W1_created_data}/Tanzania_NPS_W1_all_plots.dta", clear
 *ren cropcode crop_code
-gen no_harvest=ha_harvest==.
+*gen no_harvest=ha_harvest==.
 gen harvest=kg_harvest if season==0 & ha_plan_yld!=. 
 gen area_plan=ha_plan_yld if season==0
 gen area_harv = ha_harv_yld if season==0 
@@ -2715,7 +2711,7 @@ foreach var in `suffix' {
 	replace harvest_`var'=. if area_plan_`var'==. | (harvest_`var'==0 & no_harvest==1)
 	replace area_harv_`var'=. if area_plan_`var'==. | (area_harv_`var'==0 & no_harvest==1)
 }
-//bencwp has been coded at this point. Beans (31) and Cowpeas (32) do not exist due to the recode. 
+//beanc has been coded at this point. Beans (31) and Cowpeas (32) do not exist due to the recode. 
 drop no_harvest
 save "${Tanzania_NPS_W1_created_data}/Tanzania_NPS_W1_hh_crop_area_plan.dta", replace
 preserve
