@@ -716,6 +716,7 @@ restore
 	//replace date_planted = . if perm_crop == 1  //Removing perm crops from the picture for the moment because you can have trees/cassava that's been planted years apart 
 	//ALT: At this point there are still a few duplicate entries, mainly yam. In the north, there's a couple households that appear to be following a defined pattern of planting one yam species in November and a second in April, probably in some sort of relay fashion (can't tell b/c we don't have harvest dates)
 	//Some are missing harvest values and might be replants but they're not always chronologically later
+
 	gen no_harvest = sa3q4 > 6 & sa3q4 < 10
 	replace crop_code=1124 if crop_code_full==1124 //Unlumping three-leaved yam.
 	collapse (sum) quant_harv_kg value_harvest* ha_planted ha_harvest number_trees_planted percent_field /*(max) months_grown*/ (max) no_harvest, by(zone state lga sector ea hhid plot_id crop_code /*crop_code_full*/ purestand /*relay*/ field_size gps_meas /*date_planted*/) //ALT 06.15.23: To implement
@@ -3288,7 +3289,6 @@ save "${Nigeria_GHS_W1_created_data}/Nigeria_GHS_W1_ag_wage.dta", replace
 * Crop Yield   *
 ********************************************************************************
 use "${Nigeria_GHS_W1_created_data}/Nigeria_GHS_W1_all_plots.dta", clear
-
 gen grew_=1
 gen harvested_ = (quant_harv_kg!=0 & quant_harv_kg!=.) | (ha_harvest!=0 & ha_harvest!=.)
 collapse (max) grew_ harvested_, by(hhid crop_code)
@@ -3302,7 +3302,7 @@ tempfile grew_crops
 save `grew_crops'
 
 use "${Nigeria_GHS_W1_created_data}/Nigeria_GHS_W1_all_plots.dta", clear
-gen no_harvest=ha_harvest==.
+gen no_harvest= ha_harvest==.
 ren quant_harv_kg harvest 
 ren ha_plan_yld area_plan
 ren ha_harv_yld area_harv 
@@ -4316,12 +4316,14 @@ lab  var fishing_hh "1= Household has some fishing income"
 ****getting correct subpopulations***** 
 *Recoding missings to 0 for households growing crops
 recode grew* (.=0)
-*all rural households growing specific crops 
+*all rural households growing specific crops
+
 forvalues k=1(1)12 {
 	local cn: word `k' of $topcropname_area
-	recode value_harv_`cn' value_sold_`cn' kgs_harvest_`cn' total_planted_area_`cn' total_harv_area_`cn' `cn'_exp (.=0) if grew_`cn'==1
+	recode value_harv_`cn' value_sold_`cn' /*kgs_harvest_`cn'*/ total_planted_area_`cn' total_harv_area_`cn' `cn'_exp (.=0) if grew_`cn'==1 //DA 11/20/25 Removing kgs_harvest because some households have non standard values or did not yet harvest, so 0 is not accurate.
 	recode value_harv_`cn' value_sold_`cn' kgs_harvest_`cn' total_planted_area_`cn' total_harv_area_`cn' `cn'_exp (nonmissing=.) if grew_`cn'==0
 }
+
 *households engaged in crop production
 recode cost_expli_hh value_crop_production value_crop_sales labor_hired labor_family farm_size_agland all_area_harvested all_area_planted encs num_crops_hh multiple_crops (.=0) if crop_hh==1
 recode cost_expli_hh value_crop_production value_crop_sales labor_hired labor_family farm_size_agland all_area_harvested all_area_planted encs num_crops_hh multiple_crops (nonmissing=.) if crop_hh==0
@@ -4958,8 +4960,6 @@ label values instrument instrument
 gen ssp = (farm_size_agland <= 2 & farm_size_agland != 0) & (nb_largerum_today <= 10 & nb_smallrum_today <= 10 & nb_chickens_today <= 50) // HKS 6.16.23
 
 saveold "${Nigeria_GHS_W1_final_data}/Nigeria_GHS_W1_household_variables.dta", replace // HKS 6.16.23
-
-//Stop
 
 ********************************************************************************
 *INDIVIDUAL-LEVEL VARIABLES

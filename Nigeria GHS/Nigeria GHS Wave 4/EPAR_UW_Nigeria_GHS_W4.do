@@ -6405,7 +6405,7 @@ recode grew* (.=0)
 *all rural households growing specific crops 
 forvalues k=1(1)$nb_topcrops {
 	local cn: word `k' of $topcropname_area
-	recode value_harv_`cn' value_sold_`cn' kgs_harvest_`cn' total_planted_area_`cn' total_harv_area_`cn' `cn'_exp (.=0) if grew_`cn'==1 
+	recode value_harv_`cn' value_sold_`cn' /*kgs_harvest_`cn'*/ total_planted_area_`cn' total_harv_area_`cn' `cn'_exp (.=0) if grew_`cn'==1 
 	recode value_harv_`cn' value_sold_`cn' kgs_harvest_`cn' total_planted_area_`cn' total_harv_area_`cn' `cn'_exp (nonmissing=.) if grew_`cn'==0
 }
 *all rural households engaged in livestcok production of a given species
