@@ -114,7 +114,7 @@ clear mata
 program drop _all
 set more off
 set maxvar 10000
-ssc install findname
+capture ssc install findname
 
 *Set location of raw data and output
 global directory			"../.." //Update this to match the path to your local repo

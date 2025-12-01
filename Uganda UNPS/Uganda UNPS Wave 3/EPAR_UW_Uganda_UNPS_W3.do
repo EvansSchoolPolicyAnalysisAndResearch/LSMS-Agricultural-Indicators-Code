@@ -148,7 +148,7 @@ clear matrix
 clear mata			
 set more off
 set maxvar 8000		
-ssc install findname  // need this user-written ado file for some commands to work 
+capture ssc install findname  // need this user-written ado file for some commands to work 
 
 //set directories
 *These paths correspond to the folders where the raw data files are located and where the created data and final data will be stored.

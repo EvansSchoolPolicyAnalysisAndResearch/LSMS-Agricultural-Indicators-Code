@@ -163,7 +163,7 @@ set more off
 clear matrix	
 clear mata	
 set maxvar 10000	
-ssc install findname  // need this user-written ado file for some commands to work
+capture ssc install findname  // need this user-written ado file for some commands to work
 
 **Set directories 
 

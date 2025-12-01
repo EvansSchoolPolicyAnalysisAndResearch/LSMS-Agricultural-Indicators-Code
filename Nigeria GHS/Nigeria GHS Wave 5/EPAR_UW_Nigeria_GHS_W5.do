@@ -122,7 +122,7 @@ clear mata
 program drop _all
 set more off
 set maxvar 10000
-ssc install findname
+capture ssc install findname
 
 
 //set directories

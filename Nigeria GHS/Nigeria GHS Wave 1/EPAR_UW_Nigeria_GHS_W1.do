@@ -115,6 +115,7 @@ clear matrix
 program drop _all
 set more off
 set maxvar 10000
+capture ssc install findname
 
 *Set location of raw data and output
 global directory "../.." //Update this to match your local repo

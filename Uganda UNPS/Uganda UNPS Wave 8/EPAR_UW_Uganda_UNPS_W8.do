@@ -159,7 +159,7 @@ set more off
 clear matrix	
 clear mata	
 set maxvar 8000	
-ssc install findname  // need this user-written ado file for some commands to work
+capture ssc install findname  // need this user-written ado file for some commands to work
 
 // set directories
 * These paths correspond to the folders where the raw data files are located 
@@ -3276,8 +3276,8 @@ lab var use_fin_serv_credit "1= Household uses formal financial services - credi
 *lab var use_fin_serv_insur "1= Household uses formal financial services - insurance"
 lab var use_fin_serv_digital "1= Household uses formal financial services - digital"
 lab var use_fin_serv_others "1= Household uses formal financial services - others"
+recast str50 hhid, force
 save "${Uganda_NPS_W8_created_data}/Uganda_NPS_W8_fin_serv.dta", replace
-
 
 ********************************************************************************
 *                             MILK PRODUCTIVITY                                *
@@ -4592,11 +4592,12 @@ merge 1:1 hhid using  "${Uganda_NPS_W8_created_data}/Uganda_NPS_W8_imprvseed_cro
 recast str50 hhid, force
 merge 1:1 hhid using  "${Uganda_NPS_W8_created_data}/Uganda_NPS_W8_any_ext.dta", nogen keep(1 3)
 recast str50 hhid, force
+merge 1:1 hhid using  "${Uganda_NPS_W8_created_data}/Uganda_NPS_W8_fin_serv.dta", nogen keep(1 3)
+recast str50 hhid, force
 
-*merge 1:1 hhid using  "${Uganda_NPS_W8_created_data}/Uganda_NPS_LSMS_ISA_W3_fin_serv.dta", nogen keep(1 3) //  Not Available for Uganda Wave 3 dta missing
 ren use_imprv_seed imprv_seed_use //ALT 02.03.22: Should probably fix code to align this with other inputs.
 ren use_hybrid_seed hybrid_seed_use
-recode /*use_fin_serv**/ ext_reach* use_inorg_fert imprv_seed_use vac_animal (.=0)
+recode use_fin_serv* ext_reach* use_inorg_fert imprv_seed_use vac_animal (.=0)
 *replace vac_animal=. if tlu_today==0 
 replace use_inorg_fert=. if farm_area==0 | farm_area==. // Area cultivated this year
 recode ext_reach* (0 1=.) if (value_crop_production==0 & livestock_income==0 & farm_area==0 & farm_area==. &  tlu_today==0)
@@ -5226,7 +5227,7 @@ drop w_total_income_s w_nonfarm_income_s
 //note that consumption indicators are not included because there is missing consumption data and we do not consider 0 values for consumption to be valid
 recode w_total_income w_percapita_income w_crop_income w_livestock_income /*w_fishing_income_s*/ w_nonagwage_income w_agwage_income w_self_employment_income w_transfers_income w_all_other_income /*
 */ w_share_crop w_share_livestock /*w_share_fishing*/ w_share_nonagwage w_share_agwage w_share_self_employment w_share_transfers w_share_all_other w_share_nonfarm /*
-*/ /*use_fin_serv*/ use_inorg_fert use_org_fert use_pest imprv_seed_use /*
+*/ use_fin_serv* use_inorg_fert use_org_fert use_pest imprv_seed_use /*
 */ formal_land_rights_hh  /*DYA.10.26.2020*/ *_hrs_*_pc_all  /*months_food_insec*/ w_value_assets /*
 */ lvstck_holding_tlu lvstck_holding_all lvstck_holding_lrum lvstck_holding_srum lvstck_holding_poultry (.=0) if rural==1 
  
@@ -5410,7 +5411,7 @@ foreach v of varlist $empty_vars {
 keep hhid fhh clusterid strataid *weight* *wgt* region region subcounty_code district county /*county_name*/ /*parish*/ parish_name rural farm_size* *total_income* /*
 */ *percapita_income* *percapita_cons* *daily_percap_cons* *peraeq_cons* *daily_peraeq_cons* /*
 */ *income* *share* *proportion_cropvalue_sold *farm_size_agland hh_members adulteq  *labor_hired use_inorg_fert  /*
-*/ ext_* /*use_fin_**/ lvstck_holding* *mortality_rate* *lost_disease* disease* any_imp* formal_land_rights_hh /*
+*/ ext_* use_fin_* lvstck_holding* *mortality_rate* *lost_disease* disease* any_imp* formal_land_rights_hh /*
 */ ** *ls_exp_vac* *prop_farm_prod_sold *hrs_*    *value_assets*  *dist_agrodealer /*
 */ encs* num_crops_* multiple_crops* imprv_seed_* hybrid_seed_* *labor_total *farm_area *labor_productivity* *land_productivity* /*
 */ *wage_paid_aglabor* *labor_hired /*ar_h_wgt_* *yield_hv_**/ ar_pl_wgt_* *yield_pl_* *liters_per_* milk_animals poultry_owned *costs_dairy* *cost_per_lit* /*
