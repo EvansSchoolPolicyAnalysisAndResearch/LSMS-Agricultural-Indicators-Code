@@ -54,7 +54,7 @@ clear matrix
 clear mata
 set more off
 set maxvar 10000		
-ssc install findname	// need this user-written ado file for some commands to work	
+capture ssc install findname	// need this user-written ado file for some commands to work	
 
 *Set location of raw data and output
 global directory					"../.."
@@ -257,17 +257,16 @@ foreach file of local raw_files {
 				}
 			}
 		
-		// FIELD_ID - creating a unique field identifier
+		// PLOT_ID - creating a unique field identifier
 		capture confirm variable parcel_id
 			if(!_rc) {
 			capture confirm variable field_id
 				if(!_rc) {
 				tostring field_id, replace
-				egen field_id_2 = concat(parcel_id field_id)
+				egen plot_id = concat(parcel_id field_id)
 				*assert field_id_2 != "" if field_id != ""
 				drop field_id
-				rename field_id_2 field_id
-				lab var field_id "Unique Field ID"
+				lab var plot_id "Unique Field ID"
 				order hhid holder_id parcel_id field_id
 				}
 			}
@@ -369,18 +368,16 @@ foreach file of local raw_files {
 				}
 			}
 		
-		// FIELD_ID - creating a unique field identifier
+		// PLOT_ID - creating a unique field identifier
 		capture confirm variable parcel_id
 			if(!_rc) {
 			capture confirm variable field_id
 				if(!_rc) {
 				tostring field_id, replace
-				egen field_id_2 = concat(parcel_id field_id)
-				assert field_id_2 != "" if field_id != ""
+				egen plot_id = concat(parcel_id field_id)
 				drop field_id
-				rename field_id_2 field_id
-				lab var field_id "Unique Field ID"
-				order hhid holder_id parcel_id field_id*
+				lab var plot_id "Unique Field ID"
+				order hhid holder_id parcel_id plot_id
 				}
 			}
 	save "`directory_temp'/`file'", replace
@@ -465,18 +462,16 @@ foreach file of local raw_files {
 		ren household_id2 hhid
         } 
 
-		// FIELD_ID - creating a unique field identifier
+		// PLOT_ID - creating a unique field identifier
 		capture confirm variable parcel_id
 			if(!_rc) {
 			capture confirm variable field_id
 				if(!_rc) {
 				tostring field_id, replace
-				egen field_id_2 = concat(parcel_id field_id)
-				*assert field_id_2 != "" if field_id != ""
+				egen plot_id = concat(parcel_id field_id)
 				drop field_id
-				rename field_id_2 field_id
-				lab var field_id "Unique Field ID"
-				order hhid holder_id parcel_id field_id
+				lab var plot_id "Unique Field ID"
+				order hhid holder_id parcel_id plot_id
 				}
 			}
 	save "`directory_temp'/`file'", replace
@@ -770,42 +765,44 @@ save "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_weights.dta", replace
 *Gender/age variables
 use "${Ethiopia_ESS_W2_temp_data}/sect3_pp_w2.dta", clear
 gen cultivated = pp_s3q03==1			// if plot was cultivated
-*First owner/decision maker
 gen personid1=pp_s3q10a
-gen personid0 = substr(holder_id,-2,.) //use holder gender when manager gender is missing or unknown. 
-destring personid0, replace 
+gen holderid = substr(holder_id,-2,.) //use holder gender when manager gender is missing or unknown. 
+destring holderid, replace
+replace personid1 = holderid if personid1==.  
 gen personid2=pp_s3q10c_a
 gen personid3=pp_s3q10c_b
 
-keep hhid parcel_id holder_id field_id personid*
+keep hhid parcel_id holder_id plot_id personid*
 recode personid* (999=.)
 duplicates drop
-*Lots of 999 observations / 83 observations
-drop if field_id=="" | field_id==""
+drop if plot_id == "" 
 gen dummy = _n
-reshape long personid, i(parcel_id field_id hhid holder_id dummy) j(pidno)
-*Then merge in gender on household and person id keep (1 3) and drop if person id is empty. 
+reshape long personid, i(parcel_id plot_id hhid holder_id dummy) j(pidno)
 merge m:1 hhid personid using "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_gender_merge_both.dta", gen(gender_merge) keep (1 3) 
-drop if pidno > 0 & (personid==. | female==.) 
-bys hhid parcel_id holder_id field_id : egen maxpidno = max(pidno) 
-drop if pidno==0 & maxpidno > 0 //drop holder if we still have another manager
-bys hhid parcel_id holder_id field_id : egen minpidno = min(pidno) 
-gen dm1_gender = female+1 if pidno==minpidno //take the first nonmissing plot manager
-drop dummy pidno
-save "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_plot_decision_makers_indids", replace 
-collapse (mean) female (firstnm) dm1_gender, by (hhid parcel_id field_id holder_id)
-drop if parcel_id == "" //47 observations deleted
-gen dm_gender = female+1
-replace dm_gender=3 if !inlist(dm_gender, 1,2,.)
-drop if parcel_id == ""
-merge m:1 hhid using "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_weights.dta", nogen keepusing(fhh) keep(1 3)
-replace dm_gender = fhh+1 if dm_gender==.
-replace dm1_gender=fhh+1 if dm1_gender==.
- //Uses hoh when decisionmaker is missing.
+drop if personid==.
+preserve
+keep hhid holder_id parcel_id plot_id personid female 
+save "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_dm_ids.dta", replace 
+restore
+
+drop gender_merge dummy 
+gen dm1_gender = female+1 if pidno==1 
+collapse (mean) female (firstnm) dm1_gender, by (hhid parcel_id plot_id holder_id)
+drop if parcel_id == "" 
+gen dm_gender = 3 if female!=1 & female!=0 & female!=. 
+replace dm_gender = 1 if female == 0
+replace dm_gender = 2 if female == 1
+
 la var dm_gender "Gender category of plot decisionmaker(s)"
-la var dm1_gender "Gender of primary decisionmaker"
-keep field_id parcel_id dm* hhid holder_id
-save "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_field_decision_makers.dta", replace // Joaquin 03.16.23: Changed name to fit Nigeria W3 do file 
+la var dm1_gender "Gender of plot holder"
+merge m:1 hhid using "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_weights.dta", nogen keepusing(fhh) keep(1 3) 
+replace dm1_gender=fhh+1 if dm1_gender==.
+replace dm_gender=fhh+1 if dm_gender==.
+gen dm_male = dm_gender==1
+gen dm_female = dm_gender==2
+gen dm_mixed = dm_gender==3
+keep plot_id parcel_id dm* hhid holder_id
+save "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_plot_decision_makers.dta", replace  
 
 
 ********************************************************************************
@@ -842,7 +839,7 @@ replace area_sqmeters_gps = . if area_sqmeters_gps<10 //assuming areas of less t
 
 *Constructing geographic medians for local unit per square meter ratios
 preserve
-keep hhid parcel_id field_id area local_unit area_sqmeters_gps
+keep hhid parcel_id plot_id area local_unit area_sqmeters_gps
 merge m:1 hhid using "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_weights.dta", keep(1 3) nogen
 gen sqmeters_per_unit = area_sqmeters_gps/area
 gen observations = 1
@@ -855,7 +852,7 @@ save "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_area_lookup_zone.dta", rep
 restore
 
 preserve
-keep hhid parcel_id field_id area local_unit area_sqmeters_gps
+keep hhid parcel_id plot_id area local_unit area_sqmeters_gps
 merge m:1 hhid using "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_weights.dta", nogen keep(1 3)
 gen sqmeters_per_unit = area_sqmeters_gps/area
 gen observations = 1
@@ -867,7 +864,7 @@ save "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_area_lookup_region.dta", r
 restore
 
 preserve
-keep hhid parcel_id field_id area local_unit area_sqmeters_gps
+keep hhid parcel_id plot_id area local_unit area_sqmeters_gps
 merge m:1 hhid using "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_weights.dta", nogen keep(1 3)
 gen sqmeters_per_unit = area_sqmeters_gps/area
 gen observations = 1
@@ -896,14 +893,14 @@ merge m:1 local_unit using "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_area
 replace field_size = (area*(sqmeters_per_unit_country/10000)) if local_unit!=8 & field_size==.|field_size==0
 lab var field_size "Field area measured in hectares, with missing obs imputed using local median per-unit values"
 drop if hhid==""
-merge 1:1 hhid parcel_id field_id using "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_field_decision_makers.dta", nogen
+merge 1:1 hhid parcel_id plot_id using "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_field_decision_makers.dta", nogen
 gen field_size_male = field_size if dm_gender==1
 gen field_size_female = field_size if dm_gender==2
 gen field_size_mixed = field_size if dm_gender==3
 
 
 preserve
-keep hhid holder_id parcel_id field_id agland cultivated area_meas_hectares field_size field_size* /*gps_meas*/ pp_s3q04
+keep hhid holder_id parcel_id plot_id agland cultivated area_meas_hectares field_size field_size* /*gps_meas*/ pp_s3q04
 save "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_field_area.dta", replace
 restore
 
@@ -919,7 +916,7 @@ land_size_total:	All land owned or used, including rented in/out parcels (househ
 
 *Parcel Area
 preserve
-keep cultivated field_size hhid holder_id parcel_id field_id //we should be at unique fields at this point, but if not. 
+keep cultivated field_size hhid holder_id parcel_id plot_id //we should be at unique fields at this point, but if not. 
 keep if cultivated==1
 save "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_field_sizes.dta", replace
 lab var cultivated "1= Field was cultivated in this data set"
@@ -1107,9 +1104,9 @@ gen crop_id = crop_code
 ren crop_code crop_code1
 gen crop_name1 = ph_s9q0d 
 gen season_pp=1
-duplicates drop hhid holder_id parcel_id field_id crop_id, force //not sure why, but 605 obs w one perfect duplicate
+duplicates drop hhid holder_id parcel_id plot_id crop_id, force //not sure why, but 605 obs w one perfect duplicate
 
-merge 1:1 hhid holder_id parcel_id field_id crop_id using `sect4_ph_w2', nogen
+merge 1:1 hhid holder_id parcel_id plot_id crop_id using `sect4_ph_w2', nogen
 
 gen use_imprv_seed = (pp_s4q11 == 2)
 
@@ -1161,7 +1158,7 @@ replace lost_drought = 1 if lost_drought == 0 & pp_s4q09 == 2 //too little rain
 gen lost_flood = ph_s9q12==1 | ph_s9q12==7 //too much rain, floods
 replace lost_flood = 1 if lost_flood == 0 & (pp_s4q09 == 1 | pp_s4q09 == 8) //too much rain, floods
 
-bys hhid holder_id field_id : gen crops_plot=_N
+bys hhid holder_id plot_id : gen crops_plot=_N
 gen purestand = crops_plot==1
 lab var purestand "1 = monocropped, 0 = intercropped"
 
@@ -1176,11 +1173,11 @@ replace perc_planted_pp=perc_planted_ph if perc_planted_pp==. & perc_planted_ph!
 * MGM 5.1.2024: Noting that roughly 20% of observations have discrepancies between percent planted reported in pp vs. ph. Whether or not a plot had damage was equally distributed across all categories (pp<ph, pp=ph, and pp>pp). Also, there did not seem to be a relationship between % damage and difference in reported perc_planted across pp and ph data. This indicates that there is no particular bias... so we are choosing to use pp on the premise that it may be more reliable than ph. 
 ren ph_s9q08 less_than_plant // was area harvested less than area planted?
 rename pp_s4q14 number_trees_planted
-merge m:1 hhid holder_id parcel_id field_id using "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_field_area.dta", nogen keep(1 3) keepusing(field_size cultivated) // 25 not matched from master 
+merge m:1 hhid holder_id parcel_id plot_id using "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_field_area.dta", nogen keep(1 3) keepusing(field_size cultivated) // 25 not matched from master 
 
 gen percent_field=perc_planted_pp/100
 replace percent_field = 1 if percent_field==. & purestand==1
-bys hhid holder_id parcel_id field_id : egen total_percent = total(percent_field)
+bys hhid holder_id parcel_id plot_id : egen total_percent = total(percent_field)
 replace percent_field = percent_field/total_percent if total_percent > 1 & purestand == 0 // 192 changes
 replace percent_field = 1 if percent_field > 1 & purestand == 1 // 63 changes
 gen pct_harvest = perc_plant_harv/100 
@@ -1243,22 +1240,22 @@ ren price_unit_hhid price_unit_hh
 	replace value_harvest=value_harvest_hh if value_harvest==. 
 
 *AgQuery
-bys hhid holder_id parcel_id field_id : egen area_plan= sum(ha_planted)
+bys hhid holder_id parcel_id plot_id : egen area_plan= sum(ha_planted)
 gen percent_inputs = ha_planted / area_plan 
 drop if parcel_id == ""
-keep region zone woreda kebele ea hhid holder_id parcel_id field_id purestand /*crops_plot*/ crop_code val* kg_harvest cultivated ha_planted ha_harvest number_trees_planted percent_inputs months_grown /*reason_loss*/ field_size /*gps_meas*/ lost* use*
+keep region zone woreda kebele ea hhid holder_id parcel_id plot_id purestand /*crops_plot*/ crop_code val* kg_harvest cultivated ha_planted ha_harvest number_trees_planted percent_inputs months_grown /*reason_loss*/ field_size /*gps_meas*/ lost* use*
 
-merge m:1 hhid holder_id parcel_id field_id using "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_field_decision_makers.dta", nogen keep(1 3) keepusing(dm*) // 105 not matched
-order region zone woreda kebele ea hhid holder_id parcel_id field_id crop_code
-save "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_all_fields.dta", replace
+merge m:1 hhid holder_id parcel_id plot_id using "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_field_decision_makers.dta", nogen keep(1 3) keepusing(dm*) // 105 not matched
+order region zone woreda kebele ea hhid holder_id parcel_id plot_id crop_code
+save "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_all_plots.dta", replace
 
 //AT: moving this up here and making it its own file because we use it often below
-collapse (sum) ha_planted, by(hhid holder_id parcel_id field_id) //Use planted area for hh-level expenses 
+collapse (sum) ha_planted, by(hhid holder_id parcel_id plot_id) //Use planted area for hh-level expenses 
 save "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_planted_area.dta", replace
 
 /*
 *CODE USED TO DETERMINE THE TOP CROPS
-use "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_all_fields.dta", clear
+use "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_all_plots.dta", clear
 merge m:1 hhid using "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_hhids.dta", keep(1 3) // 75 HHs not matched
 gen area= ha_planted*weight_pop_rururb 
 collapse (sum) area, by (crop_code)
@@ -1295,7 +1292,7 @@ collapse (sum) sales_value kgs_sold, by (hhid crop_code)
 lab var sales_value "Value of sales of this crop"
 save "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_cropsales_value.dta", replace 
 
-use "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_all_fields.dta", clear 
+use "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_all_plots.dta", clear 
 collapse (sum) value_harvest , by (hhid crop_code) 
 merge 1:1 hhid crop_code using "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_cropsales_value.dta"
 recode  value_harvest sales_value  (.=0) // go back and just call this value_cropsales from the start
@@ -1358,7 +1355,7 @@ use "$Ethiopia_ESS_W2_temp_data/sect3_pp_w2.dta", clear // hired labor post plan
 	ren saq03 woreda 
 	ren saq06 kebele 
 	ren saq07 ea 
-	keep hhid holder_id parcel_id field_id *hired* 
+	keep hhid holder_id parcel_id plot_id *hired* 
 	gen season="pp"
 tempfile postplanting_hired
 save `postplanting_hired'
@@ -1384,13 +1381,13 @@ use "${Ethiopia_ESS_W2_temp_data}/sect10_ph_w2.dta" , clear // hired labor post 
 	ren saq03 woreda 
 	ren saq06 kebele 
 	ren saq07 ea 
-	keep region zone woreda kebele ea hhid holder_id parcel_id field_id *hired* 
-	collapse (sum) *hired*, by(region zone woreda kebele ea hhid holder_id parcel_id field_id)
+	keep region zone woreda kebele ea hhid holder_id parcel_id plot_id *hired* 
+	collapse (sum) *hired*, by(region zone woreda kebele ea hhid holder_id parcel_id plot_id)
 	gen season="ph"
 	tempfile postharvesting_hired
 	preserve 	
-		sort region zone woreda kebele ea hhid holder_id parcel_id field_id season
-		quietly by region zone woreda kebele ea hhid holder_id parcel_id field_id season:  gen dup = cond(_N==1,0,_n)
+		sort region zone woreda kebele ea hhid holder_id parcel_id plot_id season
+		quietly by region zone woreda kebele ea hhid holder_id parcel_id plot_id season:  gen dup = cond(_N==1,0,_n)
 		tab dup 
 	restore 
 save `postharvesting_hired'
@@ -1402,14 +1399,14 @@ unab vars : *female
 local stubs : subinstr local vars "female" "", all
 display "`stubs'"
 
-reshape long `stubs', i(region zone woreda kebele ea hhid holder_id parcel_id field_id season) j(gender) string
-	sort region zone woreda kebele ea hhid holder_id parcel_id field_id season
-reshape long number days wage, i(hhid holder_id parcel_id field_id gender season) j(labor_type) string 
+reshape long `stubs', i(region zone woreda kebele ea hhid holder_id parcel_id plot_id season) j(gender) string
+	sort region zone woreda kebele ea hhid holder_id parcel_id plot_id season
+reshape long number days wage, i(hhid holder_id parcel_id plot_id gender season) j(labor_type) string 
 	gen val = days*number*wage
 
 //Generate "median wages": `wage_`i'_median', `wage_country_median', `all_hired'
 merge m:1 hhid using "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_weights.dta", nogen keep(1 3) keepusing(weight) //606 not matched from master
-merge m:1 hhid holder_id parcel_id field_id using "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_field_area.dta", nogen keep(1 3) keepusing(field_size) // 294 not matched from master
+merge m:1 hhid holder_id parcel_id plot_id using "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_field_area.dta", nogen keep(1 3) keepusing(field_size) // 294 not matched from master
 gen fieldweight = weight*field_size //900 missing values
 recode wage (0=.) 
 gen obs=wage!=.
@@ -1456,9 +1453,9 @@ use "$Ethiopia_ESS_W2_temp_data/sect3_pp_w2.dta", clear
 	ren pp_s3q27_s days_week5
 	ren pp_s3q27_w days_week6
 	ren pp_s3q27_ca days_week7
-	keep hhid holder_id parcel_id field_id pid* weeks_worked* days_week*
+	keep hhid holder_id parcel_id plot_id pid* weeks_worked* days_week*
 preserve
-	bysort hhid holder_id parcel_id field_id: gen dup = cond(_N==1,0,_n)
+	bysort hhid holder_id parcel_id plot_id: gen dup = cond(_N==1,0,_n)
 	tab dup 
 restore 
 gen season="pp"
@@ -1490,12 +1487,12 @@ use "${Ethiopia_ESS_W2_temp_data}/sect10_ph_w2.dta" , clear
 	ren ph_s10q02_w days_week6
 	ren ph_s10q02_ka days_week7
 	ren ph_s10q02_oa days_week8
-keep hhid holder_id parcel_id field_id pid* weeks_worked* days_week*
+keep hhid holder_id parcel_id plot_id pid* weeks_worked* days_week*
 preserve
-	bysort hhid holder_id parcel_id field_id: gen dup = cond(_N==1,0,_n)
+	bysort hhid holder_id parcel_id plot_id: gen dup = cond(_N==1,0,_n)
 	tab dup 
 restore 
-collapse pid* weeks_worked* days_week*, by(hhid holder_id parcel_id field_id)
+collapse pid* weeks_worked* days_week*, by(hhid holder_id parcel_id plot_id)
 gen season="ph"
 tempfile postharvesting_family
 save `postharvesting_family'
@@ -1508,11 +1505,11 @@ use "$Ethiopia_ESS_W2_temp_data/sect3_pp_w2.dta", clear
 	ren pp_s3q29_d daysotherfemale
 	ren pp_s3q29_e numberotherchild
 	ren pp_s3q29_f daysotherchild
-keep hhid holder_id parcel_id field_id number* days* 
+keep hhid holder_id parcel_id plot_id number* days* 
 gen season = "pp"
 tempfile postplanting_other 
 preserve
-	bysort hhid holder_id parcel_id field_id: gen dup = cond(_N==1,0,_n)
+	bysort hhid holder_id parcel_id plot_id: gen dup = cond(_N==1,0,_n)
 	tab dup 
 restore 
 save `postplanting_other'
@@ -1524,10 +1521,10 @@ use "${Ethiopia_ESS_W2_temp_data}/sect10_ph_w2.dta" , clear
 	ren ph_s10q03_d daysotherfemale
 	ren ph_s10q03_e numberotherchild
 	ren ph_s10q03_f daysotherchild
-keep hhid holder_id parcel_id field_id number* days* 
-collapse number* days*, by(hhid holder_id parcel_id field_id)
+keep hhid holder_id parcel_id plot_id number* days* 
+collapse number* days*, by(hhid holder_id parcel_id plot_id)
 preserve
-	bysort hhid holder_id parcel_id field_id: gen dup = cond(_N==1,0,_n)
+	bysort hhid holder_id parcel_id plot_id: gen dup = cond(_N==1,0,_n)
 	tab dup 
 restore 
 gen season = "ph"
@@ -1562,10 +1559,10 @@ save `members', replace
 use `postplanting_family', clear 
 append using `postharvesting_family'
 preserve 
-	bysort hhid holder_id parcel_id field_id season: gen dup = cond(_N==1,0,_n)
+	bysort hhid holder_id parcel_id plot_id season: gen dup = cond(_N==1,0,_n)
 	tab dup 
 restore 
-reshape long pid weeks_worked days_week, i(hhid holder_id parcel_id field_id season) j(colid) string 
+reshape long pid weeks_worked days_week, i(hhid holder_id parcel_id plot_id season) j(colid) string 
 gen days=weeks_worked*days_week
 drop if days==.
 merge m:1 hhid pid using `members', nogen keep(1 3)
@@ -1573,7 +1570,7 @@ gen gender="child" if age<16
 replace gender="male" if strmatch(gender,"") & male==1
 replace gender="female" if strmatch(gender,"") & male==0
 gen labor_type="family"
-keep region zone woreda kebele ea hhid holder_id parcel_id field_id season gender days labor_type
+keep region zone woreda kebele ea hhid holder_id parcel_id plot_id season gender days labor_type
 // Joaquin 034.03.23: The is no *exchange labor* in ETH W3. 
 foreach i in region zone woreda kebele ea hhid {
 	merge m:1 `i' gender season using `wage_`i'_median', nogen keep(1 3) 
@@ -1586,9 +1583,9 @@ foreach i in region zone woreda kebele ea {
 
 gen val = wage*days
 append using `all_hired'
-keep hhid holder_id parcel_id field_id season days val labor_type gender number
+keep hhid holder_id parcel_id plot_id season days val labor_type gender number
 drop if val==.&days==.
-merge m:1 hhid holder_id parcel_id field_id using "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_field_decision_makers",  keep(3) keepusing(dm_gender) //Some issues here with the postharvest dataset to follow up on.
+merge m:1 hhid holder_id parcel_id plot_id using "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_field_decision_makers",  keep(3) keepusing(dm_gender) //Some issues here with the postharvest dataset to follow up on.
 /*
 //codebook dm_gender // 399 missing values for dm_gender.
 preserve // from Joaquin w3: preserve-restore checks if the hhs with missing dm_gender are part of the hh module 
@@ -1600,7 +1597,7 @@ preserve // from Joaquin w3: preserve-restore checks if the hhs with missing dm_
 restore 
 recode dm_gender (.=4) 
 */
-collapse (sum) number val days, by(hhid holder_id parcel_id field_id season labor_type gender dm_gender) //this is a little confusing, but we need "gender" and "number" for the agwage file.
+collapse (sum) number val days, by(hhid holder_id parcel_id plot_id season labor_type gender dm_gender) //this is a little confusing, but we need "gender" and "number" for the agwage file.
 	la var gender "Gender of worker"
 	la var dm_gender "Plot manager gender"
 	la var labor_type "Hired, exchange, or family labor"
@@ -1608,8 +1605,8 @@ collapse (sum) number val days, by(hhid holder_id parcel_id field_id season labo
 	la var val "Total value of hired labor (Naira)"
 save "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_field_labor_long.dta",replace
 preserve
-	collapse (sum) labor_=days, by (hhid holder_id parcel_id field_id labor_type)
-	reshape wide labor_, i(hhid holder_id parcel_id field_id) j(labor_type) string
+	collapse (sum) labor_=days, by (hhid holder_id parcel_id plot_id labor_type)
+	reshape wide labor_, i(hhid holder_id parcel_id plot_id) j(labor_type) string
 		la var labor_family "Number of family person-days spent on plot, all seasons"
 		la var labor_nonhired "Number of exchange (free) person-days spent on plot, all seasons"
 		la var labor_hired "Number of hired labor person-days spent on plot, all seasons"
@@ -1620,25 +1617,25 @@ preserve
 	gen exp="exp" if strmatch(labor_type,"hired")
 	replace exp="imp" if strmatch(exp,"")
 	//append using `inkind_payments'
-	collapse (sum) val, by(hhid holder_id parcel_id field_id exp dm_gender)
+	collapse (sum) val, by(hhid holder_id parcel_id plot_id exp dm_gender)
 	codebook dm_gender 
 	gen input="labor"
 	save "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_field_labor.dta", replace //this gets used below.
 restore	
 
 //And now we go back to wide
-collapse (sum) val, by(hhid holder_id parcel_id field_id season labor_type dm_gender)
+collapse (sum) val, by(hhid holder_id parcel_id plot_id season labor_type dm_gender)
 ren val val_ 
-reshape wide val_, i(hhid holder_id parcel_id field_id season dm_gender) j(labor_type) string
+reshape wide val_, i(hhid holder_id parcel_id plot_id season dm_gender) j(labor_type) string
 ren val* val*_
-reshape wide val*, i(hhid holder_id parcel_id field_id dm_gender) j(season) string
+reshape wide val*, i(hhid holder_id parcel_id plot_id dm_gender) j(season) string
 gen dm_gender2 = "male" if dm_gender==1
 replace dm_gender2 = "female" if dm_gender==2
 replace dm_gender2 = "mixed" if dm_gender==3
 replace dm_gender2 = "NA" if dm_gender==.
 drop dm_gender
 ren val* val*_
-reshape wide val*, i(hhid holder_id parcel_id field_id) j(dm_gender2) string
+reshape wide val*, i(hhid holder_id parcel_id plot_id) j(dm_gender2) string
 collapse (sum) val*, by(hhid)
 save "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_hh_cost_labor.dta", replace
 
@@ -1674,7 +1671,7 @@ use "$Ethiopia_ESS_W2_temp_data/sect4_pp_w2.dta", clear // Joaquin 04.06.23: Thi
 	rename	pp_s4q07 usefungexp // Fungicide dummy 
 	rename	pp_s4q06 useherbexp  // Herbicide dummy 
 
-	keep crop_code region zone woreda kebele ea hhid holder_id parcel_id field_id *exp /*qty* unit* */
+	keep crop_code region zone woreda kebele ea hhid holder_id parcel_id plot_id *exp /*qty* unit* */
 
 	unab vars : *exp
 	local stubs : subinstr local vars "exp" "", all
@@ -1682,12 +1679,12 @@ use "$Ethiopia_ESS_W2_temp_data/sect4_pp_w2.dta", clear // Joaquin 04.06.23: Thi
 	gen dummya = 1
 	gen dummyb = sum(dummya)
 	drop dummya
-	reshape long `stubs', i(hhid holder_id parcel_id field_id crop_code dummyb) j(exp) string
+	reshape long `stubs', i(hhid holder_id parcel_id plot_id crop_code dummyb) j(exp) string
 	gen dummyc = sum(dummyb)
 	drop dummyb 
-	reshape long use, i(hhid holder_id parcel_id field_id crop_code dummyc) j(input) string
+	reshape long use, i(hhid holder_id parcel_id plot_id crop_code dummyc) j(input) string
 	recode use (2=.)
-	collapse (sum) use, by(hhid holder_id parcel_id field_id input exp)
+	collapse (sum) use, by(hhid holder_id parcel_id plot_id input exp)
 	replace use = 1 if use>=2 
 	//gen itemcode = 1 // Dummy variable 
 	gen qty = .  //The module does not have information on quantity used 
@@ -1745,25 +1742,25 @@ use "$Ethiopia_ESS_W2_temp_data/sect4_pp_w2.dta", clear // Joaquin 04.06.23: Thi
 	label var itemcodefertexp7 "Other organic"
 	*/ 
 
-	keep use* qty* unit* val* hhid holder_id parcel_id field_id
+	keep use* qty* unit* val* hhid holder_id parcel_id plot_id
 	gen dummya=1
 	gen dummyb=sum(dummya) //dummy id for duplicates
 	drop dummya
 	unab vars : *1
 	local stubs : subinstr local vars "1" "", all
 	display "`stubs'"
-	reshape long `stubs', i(hhid holder_id parcel_id field_id dummyb) j(itemcode)
+	reshape long `stubs', i(hhid holder_id parcel_id plot_id dummyb) j(itemcode)
 	drop if (usefertexp==.) 
 	gen dummyc=sum(dummyb)
 	drop dummyb
 	unab vars2 : *exp
 	local stubs2 : subinstr local vars2 "exp" "", all
 	display "`stubs2'"
-	reshape long `stubs2', i(hhid holder_id parcel_id field_id itemcode dummyc) j(exp) string 	
+	reshape long `stubs2', i(hhid holder_id parcel_id plot_id itemcode dummyc) j(exp) string 	
 	gen dummyd = sum(dummyc)
 	drop dummyc
-	reshape long use qty unit val, i(hhid holder_id parcel_id field_id itemcode exp dummyd) j(input) string
-	//collapse (sum) qty* val*, by(hhid holder_id parcel_id field_id itemcode use)
+	reshape long use qty unit val, i(hhid holder_id parcel_id plot_id itemcode exp dummyd) j(input) string
+	//collapse (sum) qty* val*, by(hhid holder_id parcel_id plot_id itemcode use)
 	drop dummyd 
 	label define itemcodefert 1 "Urea" 2 "DAP" 3 "Other inorganic" 4 "Manure" 5 "Compost" 6 "Other organic"
 	label values itemcode itermcodefert 
@@ -1783,7 +1780,7 @@ use "$Ethiopia_ESS_W2_temp_data/sect4_pp_w2.dta", clear // Joaquin 04.06.23: Thi
 	gen use_hoe = pp_s3q35==5
 	gen use_anml_own = pp_s3q35==3 //Counting own and borrowed livestock together for the purpose of explicit expenses. 
 	gen use_anml_rent = pp_s3q35==4
-	/*merge 1:1 hhid holder_id parcel_id field_id using "${Ethiopia_ESS_W1_created_data}/Ethiopia_ESS_W1_planted_area.dta", nogen keep(1 3)
+	/*merge 1:1 hhid holder_id parcel_id plot_id using "${Ethiopia_ESS_W1_created_data}/Ethiopia_ESS_W1_planted_area.dta", nogen keep(1 3)
 	//Values will be in rent/machine/hectare so we generate quantity = area
 	gen qtymechexp = ha_planted if use_mech_rent ==1
 	gen qtymechimp = ha_planted if use_mech_own  ==1
@@ -1807,8 +1804,8 @@ use "$Ethiopia_ESS_W2_temp_data/sect4_pp_w2.dta", clear // Joaquin 04.06.23: Thi
 		gen valhoeexp = prop_hoe * valhoerent  
 	
 	drop valanmlrent valmechrent valmechmaint valhoerent 
-	reshape long valmech valanml valhoe qtyanml qtymech qtyhoe, i(hhid holder_id parcel_id field_id) j(exp) string
-	reshape long val qty, i(hhid holder_id parcel_id field_id exp) j(input) string
+	reshape long valmech valanml valhoe qtyanml qtymech qtyhoe, i(hhid holder_id parcel_id plot_id) j(exp) string
+	reshape long val qty, i(hhid holder_id parcel_id plot_id exp) j(input) string
 	gen itemcode=1 //irrelevant here.
 	gen unit=1
 	*/
@@ -1816,11 +1813,11 @@ use "$Ethiopia_ESS_W2_temp_data/sect4_pp_w2.dta", clear // Joaquin 04.06.23: Thi
 	save `mech_inputs'
 	
 	** fieldrents 
-	use "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_all_fields.dta", clear 
-	//sort hhid holder_id parcel_id field_id 	
-	//bysort hhid holder_id parcel_id field_id: gen dup = cond(_N==1,0,_n)
-	collapse (first) field_size (sum) ha_planted value_harvest, by(hhid holder_id parcel_id field_id)	
-	//merge 1:1 hhid holder_id parcel_id field_id  using "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_field_area.dta", keep(1 3) keepusing(cultivated) nogen 
+	use "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_all_plots.dta", clear 
+	//sort hhid holder_id parcel_id plot_id 	
+	//bysort hhid holder_id parcel_id plot_id: gen dup = cond(_N==1,0,_n)
+	collapse (first) field_size (sum) ha_planted value_harvest, by(hhid holder_id parcel_id plot_id)	
+	//merge 1:1 hhid holder_id parcel_id plot_id  using "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_field_area.dta", keep(1 3) keepusing(cultivated) nogen 
 	*ren field_size field_size
 
 	preserve 
@@ -1846,12 +1843,12 @@ use "$Ethiopia_ESS_W2_temp_data/sect4_pp_w2.dta", clear // Joaquin 04.06.23: Thi
 	replace qtyfieldrentimp = ha_planted if qtyfieldrentimp==. & qtyfieldrentexp==.
 
 	//keep if cultivate==1 //No need for uncultivated plots
-	keep hhid holder_id parcel_id field_id qtyfieldrentexp* valfieldrentexp*
+	keep hhid holder_id parcel_id plot_id qtyfieldrentexp* valfieldrentexp*
 
 	gen usefieldrentexp = (qtyfieldrentexp>0 & qtyfieldrentexp!=.)
 
-	reshape long usefieldrent valfieldrent qtyfieldrent, i(hhid holder_id parcel_id field_id) j(exp) string
-	reshape long use val qty, i(hhid holder_id parcel_id field_id exp) j(input) string
+	reshape long usefieldrent valfieldrent qtyfieldrent, i(hhid holder_id parcel_id plot_id) j(exp) string
+	reshape long use val qty, i(hhid holder_id parcel_id plot_id exp) j(input) string
 
 	gen unit=(qty!=. & val!=.) 
 	gen itemcode=1 //dummy var
@@ -1872,7 +1869,7 @@ use "$Ethiopia_ESS_W2_temp_data/sect4_pp_w2.dta", clear // Joaquin 04.06.23: Thi
 	gen unit = 1 if qty!=. // 1 == kg 
 	gen val = pp_s4q11c // Value is available ONLY for improved seeds 
 	gen input = "seeds" if use==1 
-	collapse (sum) use val qty, by(hhid holder_id parcel_id field_id exp input itemcode unit)
+	collapse (sum) use val qty, by(hhid holder_id parcel_id plot_id exp input itemcode unit)
 	replace qty = . if qty==0 & use==1 
 	replace val = . if exp!="exp" // Value is available ONLY for improved seeds 
 	drop if itemcode ==. 
@@ -1889,8 +1886,8 @@ use "$Ethiopia_ESS_W2_temp_data/sect4_pp_w2.dta", clear // Joaquin 04.06.23: Thi
 	
 
 	merge m:1 hhid using "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_weights.dta",nogen keep(1 3) keepusing(weight)
-	merge m:1 hhid holder_id parcel_id field_id using "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_field_area.dta", nogen keep(1 3) keepusing(field_size)
-	merge m:1 hhid holder_id parcel_id field_id using "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_field_decision_makers",nogen keep(1 3) keepusing(dm_gender)
+	merge m:1 hhid holder_id parcel_id plot_id using "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_field_area.dta", nogen keep(1 3) keepusing(field_size)
+	merge m:1 hhid holder_id parcel_id plot_id using "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_field_decision_makers",nogen keep(1 3) keepusing(dm_gender)
 	recode dm_gender (.=4) 
 	merge m:1  hhid using "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_hhids.dta", nogen keep(1 3) keepusing(region zone woreda kebele ea) // 
 
@@ -1910,8 +1907,8 @@ use "$Ethiopia_ESS_W2_temp_data/sect4_pp_w2.dta", clear // Joaquin 04.06.23: Thi
 	gen fung_kg = qty*strmatch(input, "fung")
 	gen inorg_fert_kg = qty*strmatch(input, "inorg")
 	gen org_fert_kg = qty if itemcode >=5 & itemcode!=.
-	collapse (sum) *kg, by(hhid holder_id parcel_id field_id)
-	//collapse (max) use_irrigation (sum) *kg, by(hhid holder_id parcel_id field_id)
+	collapse (sum) *kg, by(hhid holder_id parcel_id plot_id)
+	//collapse (max) use_irrigation (sum) *kg, by(hhid holder_id parcel_id plot_id)
 	la var inorg_fert_kg "Kg inorganic fertilizer used"
 	la var org_fert_kg "Kg organic fertilizer used"
 	la var herb_kg "Kg of herbicide used"
@@ -1984,7 +1981,7 @@ use "$Ethiopia_ESS_W2_temp_data/sect4_pp_w2.dta", clear // Joaquin 04.06.23: Thi
 	*/
 
 	append using "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_field_labor.dta"
-	collapse (sum) val, by (hhid holder_id parcel_id field_id exp input dm_gender)
+	collapse (sum) val, by (hhid holder_id parcel_id plot_id exp input dm_gender)
 	save "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_field_cost_inputs_long.dta",replace 
 
 	preserve
@@ -1994,23 +1991,23 @@ use "$Ethiopia_ESS_W2_temp_data/sect4_pp_w2.dta", clear // Joaquin 04.06.23: Thi
 **# Bookmark #1
 
 	preserve
-		collapse (sum) val_=val, by(hhid holder_id parcel_id field_id exp dm_gender)
-		reshape wide val_, i(hhid holder_id parcel_id field_id dm_gender) j(exp) string
+		collapse (sum) val_=val, by(hhid holder_id parcel_id plot_id exp dm_gender)
+		reshape wide val_, i(hhid holder_id parcel_id plot_id dm_gender) j(exp) string
 		save "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_field_cost_inputs.dta", replace //This gets used below.
 	restore
 
 	//This version of the code retains identities for all inputs; not strictly necessary for later analyses.
 	ren val val_ 
-	reshape wide val_, i(hhid holder_id parcel_id field_id exp dm_gender) j(input) string
+	reshape wide val_, i(hhid holder_id parcel_id plot_id exp dm_gender) j(input) string
 	ren val* val*_
-	reshape wide val*, i(hhid holder_id parcel_id field_id dm_gender) j(exp) string
+	reshape wide val*, i(hhid holder_id parcel_id plot_id dm_gender) j(exp) string
 	gen dm_gender2 = "male" if dm_gender==1
 	replace dm_gender2 = "female" if dm_gender==2
 	replace dm_gender2 = "mixed" if dm_gender==3
 	drop dm_gender
 	drop if dm_gender2 ==""
 	ren val* val*_
-	reshape wide val*, i(hhid holder_id parcel_id field_id) j(dm_gender2) string
+	reshape wide val*, i(hhid holder_id parcel_id plot_id) j(dm_gender2) string
 	save "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_field_cost_inputs_wide.dta", replace //Used for monocrop plots
 	collapse (sum) val*, by(hhid)
 
@@ -2031,29 +2028,29 @@ use "$Ethiopia_ESS_W2_temp_data/sect4_pp_w2.dta", clear // Joaquin 04.06.23: Thi
 	//back to wide
 	drop input
 	codebook dm_gender
-	collapse (sum) val, by(hhid holder_id parcel_id field_id exp dm_gender)
+	collapse (sum) val, by(hhid holder_id parcel_id plot_id exp dm_gender)
 	gen dm_gender2 = "male" if dm_gender==1
 	replace dm_gender2 = "female" if dm_gender==2
 	replace dm_gender2 = "mixed" if dm_gender==3
 	drop dm_gender
 	codebook dm_gender2 
 	ren val* val*_
-	reshape wide val*, i(hhid holder_id parcel_id field_id dm_gender2) j(exp) string
+	reshape wide val*, i(hhid holder_id parcel_id plot_id dm_gender2) j(exp) string
 	ren val* val*_
 
 	preserve // Get planted area 
-		use "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_all_fields.dta",clear
-		collapse (sum) ha_planted, by(hhid holder_id parcel_id field_id)
+		use "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_all_plots.dta",clear
+		collapse (sum) ha_planted, by(hhid holder_id parcel_id plot_id)
 		tempfile planted_area
 		save `planted_area' 
 	restore 
 
 
-	duplicates drop hhid holder_id parcel_id field_id, force
-	merge 1:1 hhid holder_id parcel_id field_id using "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_field_area.dta", nogen keep(1 3) keepusing(field_size) //do per-ha expenses at the same time
-	merge 1:1 hhid holder_id parcel_id field_id using `planted_area', nogen keep(1 3)
+	duplicates drop hhid holder_id parcel_id plot_id, force
+	merge 1:1 hhid holder_id parcel_id plot_id using "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_field_area.dta", nogen keep(1 3) keepusing(field_size) //do per-ha expenses at the same time
+	merge 1:1 hhid holder_id parcel_id plot_id using `planted_area', nogen keep(1 3)
 	drop if dm_gender2 ==""
-	reshape wide val*, i(hhid holder_id parcel_id field_id) j(dm_gender2) string
+	reshape wide val*, i(hhid holder_id parcel_id plot_id) j(dm_gender2) string
 	collapse (sum) val* field_size ha_planted*, by(hhid)
 	//Renaming variables to plug into later steps
 	foreach i in male female mixed {
@@ -2068,14 +2065,14 @@ use "$Ethiopia_ESS_W2_temp_data/sect4_pp_w2.dta", clear // Joaquin 04.06.23: Thi
 ********************************************************************************
 *MONOCROPPED PLOTS*
 ********************************************************************************
-use "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_all_fields.dta", clear
+use "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_all_plots.dta", clear
 	keep if purestand==1 
 	//File now has 2550 unique entries after omitting the crops that were "replaced" - it should be noted that some these were grown in mixed plots and only one crop was lost. Which is confusing.
-	bysort hhid holder_id parcel_id field_id: gen dup=cond(_N==1,0,_n)
+	bysort hhid holder_id parcel_id plot_id: gen dup=cond(_N==1,0,_n)
 	tab dup
 	drop if dup>=2
 	drop dup 
-	merge 1:1 hhid holder_id parcel_id field_id using "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_field_decision_makers.dta", nogen keep(1 3) keepusing(dm_gender)
+	merge 1:1 hhid holder_id parcel_id plot_id using "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_field_decision_makers.dta", nogen keep(1 3) keepusing(dm_gender)
 	ren ha_planted monocrop_ha
 	ren kg_harvest kgs_harv_mono
 	ren value_harvest val_harv_mono
@@ -2123,14 +2120,14 @@ preserve
 	drop exp
 	levelsof input, clean l(input_names)
 	ren val val_
-	reshape wide val_, i(hhid holder_id parcel_id field_id dm_gender) j(input) string
+	reshape wide val_, i(hhid holder_id parcel_id plot_id dm_gender) j(input) string
 	ren val* val*_`cn'_
 	gen dm_gender2 = "male" if dm_gender==1
 	replace dm_gender2 = "female" if dm_gender==2
 	replace dm_gender2 = "mixed" if dm_gender==3
 	drop if dm_gender2 == ""
-	reshape wide val*, i(hhid holder_id parcel_id field_id) j(dm_gender2) string
-	merge 1:1 hhid holder_id parcel_id field_id using "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_`cn'_monocrop.dta", nogen keep(3)
+	reshape wide val*, i(hhid holder_id parcel_id plot_id) j(dm_gender2) string
+	merge 1:1 hhid holder_id parcel_id plot_id using "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_`cn'_monocrop.dta", nogen keep(3)
 	collapse (sum) val*, by(hhid)
 	foreach i in `input_names' {
 		egen val_`i'_`cn'_hh = rowtotal(val_`i'_`cn'_male val_`i'_`cn'_female val_`i'_`cn'_mixed)
@@ -2742,15 +2739,15 @@ gen use_imprv_seed = (pp_s4q11 == 2)
 recode crop_code (19=12)
 recode crop_code (1053=1050) (1061 1062 = 1060) (1081 1082=1080) (1091 1092 1093 = 1090) (1111=1110) (2191 2192 2193=2190) /*Counting this generically as pumpkin, but it is different commodities
 	*/				 (3181 3182 3183 3184 = 3180) (2170=2030) (3113 3112 3111 = 3110) (3022=3020) (2142 2141 = 2140) (1121 1122 1123 1124=1120) // JM 091123: Added 
-collapse (max) use_imprv_seed, by(hhid holder_id parcel_id field_id crop_code)
+collapse (max) use_imprv_seed, by(hhid holder_id parcel_id plot_id crop_code)
 tempfile imprv_seed
 save `imprv_seed'
 */
 use "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_field_area.dta", clear 
 //ren pp_s3q10a pid1
 //ren  pp_s3q10c_a pid2 
-keep hhid holder_id parcel_id field_id //pid*
-//reshape long pid, i( hhid holder_id parcel_id field_id) j(pidno)
+keep hhid holder_id parcel_id plot_id //pid*
+//reshape long pid, i( hhid holder_id parcel_id plot_id) j(pidno)
 //drop pidno
 //drop if pid==.
 //ren pid personid 
@@ -2760,19 +2757,19 @@ tempfile personids
 save `personids'
 
 use "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_input_quantities.dta", clear
-merge 1:1 hhid parcel_id field_id using "${Ethiopia_ESS_W2_temp_data}/sect3_pp_w2.dta", nogen keepusing(pp_s3q12)
-merge 1:m hhid holder_id parcel_id field_id using "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_all_fields.dta", nogen keepusing(crop_code use_imprv_seed) 
+merge 1:1 hhid parcel_id plot_id using "${Ethiopia_ESS_W2_temp_data}/sect3_pp_w2.dta", nogen keepusing(pp_s3q12)
+merge 1:m hhid holder_id parcel_id plot_id using "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_all_plots.dta", nogen keepusing(crop_code use_imprv_seed) 
 gen use_irr = pp_s3q12==1
 foreach i in inorg_fert org_fert pest herb fung {
 	recode `i'_kg (.=0)
 	gen use_`i'= `i'_kg > 0
 }
 
-collapse (max) use*, by(hhid holder_id parcel_id field_id crop_code) //irrigation will be included in this
-//merge 1:1 hhid holder_id parcel_id field_id crop_code using `imprv_seed', nogen 
+collapse (max) use*, by(hhid holder_id parcel_id plot_id crop_code) //irrigation will be included in this
+//merge 1:1 hhid holder_id parcel_id plot_id crop_code using `imprv_seed', nogen 
 recode use* (.=0)
 preserve 
-keep hhid holder_id parcel_id field_id crop_code use_imprv_seed
+keep hhid holder_id parcel_id plot_id crop_code use_imprv_seed
 ren use_imprv_seed imprv_seed_
 gen hybrid_seed_ = .
 collapse (max) imprv_seed_ hybrid_seed_, by(hhid crop_code)
@@ -2783,7 +2780,7 @@ save "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_imprvseed_crop.dta",replac
 restore 
 
 
-merge m:m hhid holder_id parcel_id field_id using `personids', nogen keep(1 3)
+merge m:m hhid holder_id parcel_id plot_id using `personids', nogen keep(1 3)
 drop if personid==.
 preserve
 ren use_imprv_seed all_imprv_seed_
@@ -2793,7 +2790,7 @@ merge m:1 crop_code using "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_cropn
 drop crop_code
 gen farmer_=1
 /*
-bysort hhid holder_id parcel_id field_id individual_id2 female crop_name: gen dup = cond(_N==1,0,_n)
+bysort hhid holder_id parcel_id plot_id individual_id2 female crop_name: gen dup = cond(_N==1,0,_n)
 tab dup 
 */
 reshape wide all_imprv_seed_ all_hybrid_seed_ farmer_, i(hhid personid female) j(crop_name) string
@@ -3028,7 +3025,7 @@ recode hh_number_mobile_owned (.=0) //DYA.11.13.2020 recode missing to 0
 gen mobile_owned= hh_number_mobile_owned>0 //DYA.11.13.2020 
 collapse (max) mobile_owned, by(hhid)
 keep hhid mobile_owned
-save "${Ethiopia_ESS_W2_created_data}/Ethiopia_2014_mobile_own", replace
+save "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_mobile_own.dta", replace
 
 
 ********************************************************************************
@@ -3079,14 +3076,13 @@ gen eggs_clutch_local = ls_s8aq33				// number of eggs per clutch (local)
 gen eggs_clutch_hybrid = ls_s8aq34				// number of eggs per clutch (hybrid)
 gen laying_hens_local= ls_s8aq14a if ls_s8aq00==8
 gen laying_hens_hybrid= ls_s8aq16a if ls_s8aq00==8
-gen laying_hens = laying_hens_local + laying_hens_hybrid
+gen hen_total = laying_hens_local + laying_hens_hybrid
 gen eggs_per_hen_local = eggs_clutch_local*clutching_periods_local
 gen eggs_per_hen_hybrid = eggs_clutch_hybrid*clutching_periods_hybrid
 egen eggs_per_hen = rowtotal(eggs_per_hen_local eggs_per_hen_hybrid)
 keep if eggs_per_hen!=0
-collapse (mean) eggs_per_hen (sum) laying_hens, by(hhid)
+collapse (mean) eggs_per_hen (sum) hen_total, by(hhid)
 ren eggs_per_hen egg_poultry_year // eggs per poultry per year
-ren laying_hens hen_total // matches other wave verbiage
 
 gen eggs_total_year = egg_poultry_year*hen_total		// total eggs in last 12 months
 lab var eggs_total_year "Total number of eggs that was produced (household)"
@@ -3097,19 +3093,19 @@ save "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_eggs_animals.dta", replace
 * CROP PRODUCTION COSTS PER HECTARE *
 ********************************************************************************
 *All the preprocessing is done in the crop expenses section
-use "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_all_fields.dta", clear
-collapse (sum) ha_planted ha_harvest, by(hhid holder_id parcel_id field_id purestand field_size)
-reshape long ha_, i(hhid holder_id parcel_id field_id purestand field_size) j(area_type) string
+use "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_all_plots.dta", clear
+collapse (sum) ha_planted ha_harvest, by(hhid holder_id parcel_id plot_id purestand field_size)
+reshape long ha_, i(hhid holder_id parcel_id plot_id purestand field_size) j(area_type) string
 tempfile field_areas
 save `field_areas'
 
 use "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_field_cost_inputs_long.dta", clear
-collapse (sum) cost_=val, by(hhid holder_id parcel_id field_id dm_gender exp)
-reshape wide cost_, i(hhid holder_id parcel_id field_id dm_gender) j(exp) string
+collapse (sum) cost_=val, by(hhid holder_id parcel_id plot_id dm_gender exp)
+reshape wide cost_, i(hhid holder_id parcel_id plot_id dm_gender) j(exp) string
 recode cost_exp cost_imp (.=0)
 gen cost_total=cost_imp+cost_exp
 drop cost_imp
-merge 1:m hhid holder_id parcel_id field_id using `field_areas', nogen keep(3)
+merge 1:m hhid holder_id parcel_id plot_id using `field_areas', nogen keep(3)
 //reshape long cost_, i(hhid plot_id dm_gender) j(exp) string
 //replace cost_ = cost_/ha_
 gen cost_exp_ha_ = cost_exp/ha_ 
@@ -3512,7 +3508,7 @@ egen value_hired_prep_labor = rowtotal(value_male_hired value_female_hired value
 egen value_fam_prep_labor = rowtotal(value_male_nonhired value_female_nonhired value_child_nonhired)
 *Generating gender variables 
 *Merging in gender
-merge m:1 holder_id parcel_id field_id using "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_field_gender_dm.dta", nogen
+merge m:1 holder_id parcel_id plot_id using "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_field_gender_dm.dta", nogen
 *Fertilizer value
 gen value_fert_male = value_fert if dm_gender==1
 gen value_fert_female = value_fert if dm_gender==2
@@ -3527,7 +3523,7 @@ gen days_hired_pp_mixed = days_hired_pp if dm_gender==3
 *Hired labor expenses for top crops
 foreach cn in $topcropname_area {
 	preserve
-	merge 1:1 hhid parcel_id field_id holder_id using "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_`cn'_monocrop.dta", nogen /*assert(1 3)*/ keep(3)	
+	merge 1:1 hhid parcel_id plot_id holder_id using "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_`cn'_monocrop.dta", nogen /*assert(1 3)*/ keep(3)	
 	gen val_hire_prep_`cn' = value_hired_prep_labor
 	gen val_hire_prep_`cn'_male = value_hired_prep_labor_male
 	gen val_hire_prep_`cn'_female = value_hired_prep_labor_female
@@ -3760,7 +3756,7 @@ egen value_hired_harv_labor = rowtotal(value_male_hired value_female_hired value
 egen value_fam_harv_labor = rowtotal(value_male_nonhired value_female_nonhired value_child_nonhired)		// note that "fam" labor includes free labor
 *Generating gender variables 
 *Merging in gender
-merge m:1 holder_id parcel_id field_id using "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_field_gender_dm.dta", nogen
+merge m:1 holder_id parcel_id plot_id using "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_field_gender_dm.dta", nogen
 gen value_hired_harv_labor_male = value_hired_harv_labor if dm_gender==1
 gen value_hired_harv_labor_female = value_hired_harv_labor if dm_gender==2
 gen value_hired_harv_labor_mixed = value_hired_harv_labor if dm_gender==3
@@ -3776,8 +3772,8 @@ gen days_nonhired_harv_mixed = days_nonhired_harv if dm_gender==3
 *Harvest labor costs for top crops
 foreach cn in $topcropname_area {
 	preserve
-	collapse (sum) value_hired_harv_labor*, by(hhid parcel_id field_id holder_id)
-	merge 1:1 hhid parcel_id field_id holder_id using "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_`cn'_monocrop.dta", nogen /*assert(1 3)*/ keep(3)	
+	collapse (sum) value_hired_harv_labor*, by(hhid parcel_id plot_id holder_id)
+	merge 1:1 hhid parcel_id plot_id holder_id using "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_`cn'_monocrop.dta", nogen /*assert(1 3)*/ keep(3)	
 	gen val_hire_harv_`cn' = value_hired_harv_labor
 	gen val_hire_harv_`cn'_male = value_hired_harv_labor_male
 	gen val_hire_harv_`cn'_female = value_hired_harv_labor_female
@@ -3867,9 +3863,9 @@ save "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_hh_cost_seed.dta", replace
 
 * AREA PLANTED IRRIGATED
 use "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_planted_area.dta", clear
-merge 1:1 hhid holder_id parcel_id field_id using "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_field_decision_makers.dta", nogen keep(1 3)
-merge 1:1 hhid holder_id parcel_id field_id using "${Ethiopia_ESS_W2_temp_data}/sect3_pp_w2.dta", nogen keepusing(pp_s3q12)
-merge 1:1 hhid holder_id parcel_id field_id using "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_input_quantities.dta", nogen keep(1 3) // MGM 8.21.2024: 4 not matched, 22,564 matched
+merge 1:1 hhid holder_id parcel_id plot_id using "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_field_decision_makers.dta", nogen keep(1 3)
+merge 1:1 hhid holder_id parcel_id plot_id using "${Ethiopia_ESS_W2_temp_data}/sect3_pp_w2.dta", nogen keepusing(pp_s3q12)
+merge 1:1 hhid holder_id parcel_id plot_id using "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_input_quantities.dta", nogen keep(1 3) // MGM 8.21.2024: 4 not matched, 22,564 matched
 drop if ha_planted==0
 ren pp_s3q12 plot_irr
 recode plot_irr (2=0) // 2 is "No"
@@ -3886,7 +3882,7 @@ drop dm_gender
 ren *kg *kg_
 ren ha_planted ha_planted_
 
-reshape wide *_, i(hhid holder_id parcel_id field_id) j(dm_gender2) string
+reshape wide *_, i(hhid holder_id parcel_id plot_id) j(dm_gender2) string
 collapse (sum) ha_planted* *kg* ha_irr_*, by(hhid)
 
 foreach i in `vars' {
@@ -4700,7 +4696,7 @@ save "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_ag_wage.dta", replace
 ********************************************************************************
 *CROP YIELDS 
 ********************************************************************************
-use "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_all_fields.dta", clear
+use "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_all_plots.dta", clear
 gen number_trees_planted_banana = number_trees_planted if crop_code==42
 gen number_trees_planted_cassava = number_trees_planted if crop_code==10
 // gen number_trees_planted_cocoa = number_trees_planted if crop_code==3040 *MGM 8.21.2024: cocoa is not in W2? Need to revisit this and see if cocoa is in tree crop codes in W2?
@@ -4710,7 +4706,7 @@ save "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_trees.dta", replace
 
 * MGM 5.20.2024: Note that I had to change this up a little bit from how it was done in Nigeria because we do not have dm_gender information for all plots! Output still looks identical. Mainly, the difference is that if you aggregate any variables using gender up to the hh level, you won't get the same number as hh total numbers for households with missing dm_gender on any plot.
 
-use "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_all_fields.dta", clear
+use "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_all_plots.dta", clear
 //Legacy stuff- agquery gets handled above.
 gen no_harvest=ha_harvest==.
 ren kg_harvest harvest 
@@ -5260,8 +5256,9 @@ forval k=1/12 {
 egen months_food_insec = rowtotal(food_insecurity_*) 
 *replacing those that report over 12 months
 replace months_food_insec = 12 if months_food_insec>12
+lab var months_food_insec "Number of months of inadequate food provision"
 keep months_food_insec hhid
-save "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_LSMS_W2_food_insecurity.dta", replace
+save "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_food_insecurity.dta", replace
 
 
 ********************************************************************************
@@ -5368,19 +5365,22 @@ merge 1:1 hhid using "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_livestock_
 merge 1:1 hhid using "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_TLU.dta", nogen keep(1 3)
 merge 1:1 hhid using "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_herd_characteristics.dta", nogen keep(1 3)
 merge 1:1 hhid using "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_TLU_Coefficients.dta", nogen keep(1 3)
+* Egg productivity 
+merge 1:1 hhid using "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_eggs_animals.dta", nogen keep(1 3)
+ren hen_total poultry_owned //To fix
+lab var egg_poultry_year "average number of eggs per year per hen"
 lab var sales_livestock_products "Value of sales of livestock products"
 lab var value_livestock_products "Value of livestock products"
-recode value_livestock_sales /*value_livestock_purchases*/ value_milk_produced value_eggs_produced /* earnings_milk_products*/  /*
-*/ /*cost_breeding_livestock*/ /*cost_fodder_livestock*/ /*cost_vaccines_livestock*/ /*cost_treatment_livestock*/ /*cost_water_livestock*/ tlu_today (.=0)
-/* gen livestock_income = value_slaughtered + value_lvstck_sold - value_livestock_purchases /*
-*/ + (value_milk_produced + value_eggs_produced + earnings_milk_products) /*
-*/ - (cost_breeding_livestock + cost_fodder_livestock + cost_vaccines_livestock + cost_treatment_livestock + cost_water_livestock)*/
-gen livestock_income = . // MGM 8.15.2024: we cannot value livestock purchases so I am thinking livestock income is not going to be an accurate number so generating blank for W2
-recode value_milk_produced value_eggs_produced (0=.)
+recode /*value_livestock_sales /*value_livestock_purchases*/ value_milk_produced value_eggs_produced cost_labor_livestock cost_expenses_livestock*/ tlu_today (.=0)
+egen livestock_expenses = rowtotal(cost_labor_livestock cost_expenses_livestock)
+egen livestock_income = rowtotal(value_slaughtered value_lvstck_sold value_livestock_products) 
+replace livestock_income = livestock_income - livestock_expenses
+recode value_milk_produced (0=.) if milk_animals_total==0 | milk_animals_total==.
+recode value_eggs_produced (0=.) if poultry_owned==0 | poultry_owned==.
 lab var livestock_income "Net livestock income (value of production and consumption minus expenditures)"
 // gen livestock_expenses = cost_breeding_livestock + cost_fodder_livestock + cost_vaccines_livestock + cost_treatment_livestock + cost_water_livestock
 // gen ls_exp_vac = cost_vaccines_livestock + cost_treatment_livestock
-gen livestock_expenses = .
+
 gen ls_exp_vac = .
 lab var sales_livestock_products "Value of sales of livestock products"
 lab var value_livestock_products "Value of livestock products"
@@ -5503,11 +5503,7 @@ drop avg_cost_lrum cost_lrum
 gen share_imp_dairy = . 
 global empty_vars $empty_vars share_imp_dairy *costs_dairy_percow*
 
-* Egg productivity 
-merge 1:1 hhid using "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_eggs_animals.dta", nogen keep(1 3)
-// gen egg_poultry_year = eggs_total_year/hen_total - already generated in EGG PRODUCTIVITY
-ren hen_total poultry_owned
-lab var egg_poultry_year "average number of eggs per year per hen"
+
 
 *Costs of crop production per hectare (new)
 // merge 1:1 hhid using "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_cropcosts.dta", nogen keep(1 3)
@@ -6374,18 +6370,18 @@ save "${Ethiopia_ESS_W2_final_data}/Ethiopia_ESS_W2_individual_variables.dta", r
 *FIELD-LEVEL VARIABLES
 ********************************************************************************
 *GENDER PRODUCTIVITY GAP
-use "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_all_fields.dta", clear
-collapse (sum) plot_value_harvest = value_harvest (max) cultivate lost*, by(hhid holder_id parcel_id field_id )
+use "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_all_plots.dta", clear
+collapse (sum) plot_value_harvest = value_harvest (max) cultivate lost*, by(hhid holder_id parcel_id plot_id )
 tempfile crop_values 
 save `crop_values'
 
 use "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_field_area.dta", clear
 merge m:1 hhid using "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_weights.dta", keep (1 3) nogen
-merge 1:1 hhid holder_id parcel_id field_id  using `crop_values', nogen keep(1 3)
-merge 1:1 hhid holder_id parcel_id field_id  using "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_field_decision_makers", keep (1 3) nogen // Bring in the gender file
-//merge 1:1 holder_id parcel_id field_id  hhid using "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_plot_farmlabor_postharvest.dta", keep (1 3) nogen
+merge 1:1 hhid holder_id parcel_id plot_id  using `crop_values', nogen keep(1 3)
+merge 1:1 hhid holder_id parcel_id plot_id  using "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_field_decision_makers", keep (1 3) nogen // Bring in the gender file
+//merge 1:1 holder_id parcel_id plot_id  hhid using "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_plot_farmlabor_postharvest.dta", keep (1 3) nogen
 //Replaced by below.
-merge 1:1 hhid holder_id parcel_id field_id  using "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_field_labor_days.dta", keep (1 3) nogen
+merge 1:1 hhid holder_id parcel_id plot_id  using "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_field_labor_days.dta", keep (1 3) nogen
 
 merge m:1 hhid using "${Ethiopia_ESS_W2_final_data}/Ethiopia_ESS_W2_household_variables.dta", nogen keep (1 3) keepusing(region strataid clusterid hhid ag_hh fhh farm_size_agland rural)
 /*DYA.12.2.2020*/ recode farm_size_agland (.=0) 
@@ -6585,7 +6581,6 @@ la var weight "Weight adjusted to match rural/urban populations"
 *ren hhid hhid
 gen hhid_panel = hhid
 lab var hhid_panel "Panel HH identifier" 
-ren field_id plot_id
 gen geography = "Ethiopia"
 gen survey = "LSMS-ISA" 
 gen year = "2013-14" 

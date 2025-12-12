@@ -18,9 +18,9 @@
     * Ethiopia_ESS_W2_pop_urb - Urban population (2014 estimate)
   * **Exchange Rates**
     * Ethiopia_ESS_W2_exchange_rate - Ethiopia 2017 Exchange Rate (World Bank)
-    * Ethiopia_ESS_W2_gdp_ppp_dollar - Ethiopia 2014 PPP (World Bank)
-    * Ethiopia_ESS_W2_cons_ppp_dollar - Ethiopia 2014 Cons PPP (World Bank)
-    * Ethiopia_ESS_W2_inflation - Ethiopia 2014 CPI / Ethiopia 2017 CPI (World Bank)
+    * Ethiopia_ESS_W2_gdp_ppp_dollar - Ethiopia 2021 PPP (World Bank)
+    * Ethiopia_ESS_W2_cons_ppp_dollar - Ethiopia 2021 Cons PPP (World Bank)
+    * Ethiopia_ESS_W2_inflation - Ethiopia 2014 CPI / Ethiopia 2021 CPI (World Bank)
   * **Poverty Thresholds**
     * Ethiopia_ESS_W2_poverty_thres (World Bank)
     * Ethiopia_ESS_W2_poverty_npl - Ethiopia National Poverty Line in $2017 * inflation / days in the year (World Bank and IFPRI)
@@ -134,10 +134,10 @@
 - **Known Issues:** Animal, animal feed, mechanization, and irrigation expenses are not currently included in this - need to update to include. Other countries/waves cannot construct irrigation expenses but we can in W2.
 
 ### Livestock Income
-- **Description:** lrum_expenses.dta includes hhid as unique identifier and lrun which represents the total expenses associated with large ruminants (dairy cows) which includes fodder, water, vaccines, curative treatment, and breeding costs. | 
+- **Description:** lrum_expenses.dta includes hhid as unique identifier the total expenses associated with dairy cows which, in this instrument, is separated into labor costs and any additional expenses.  
 - **Output:** Ethiopia_ESS_W2_self_lrum_expenses.dta ; 
 - **Coding Status:** ![Complete](https://placehold.co/15x15/c5f015/c5f015.png) `Complete`
-- **Known Issues:** None
+- **Known Issues:** Itemized livestock expenses are not available as they are in most other LSMS-ISA surveys. In addition, most waves/countries include the value of purchased livestock in expenses, but this question was not asked in this wave. Net livestock income (livestock_income) is therefore likely to be higher than it would be with this information, although we do observe values that are lower than they are in subsequent waves.
 
 ### Self-Employment Income
 - **Description:** self_employment_income.dta includes hhid as a unique identifier. annual_selfemp_profit is the household's annual profit from self-employment income, including cases where households have negative profits. business_owners_ind.dta includes hhid and personid as unique identifiers. business_owner is a binary variable that refers to whether or not that person is a business owner.
@@ -149,7 +149,7 @@
 - **Description:** wage_worker.dta includes hhid and personid as unique identifiers. wage_worker is a binary variable indicating whether or not that household member earned non ag-wage income over that past year. | wage_income.dta includes hhid as a unique identifier. annual_salary is the household's annual income from non-ag wage income. | agworker.dta includes hhid and personid as unique identifiers. agworker is a binary variable indicating whether that household member was an agworker in the past year. | ag_wage_income.dta includes hhid as a unique identifer. annual_salary_agwage is the household's annual income from ag-wage income.
 - **Output:** Ethiopia_ESS_W2_wage_worker.dta ; Ethiopia_ESS_W2_wage_income.dta ; Ethiopia_ESS_W2_agworker.dta ; Ethiopia_ESS_W2_ag_wage_income.dta
 - **Coding Status:** ![Complete](https://placehold.co/15x15/c5f015/c5f015.png) `Complete`
-- **Known Issues:** wage_worker.dta and agworker.dta need clean-up - what variables do we want from this? Just want to keep the ones we want.
+- **Known Issues:** 
 
 ### Other Income
 - **Description:** other_income.dta includes hhid as a unique identifer. transfer_ pension_ investment_ rental_ sales_ and inheritance_income sum the total number of other types of income a household earned in the past year. | assistance_income.dta includes hhid as a unique identifier. psnp_income is income from PSNP over the last year. assistance_income is other income assistance received by a hh over the last year. |land_rental_income.dta includes hhid as a unique identifier. land_rental_income_upfront is an estimate of annual value of hh income from cash and in-kind payments combined paid from other's renting out land - this includes upfront payments only.
@@ -197,7 +197,7 @@
 - **Known Issues:** None
 
 ### Animal Health
-- **Description:** 
+- **Description:**  Information on diseases suffered by household livestock.
 - **Output:** Ethiopia_ESS_W2_livestock_diseases.dta
 - **Coding Status:** ![Out of Date?](https://placehold.co/15x15/f03c15/f03c15.png) `Out of Date?`
 - **Known Issues:** 

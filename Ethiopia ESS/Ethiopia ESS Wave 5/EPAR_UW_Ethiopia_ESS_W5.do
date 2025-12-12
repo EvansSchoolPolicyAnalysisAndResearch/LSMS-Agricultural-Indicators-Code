@@ -55,7 +55,7 @@ clear matrix
 clear mata
 set more off
 set maxvar 10000		
-ssc install findname  // need this user-written ado file for some commands to work	
+capture ssc install findname  // need this user-written ado file for some commands to work	
 
 *Set location of raw data and output
 global directory 					"../.."
@@ -540,21 +540,30 @@ ren household_id hhid
 gen cultivated = s3q03==1			// if plot was cultivated
 keep if cultivated==1 // not interested in non-cultivated plots
 
-* Three listed decision makers and holder
 gen personid1 = s3q13
+gen holderid = substr(holder_id, -2,.) if s3q13==.
+destring holderid, replace
+replace personid1 = holderid if personid1==.
 gen personid2 = s3q15_1
 gen personid3 = s3q15_2
 //gen personid4 = saq09 //holder
 //replace personid4 = subinstr(personid4, "0", "", 1) if substr(personid4, 1, 1) == "0" // if it starts with a 0, remove
 //destring personid4, replace
 reshape long personid, i(hhid holder_id parcel_id plot_id cultivated) j(personno)
+
+keep hhid parcel_id holder_id plot_id personid*
+recode personid* (999=.)
+duplicates drop
+drop if plot_id==""
+gen dummy = _n
+reshape long personid, i(hhid holder_id parcel_id plot_id) j(pidno)		
+merge m:1 hhid personid using "${Ethiopia_ESS_W5_created_data}/Ethiopia_ESS_W5_person_ids.dta", nogen keep(1 3)	
 drop if personid==.
-merge m:1 hhid personid using "${Ethiopia_ESS_W5_created_data}/Ethiopia_ESS_W5_person_ids.dta", nogen keep(1 3)	// all matched		
 preserve
-keep hhid holder_id parcel_id plot_id personid female
+keep hhid plot_id personid female
 save "${Ethiopia_ESS_W5_created_data}/Ethiopia_ESS_W5_dm_ids.dta", replace
 restore
-gen dm1_gender=female+1 if personno==1
+
 
 collapse (mean) female (firstnm) dm1_gender, by(hhid holder_id parcel_id plot_id cultivated)
 gen dm_gender = 1+female
@@ -565,6 +574,26 @@ la val dm_gender dm_gender
 lab var dm_gender "Gender of decision-maker(s)"
 keep dm* holder_id hhid plot_id parcel_id cultivated
 save "${Ethiopia_ESS_W5_created_data}/Ethiopia_ESS_W5_plot_decision_makers.dta", replace
+
+drop dummy
+gen dm1_gender=female+1 if pidno==1
+collapse (mean) female (firstnm) dm1_gender, by(hhid holder_id parcel_id plot_id)
+drop if parcel_id == ""
+gen dm_gender = 3 if female!=1 & female!=0 & female!=.
+replace dm_gender = 1 if female == 0
+replace dm_gender = 2 if female == 1
+
+la var dm_gender "Gender category of plot decisionmaker(s)"
+la var dm1_gender "Gender of plot holder"
+merge m:1 hhid using "${Ethiopia_ESS_W5_created_data}/Ethiopia_ESS_W5_weights.dta", nogen keep(1 3)
+replace dm1_gender=fhh+1 if dm_gender==.
+replace dm_gender=fhh+1 if dm_gender==.
+gen dm_male = dm_gender==1
+gen dm_female = dm_gender==2
+gen dm_mixed = dm_gender==3
+keep dm* holder_id hhid plot_id parcel_id
+save "${Ethiopia_ESS_W5_created_data}/Ethiopia_ESS_W5_plot_decision_makers.dta", replace 
+
 
 ********************************************************************************
 * ALL AREA CONSTRUCTION
@@ -3047,15 +3076,6 @@ foreach p of local vars {
 }
 recode mainwage_annual_salary  (.=0)
 gen annual_salary_agwage = mainwage_annual_salary 
-
-*Individual agwage earners
-preserve
-ren individual_id personid
-merge 1:1 hhid personid using "${Ethiopia_ESS_W5_created_data}/Ethiopia_ESS_W5_person_ids.dta", nogen
-gen agworker = (annual_salary_agwage!=0 & annual_salary_agwage!=.)
-save "${Ethiopia_ESS_W5_created_data}/Ethiopia_ESS_W5_agworker.dta", replace
-restore
-
 collapse (sum) annual_salary_agwage, by (hhid)
 lab var annual_salary_agwage "Estimated annual earnings from agricultural wage employment over previous 12 months"
 save "${Ethiopia_ESS_W5_created_data}/Ethiopia_ESS_W5_agwage_income.dta", replace
@@ -3554,7 +3574,7 @@ gen  hh_number_mobile_owned=s11q01 if asset_cd==8 // 8 = radios/tape recorders
 recode hh_number_mobile_owned (.=0) //MGM 5.18.2024 recode missing to 0
 gen mobile_owned= hh_number_mobile_owned>0
 collapse (max) hh_number_mobile_owned mobile_owned, by(hhid)
-save "${Ethiopia_ESS_W5_created_data}/Ethiopia_2022_mobile_own", replace
+save "${Ethiopia_ESS_W5_created_data}/Ethiopia_ESS_W5_mobile_own.dta", replace
 */
 
 
@@ -3602,8 +3622,10 @@ gen hen_total = ls_s8_4q16				// total laying hens
 gen eggs_total_year = clutching_periods*eggs_clutch*hen_total		// total eggs in last 12 months (clutches per hen times eggs per clutch times number of hens)
 collapse (sum) eggs_total_year hen_total, by(hhid)
 keep if hen_total!=0
+gen egg_poultry_year = eggs_total_year/hen_total
 lab var eggs_total_year "Total number of eggs that was produced (household)"
 lab var hen_total "Total number of laying hens"
+lab var egg_poultry_year "average number of eggs per year per hen"
 save "${Ethiopia_ESS_W5_created_data}/Ethiopia_ESS_W5_eggs_animals.dta", replace
 
 
@@ -5245,9 +5267,7 @@ global empty_vars $empty_vars share_imp_dairy *costs_dairy_percow*
 
 * Egg productivity 
 merge 1:1 hhid using "${Ethiopia_ESS_W5_created_data}/Ethiopia_ESS_W5_eggs_animals.dta", nogen keep(1 3)
-gen egg_poultry_year = eggs_total_year/hen_total
 ren hen_total poultry_owned
-lab var egg_poultry_year "average number of eggs per year per hen"
 
 *Costs of crop production per hectare (new)
 merge 1:1 hhid using "${Ethiopia_ESS_W5_created_data}/Ethiopia_ESS_W5_cropcosts.dta", nogen keep(1 3)

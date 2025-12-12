@@ -47,7 +47,7 @@ clear matrix
 clear mata
 set more off
 set maxvar 8000	
-ssc install findname  // need this user-written ado file for some commands to work	
+capture ssc install findname  // need this user-written ado file for some commands to work	
 
 *Set location of raw data and output
  global directory "../.."  //Path to the github main folder
@@ -807,46 +807,48 @@ save "${Ethiopia_ESS_W1_created_data}/Ethiopia_ESS_W1_hhsize.dta", replace
 ********************************************************************************
 *using a question about who controls revenue from crops to get at control of plot
 use "${Ethiopia_ESS_W1_temp_data}/sect11_ph_w1.dta", clear
-rename ph_s11q05_a personid2
-rename ph_s11q05_b personid3 
+rename ph_s11q05_a personid1
+rename ph_s11q05_b personid2 
 keep personid* hhid crop_code holder_id
-//reshape long personid, i(crop_code hhid holder_id) j(person_id)
 
 *merging into a file with crop code, plot and parcel information
 merge 1:m hhid holder_id crop_code using "${Ethiopia_ESS_W1_temp_data}/sect4_pp_w1.dta", nogen keep(2 3)
-gen holderid=substr(holder_id, -2, .)
+gen holderid=substr(holder_id, -2, .) if personid1==. 
 destring holderid, replace
-gen personid1=holderid
-replace personid1=personid2 if personid1==.
-*ren field_id plot_id
-keep hhid parcel_id holder_id plot_id personid1 personid2 personid3
-recode personid1 personid2 personid3 (999=.)
-duplicates drop
-*Lots of 999 observations / 83 observations
-drop if parcel_id=="" | plot_id==""
+replace personid1=holderid if personid1==.
+
+keep hhid parcel_id holder_id plot_id personid*
+recode personid* (999=.)
+duplicates drop // 83 duplicates dropped
+
+drop if plot_id==""
 gen dummy = _n
 reshape long personid, i(parcel_id plot_id hhid holder_id dummy) j(pidno)
-*Then merge in gender on household and person id keep (1 3) and drop if person id is empty. 
 merge m:1 hhid personid using "${Ethiopia_ESS_W1_created_data}/Ethiopia_ESS_W1_gender_merge_both.dta", gen(gender_merge) keep (1 3) 
 drop if personid ==. 
 preserve
-drop pidno dummy
+keep hhid holder_id parcel_id plot_id personid female
+save "${Ethiopia_ESS_W1_created_data}/Ethiopia_ESS_W1_dm_ids.dta", replace
 restore
-save "${Ethiopia_ESS_W1_created_data}/Ethiopia_ESS_W1_plot_decision_makers_indids", replace 
-gen dm1_gender = female+1 if pidno==1
-collapse (mean) female (firstnm) dm1_gender, by (hhid parcel_id plot_id holder_id)
-drop if parcel_id == "" //47 observations deleted
-gen dm_gender = 2 if female == 1
+
+drop gender_merge dummy 
+gen dm1_gender = female+1 if pidno==1 
+collapse (mean) female (firstnm) dm1_gender, by(hhid parcel_id plot_id holder_id)
+drop if parcel_id == "" 
+gen dm_gender = 3 if female!=1 & female!=0 & female!=. 
 replace dm_gender = 1 if female == 0 
-replace dm_gender = 3 if (female != 1 & female != 0 & female != .)
-//replace dm_gender = pp_s1q03 if dm_gender ==. 
-//replace dm_gender = ph_s1q03 if dm_gender ==.
-drop if parcel_id == ""
+replace dm_gender = 2 if female == 1
+
 la var dm_gender "Gender category of plot decisionmaker(s)"
 la var dm1_gender "Gender of plot holder"
+merge m:1 hhid using "${Ethiopia_ESS_W1_created_data}/Ethiopia_ESS_W1_weights.dta", nogen keep(1 3)
+replace dm1_gender=fhh+1 if dm_gender==.
+replace dm_gender=fhh+1 if dm_gender==.
+gen dm_male = dm_gender==1
+gen dm_female = dm_gender==2
+gen dm_mixed = dm_gender==3
 keep plot_id parcel_id dm* hhid holder_id
- 
-save "${Ethiopia_ESS_W1_created_data}/Ethiopia_ESS_W1_plot_decision_makers", replace //39 obs still unknown for dm_gender
+save "${Ethiopia_ESS_W1_created_data}/Ethiopia_ESS_W1_plot_decision_makers", replace 
 
 ********************************************************************************
 * ALL AREA CONSTRUCTION
@@ -2190,16 +2192,17 @@ gen eggs_clutch_local = ls_s8aq33				// number of eggs per clutch (local)
 gen eggs_clutch_hybrid = ls_s8aq34				// number of eggs per clutch (hybrid)
 gen laying_hens_local= ls_s8aq14a if ls_s8aq00==8
 gen laying_hens_hybrid= ls_s8aq16a if ls_s8aq00==8
-egen laying_hens = rowtotal(laying_hens_local laying_hens_hybrid)
+egen hen_total = rowtotal(laying_hens_local laying_hens_hybrid)
 gen eggs_per_hen_local = eggs_clutch_local*clutching_periods_local
 gen eggs_per_hen_hybrid = eggs_clutch_hybrid*clutching_periods_hybrid
 egen eggs_per_hen = rowtotal(eggs_per_hen_local eggs_per_hen_hybrid)
 keep if eggs_per_hen!=0
-collapse (mean) eggs_per_hen (sum) laying_hens, by(hhid)
+collapse (mean) eggs_per_hen (sum) hen_total, by(hhid)
 ren eggs_per_hen egg_poultry_year
+gen eggs_total_year = egg_poultry_year*hen_total // total eggs in last 12 months
+lab var eggs_total_year "Total number of eggs that was produced (household)"
 save "${Ethiopia_ESS_W1_created_data}/Ethiopia_ESS_W1_eggs_animals.dta", replace
-
-
+ 
 ********************************************************************************
 * LIVESTOCK PRODUCTS *
 ********************************************************************************
@@ -2263,8 +2266,7 @@ replace value_milk_produced = liters_milk_produced*price_per_unit if value_milk_
 drop milk_animals liters_per_cow liters_milk_produced
 //Calculating the value of eggs produced reported in livestock section 8.1 but not reported in question ls_s8cq06a
 merge m:1 hhid using "${Ethiopia_ESS_W1_created_data}/Ethiopia_ESS_W1_eggs_animals.dta"
-gen num_eggs_produced = egg_poultry_year*laying_hens if livestock_product_code==6
-replace value_eggs_produced = num_eggs_produced*price_per_unit if value_eggs_produced==0 
+replace value_eggs_produced = eggs_total_year*price_per_unit if value_eggs_produced==0 
 collapse (sum) value_byproduct value_milk_produced value_eggs_produced sales_livestock_products costs_dairy, by(hhid)
 *Share of livestock products sold
 *First, constructing total value
@@ -3290,7 +3292,7 @@ recode hh_number_mobile_owned (.=0) //DYA.11.13.2020 recode missing to 0
 gen mobile_owned= hh_number_mobile_owned>0 //DYA.11.13.2020 
 collapse (max) mobile_owned, by(hhid)
 keep hhid mobile_owned
-save "${Ethiopia_ESS_W1_created_data}/Ethiopia_2012_mobile_own", replace
+save "${Ethiopia_ESS_W1_created_data}/Ethiopia_ESS_W1_mobile_own.dta", replace
 
 ********************************************************************************
 * IRRIGATION *
@@ -3841,7 +3843,7 @@ foreach v of local allactivity {
 collapse (max) women_decision_ag make_decision_ag, by(hhid hh_s1q00)
 gen personid = hh_s1q00
 compress
-save "${Ethiopia_ESS_W1_created_data}/Ethiopia_ESS_W1_ag_decision.dta", replace
+save "${Ethiopia_ESS_W1_created_data}/Ethiopia_ESS_W1_make_ag_decision.dta", replace
 
 
 ********************************************************************************
@@ -5108,17 +5110,25 @@ merge 1:1 hhid using "${Ethiopia_ESS_W1_created_data}/Ethiopia_ESS_W1_livestock_
 merge 1:1 hhid using "${Ethiopia_ESS_W1_created_data}/Ethiopia_ESS_W1_TLU.dta", nogen keep(1 3)
 merge 1:1 hhid using "${Ethiopia_ESS_W1_created_data}/Ethiopia_ESS_W1_herd_characteristics.dta", nogen keep(1 3)
 merge 1:1 hhid using "${Ethiopia_ESS_W1_created_data}/Ethiopia_ESS_W1_TLU_Coefficients.dta", nogen keep(1 3)
+
+* Egg productivity
+merge 1:1 hhid using "${Ethiopia_ESS_W1_created_data}/Ethiopia_ESS_W1_eggs_animals.dta", nogen keep(1 3)
+ren hen_total poultry_owned //To fix
+lab var egg_poultry_year "average number of eggs per year per hen"
+ 
 lab var sales_livestock_products "Value of sales of livestock products"
 lab var value_livestock_products "Value of livestock products"
-recode value_livestock_sales value_livestock_purchases value_milk_produced value_eggs_produced earnings_milk_products /*
-*/ cost_breeding_livestock cost_fodder_livestock cost_vaccines_livestock cost_treatment_livestock cost_water_livestock tlu_today (.=0)
-gen livestock_income = value_slaughtered + value_lvstck_sold - value_livestock_purchases /*
-*/ + (value_milk_produced + value_eggs_produced + earnings_milk_products) /*
-*/ - (cost_breeding_livestock + cost_fodder_livestock + cost_vaccines_livestock + cost_treatment_livestock + cost_water_livestock)
-recode value_milk_produced value_eggs_produced (0=.)
+recode /*value_livestock_sales /*value_livestock_purchases */ value_milk_produced value_eggs_produced cost_labor_livestock cost_expenses_livestock */ tlu_today (.=0)
+egen livestock_expenses = rowtotal(cost_labor_livestock cost_expenses_livestock)
+egen livestock_income = rowtotal(value_slaughtered value_lvstck_sold value_livestock_products)
+replace livestock_income = livestock_income - livestock_expenses
+recode value_milk_produced (0=.) if milk_animals==0 | milk_animals==.
+recode value_eggs_produced (0=.) if poultry_owned==0 | poultry_owned==. 
 lab var livestock_income "Net livestock income (value of production and consumption minus expenditures)"
-gen livestock_expenses = cost_breeding_livestock + cost_fodder_livestock + cost_vaccines_livestock + cost_treatment_livestock + cost_water_livestock
-gen ls_exp_vac = cost_vaccines_livestock + cost_treatment_livestock
+// gen livestock_expenses = cost_breeding_livestock + cost_fodder_livestock + cost_vaccines_livestock + cost_treatment_livestock + cost_water_livestock
+// gen ls_exp_vac = cost_vaccines_livestock + cost_treatment_livestock
+
+gen ls_exp_vac=.
 lab var sales_livestock_products "Value of sales of livestock products"
 lab var value_livestock_products "Value of livestock products"
 lab var livestock_expenses "Total livestock expenses"
@@ -5133,6 +5143,8 @@ foreach i in lrum srum poultry {
 	gen `v'_`i' = .
 	}
 }
+
+
 
 //adding - starting list of missing variables - recode all of these to missing at end of HH level file
 global empty_vars $empty_vars animals_lost12months mean_12months *ls_exp_vac_lrum* *ls_exp_vac_srum* *ls_exp_vac_poultry* /*any_imp_herd_*/
@@ -5232,12 +5244,6 @@ lab var costs_dairy_percow "Dairy production cost (explicit) per cow"
 drop avg_cost_lrum cost_lrum
 gen share_imp_dairy = . 
 global empty_vars $empty_vars share_imp_dairy *costs_dairy_percow*
-
-* Egg productivity (NGA)
-merge 1:1 hhid using "${Ethiopia_ESS_W1_created_data}/Ethiopia_ESS_W1_eggs_animals.dta", nogen keep(1 3)
-*gen egg_poultry_year = eggs_total_year/hen_total
-ren laying_hens poultry_owned
-lab var egg_poultry_year "average number of eggs per year per hen"
 
 *Costs of crop production per hectare (new)
 merge 1:1 hhid using "${Ethiopia_ESS_W1_created_data}/Ethiopia_ESS_W1_cropcosts.dta", nogen keep(1 3)
@@ -5365,7 +5371,7 @@ foreach i in lrum srum poultry{
 	recode ls_exp_vac_`i' disease_animal_`i' (.=0) if lvstck_holding_`i'==1	
 }
 *households engaged in crop production
-gen eggs_total_year=.
+
 global empty_vars $empty_vars eggs_total_year
 recode cost_expli* value_crop_production value_crop_sales labor_hired labor_family farm_size_agland all_area_harvested all_area_planted encs num_crops_hh multiple_crops (.=0) if crop_hh==1
 recode cost_expli* value_crop_production value_crop_sales labor_hired labor_family farm_size_agland all_area_harvested all_area_planted encs num_crops_hh multiple_crops (nonmissing=.) if crop_hh==0
@@ -5381,6 +5387,8 @@ recode costs_dairy liters_milk_produced value_milk_produced (nonmissing=.) if da
 recode eggs_total_year value_eggs_produced (.=0) if egg_hh==1
 recode eggs_total_year value_eggs_produced (nonmissing=.) if egg_hh==0
 //drop value_harv*
+
+
 
 global gender "female male mixed" // (ETH)
 global wins_var_top1 /*
@@ -6031,7 +6039,7 @@ rename indiv personid
 //tab dup 
 //edit if dup>=1
 merge 1:1 hhid personid using "${Ethiopia_ESS_W1_created_data}/Ethiopia_ESS_W1_control_income.dta", nogen keep(1 3)
-merge 1:1 hhid personid using "${Ethiopia_ESS_W1_created_data}/Ethiopia_ESS_W1_ag_decision.dta", nogen keep(1 3)
+merge 1:1 hhid personid using "${Ethiopia_ESS_W1_created_data}/Ethiopia_ESS_W1_make_ag_decision.dta", nogen keep(1 3)
 merge 1:1 hhid personid using "${Ethiopia_ESS_W1_created_data}/Ethiopia_ESS_W1_women_asset.dta", nogen keep(1 3)
 tostring zone, replace
 merge m:1 hhid using "${Ethiopia_ESS_W1_created_data}/Ethiopia_ESS_W1_hhsize.dta", nogen keep(1 3)
