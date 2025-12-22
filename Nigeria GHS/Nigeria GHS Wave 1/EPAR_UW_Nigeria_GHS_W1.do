@@ -140,7 +140,7 @@ global Nigeria_GHS_W1_poverty_190 (1.90*83.58) //Calculation for WB's previous $
 global Nigeria_GHS_W1_poverty_npl (151 *(1.108)) //2009-2010 poverty line from https://nigerianstat.gov.ng/elibrary/read/544 adjusted to 2011
 global Nigeria_GHS_W1_poverty_215 (2.15 * (0.5173 * 112.1))	 // 2017 poverty line - 124.68 N
 global Nigeria_GHS_W1_poverty_300 (3.00 *($Nigeria_GHS_W1_inflation * $Nigeria_GHS_W1_cons_ppp_dollar)) //New 2021 poverty line ~690N
- 
+
 ********************************************************************************
 *THRESHOLDS FOR WINSORIZATION
 ********************************************************************************
@@ -154,6 +154,11 @@ global wins_upper_thres 99							//  Threshold for winzorization at the top of t
 global Nigeria_GHS_W1_pop_tot 158503197
 global Nigeria_GHS_W1_pop_rur 89586007
 global Nigeria_GHS_W1_pop_urb 68917190
+
+********************************************************************************
+*W2 consumption variables
+********************************************************************************
+//global Nigeria_GHS_W2_raw_data "$directory/Nigeria GHS/Nigeria GHS Wave 2/Raw DTA Files/" //assumption that folders are created similar to wave 1
 
 
 ********************************************************************************
@@ -3992,6 +3997,68 @@ collapse (sum) adulteq, by(hhid)
 lab var adulteq "Adult-Equivalent"
 save "${Nigeria_GHS_W1_created_data}/Nigeria_GHS_W1_hh_adulteq.dta", replace 
 
+use "${Nigeria_GHS_W1_raw_data}/sect11a_harvestw1.dta", clear
+append using "${Nigeria_GHS_W1_raw_data}/sect11b_harvestw1.dta"
+append using "${Nigeria_GHS_W1_raw_data}/sect11c_harvestw1.dta"
+append using "${Nigeria_GHS_W1_raw_data}/sect11d_harvestw1.dta"
+
+gen nfd_ = s11aq2/7 //per day, question labels in survey are switched between aq1 and aq2
+replace nfd_ = s11bq4/30 if nfd_==.
+replace nfd_ = s11cq6/182.5 if nfd_==.
+replace nfd_ = s11dq8/365 if nfd_==.
+recode nfd_ (.=0)
+
+keep hhid nfd_ item_cd
+reshape wide nfd_, i(hhid) j(item_cd)
+gen nfdtbac = nfd_101+nfd_102 //tobacco and matches
+gen nfdrecre = nfd_103+nfd_322+nfd_506+nfd_507
+gen nfdfares = nfd_104
+gen nfdwater = nfd_312
+gen nfdelec = nfd_305
+gen nfdgas = nfd_303
+gen nfdkero = nfd_301
+gen nfdliqd = nfd_304+nfd_302
+gen nfdutil = nfd_509 //Council rates?
+egen nfdcloth = rowtotal(nfd_401-nfd_418)
+egen nfdfmtn = rowtotal(nfd_311 nfd_323 nfd_324 nfd_325 nfd_419-nfd_427 nfd_501-nfd_505 nfd_508)
+gen nfdrepar = nfd_327+nfd_328
+gen nfddome = nfd_325
+gen nfdpetro = nfd_309
+gen nfddiesl = nfd_310
+gen nfdcomm = nfd_318+nfd_319+nfd_320+nfd_321
+gen nfdinsur = nfd_511+nfd_512+nfd_513
+egen nfdfoth =rowtotal(nfd_308 nfd_313-nfd_317 nfd_428 nfd_429 nfd_514 nfd_515 nfd_516 nfd_517) //Added dowry, wedding, and funeral expenses/fines and legal fees
+gen nfdfwood = nfd_306
+gen nfdchar = nfd_307
+gen nfdrnthh = nfd_326+nfd_329
+gen nfdhealth = nfd_430 + nfd_510 //Health insurance and non-insurance healthcare expenses
+drop nfd_*
+
+la var nfdtbac "Tobacco & narcotics"
+la var nfdrecre "Recreation and culture"
+la var nfdfares "Fares"
+la var nfdwater "Water, excluding packaged water"
+la var nfdelec "Electricity"
+la var nfdgas "Gas"
+la var nfdkero "Kerosene"
+la var nfdliqd "Other liquid fuels"
+la var nfdutil "Refuse, sewage collection, disposal, and other services"
+la var nfdcloth "Clothing and footwear"
+la var nfdfmtn "Furnishings and routine household maintenance"
+la var nfdrepar "Maintenance and repairs to dwelling"
+la var nfddome "Domestic household services"
+la var nfdpetro "Petrol"
+la var nfddiesl "Diesel"
+la var nfdcomm "Communication (post, telephone, and computing/internet)"
+la var nfdinsur "Other insurance excluding education and health"
+la var nfdfoth "Expenditures on frequent non-food not mentioned elsewhere"
+la var nfdfwood "Firewood"
+la var nfdchar "Charcoal"
+la var nfdrnthh "Mortgage and Rent"
+la var nfdhealth "Healthcare expenses"
+
+tempfile hhexp
+save `hhexp', replace
  
 use "${Nigeria_GHS_W1_raw_data}/cons_agg_wave1_visit1.dta", clear
 ren  totcons totcons_v1
@@ -4014,6 +4081,142 @@ la var daily_percap_cons "Daily HH consumption per person"
 keep hhid adulteq totcons percapita_cons daily_percap_cons total_cons peraeq_cons daily_peraeq_cons 
 save "${Nigeria_GHS_W1_created_data}/Nigeria_GHS_W1_consumption.dta", replace
  
+//prepared foods
+use "${Nigeria_GHS_W1_raw_data}/sect10a_harvestw1.dta", clear
+keep if s10aq1==1
+gen item_ = s10aq2/7
+keep hhid item_cd item_
+reshape wide item_, i(hhid) j(item_cd)
+recode item_* (.=0)
+gen fdbevby1 = item_6 + item_8
+gen fdalcby1 = item_9
+gen fdrestby = item_1+item_2+item_3+item_4
+gen fdothby1 = item_5+item_7
+drop item*
+tempfile prepfoods
+save `prepfoods'
+ 
+ use "${Nigeria_GHS_W1_raw_data}/sect10b_harvestw1.dta", clear
+ gen obs=1 if s10bq3a !=.
+ ren s10bq3a qty_bought
+ ren s10bq3b unit_cd
+ gen conv_fact = 1 if unit_cd == 1 | unit_cd == 3
+ replace conv_fact = 1/100 if unit_cd == 2 | unit_cd == 4
+ 
+ gen kg_bought = qty_bought*conv_fact
+ gen price_kg = s10bq4/kg_bought
+ //non standard units excluded for now
+ merge m:1 hhid using "${Nigeria_GHS_W1_created_data}/Nigeria_GHS_W1_consumption.dta", nogen keep(1 3)
+ merge m:1 hhid using "${Nigeria_GHS_W1_created_data}/Nigeria_GHS_W1_weights.dta", nogen keep(3) keepusing (weight_pop_rururb)
+ 
+ foreach i in ea lga state zone {
+ 	preserve
+	bys `i' item_cd : egen obs_`i' = total(obs)
+	collapse (median) price_`i' = price_kg [aw=weight_pop_rururb], by(item_cd `i' obs_`i')
+	tempfile food_`i'
+	save `food_`i''
+	restore
+	merge m:1 item_cd `i' using `food_`i'', nogen
+ } 
+ 
+ preserve
+ bys item_cd : egen obs_country=total(obs)
+ collapse (median) price_kg [aw=weight_pop_rururb], by(item_cd obs_country)
+ keep item_cd price_kg obs_country
+ ren price_kg price_country
+ tempfile food_country
+ save `food_country'
+ restore
+ 
+ merge m:1 item_cd using `food_country', nogen
+ 
+ foreach i in lga state zone country {
+ 	replace price_kg = price_`i' if price_kg ==. & obs_`i' > 9
+ }
+
+ gen qty_purch = s10bq2a if s10bq2b == 1 | s10bq2b == 3
+ replace qty_purch = s10bq2a/100 if s10bq2b == 2 | s10bq2b == 4
+ gen qty_own = s10bq5a if s10bq5b == 1 | s10bq5b == 3
+ replace qty_own = s10bq5a/100 if s10bq5b == 2 | s10bq5b == 4
+ gen qty_gift = s10bq6a if s10bq6b == 1 | s10bq6b == 3
+ replace qty_gift = s10bq6a/100 if s10bq6b == 2 | s10bq6b == 4
+ replace qty_own = qty_own+qty_gift
+
+ gen purch_ = qty_purch*price_kg/7
+ gen own_ = qty_own*price_kg/7
+ keep hhid item_cd purch* own*
+ reshape wide purch_ own_, i(hhid) j(item_cd)
+ recode purch_* own_* (.=0)
+ 
+ //water section
+ preserve
+ //not using deflated values for wave1
+ gen purch_water_ph = purch_151 + purch_150
+ gen own_water_ph = own_151 + own_150
+ keep hhid purch_water_ph own_water_ph
+ tempfile water_ph
+ save `water_ph'
+ restore
+ 
+//using code from wave 4 to generate water sections for Poverty indeces, but not recreating the same consumption file because raw data is different. Keeping original consumption data file off of aggregate consumption files
+
+use "${Nigeria_GHS_W1_raw_data}/sect7b_plantingw1.dta", clear
+gen obs = s7bq3a !=.
+keep if s7bq5a !=. | s7bq6a !=.
+ren s7bq3a qty_bought
+ren s7bq3b unit_cd
+gen conv_fact = 1 if unit_cd == 1 | unit_cd == 3
+replace conv_fact = 1/100 if unit_cd == 2 | unit_cd == 4
+
+gen kg_bought = qty_bought*conv_fact
+gen price_kg = s7bq4/kg_bought
+
+merge m:1 hhid using "${Nigeria_GHS_W1_created_data}/Nigeria_GHS_W1_consumption.dta", nogen keep(1 3)
+merge m:1 hhid using "${Nigeria_GHS_W1_created_data}/Nigeria_GHS_W1_weights.dta", nogen keep(3) keepusing (weight_pop_rururb)
+
+foreach i in ea lga state zone {
+	preserve
+	bys `i' item_cd : egen obs_`i' = total(obs)
+	collapse (median) price_`i' = price_kg [aw=weight_pop_rururb], by(item_cd `i' obs_`i')
+	tempfile food_`i'
+	save `food_`i''
+	restore
+	merge m:1 item_cd `i' using `food_`i'', nogen
+}
+
+preserve
+bys item_cd : egen obs_country=total(obs)
+collapse (median) price_kg [aw=weight_pop_rururb], by(item_cd obs_country)
+keep item_cd price_kg obs_country
+ren price_kg price_country
+tempfile food_country
+save `food_country'
+restore
+
+merge m:1 item_cd using `food_country', nogen
+
+foreach i in lga state zone country {
+	replace price_kg = price_`i' if price_kg ==. & obs_`i' > 9
+}
+
+gen qty_purch = qty_bought*conv_fact 
+gen qty_own = conv_fact * (s7bq5a+s7bq6a)
+//Getting per-day consumption
+gen purch_ = qty_purch*price_kg/7
+gen own_ = qty_own*price_kg/7
+keep hhid item_cd purch* own*
+reshape wide purch_ own_, i(hhid) j(item_cd)
+recode purch_* own_* (.=0)
+
+//Water section
+preserve
+gen purch_water_pp = purch_151 + purch_150
+gen own_water_pp = own_151 + own_150
+keep hhid purch_water_pp own_water_pp 
+merge 1:1 hhid using `water_ph', nogen
+recode *water* (.=0)
+save "${Nigeria_GHS_W1_created_data}/Nigeria_GHS_W1_water_cons.dta", replace
+restore
 
 ********************************************************************************
 *HOUSEHOLD FOOD PROVISION*
@@ -4027,6 +4230,38 @@ keep hhid food_insecurity_* months_food_insec
 save "${Nigeria_GHS_W1_created_data}/Nigeria_GHS_W1_food_insecurity.dta", replace
 
 ********************************************************************************
+//consumption conversion factors
+//sect10 non standard values were not usable to convert to kg for 13000 obs. Checking if sect7 purchasing values can be better used in combination with wave 2 conversion factors.
+// use "${Nigeria_GHS_W1_raw_data}/sect10b_harvestw1.dta", clear
+// gen obs = s10bq3a != .
+// ren s10bq3a qty_bought
+// ren s10bq3b unit_cd
+// gen conv_fact = 1 if unit_cd == 1 | unit_cd == 3
+// replace conv_fact = 1/100 if unit_cd == 2 | unit_cd == 4
+//
+// gen kg_bought = qty_bought*conv_fact
+// gen price_kg = s10bq4/kg_bought
+//
+// use "${Nigeria_GHS_W1_raw_data}/sect7b_plantingw1.dta", clear
+// gen obs = s7bq3b !=.
+// ren s7bq3a qty_purch
+// gen unit = s7bq3b
+// ren non_std = s7bq3c
+// gen conv_fact = 1 if unit == 1 | unit == 3
+// replace conv_fact = 1/100 if unit == 2 | unit == 4
+// gen non_std_unit ==.
+// replace non_std_unit = 5 if non_std == "MUDU"
+// replace non_std_unit = 7 if non_std == "KONGO" //assuming congo and kongo are equivalent
+// replace non_std_unit = 8 if non_std == "RUBBER" | non_std == "PAINT RUBBER"
+
+// preserve
+// 	use "${Nigeria_GHS_W2_raw_data}/food_conv_w2ph.dta", clear
+//	
+// restore
+
+
+
+********************************************************************************
 *HOUSEHOLD ASSETS*
 ********************************************************************************
 use "${Nigeria_GHS_W1_raw_data}/sect5b_plantingw1.dta", clear
@@ -4036,8 +4271,164 @@ collapse (sum) value_assets=value_today, by(hhid)
 la var value_assets "Value of household assets"
 save "${Nigeria_GHS_W1_created_data}/Nigeria_GHS_W1_hh_assets.dta", replace 
 
+*********************************************
+*Poverty Indices
+*********************************************
+	*****************************
+	*Water, Sanitation & Housing*
+	*****************************
+	//imported from W4
+	//DA: BID states that non-traditional units were unlikely to be accurate, so dropping those and only using kg, g, L, mL units
+	//water expenses: Section 8: Housing What was the total cost of drinking water for your household last month? s8q35
+	//Section 7B/10B Food Expenditure: How much did your household spend on this item in past 7 days? s10bq4 s7bq4 
+	//Nonfood expenditres Section 8: Over the past one month, how much did you pay in total? s8q4
+use "${Nigeria_GHS_W1_raw_data}/sect8_harvestw1.dta", clear
+ren s8q35 water_mo //total cost of water last month_planted
+keep hhid water_mo
+tempfile water1
+save `water1'
+
+//150 = bottled water, 151 = sachet water
+// use"$Nigeria_GHS_W1_raw_data}/sect10b_harvestw1.dta"
+// keep if item_cd == 150 | item_cd==151
+// ren s10bq4 val_water_ph
+// collapse (sum) val_water_ph, by(hhid)
+// tempfile water2
+// save `water2'
+//
+// use "$Nigeria_GHS_W1_raw_data}/sect7b_plantingw1.dta"
+// keep if item_cd == 150 | item_cd == 151
+// ren s7bq4 val_water_pp
+// collapse (sum) val_water_pp, by(hhid)
+// tempfile water3
+// save `water3'
+
+use "${Nigeria_GHS_W1_raw_data}/sect82_plantingw1.dta"
+keep if item_cd == 312
+ren s8q4 val_water_noncon_pp
+collapse (sum) val_water_noncon_pp, by(hhid)
+tempfile water4
+save `water4'
+
+use "${Nigeria_GHS_W1_raw_data}/sect11b_harvestw1.dta"
+keep if item_cd == 312
+ren s11bq4 val_water_noncon_ph
+collapse (sum) val_water_noncon_ph, by(hhid)
+tempfile water5
+save `water5'
+
+use `water1', clear
+merge 1:1 hhid using "${Nigeria_GHS_W1_created_data}/Nigeria_GHS_W1_water_cons.dta", nogen
+merge 1:1 hhid using `water4', nogen
+merge 1:1 hhid using `water5', nogen
+recode *water* (.=0)
  
- 
+//convert expense and consume to same timeline
+replace purch_water_pp = purch_water_pp/7*30
+replace purch_water_ph = purch_water_ph/7*30
+gen val_water_purch = (purch_water_pp+purch_water_ph)/2
+replace own_water_ph = own_water_ph/7*30
+replace own_water_pp = own_water_pp/7*30
+gen val_water_own = (own_water_ph+own_water_pp)/2
+gen val_water_services = (val_water_noncon_pp + val_water_noncon_ph)/2
+drop *pp *ph
+gen val_water_day = (water_mo + val_water_own + val_water_services + val_water_purch)/30
+save "${Nigeria_GHS_W1_created_data}/Nigeria_GHS_W1_total_water_costs.dta", replace
+
+use "${Nigeria_GHS_W1_created_data}/Nigeria_GHS_W1_plot_labor_long.dta", clear
+//no planting data according to notes on plot_labor_long, so moving forward with harvest data
+collapse (sum) val days, by(hhid gender)
+gen rate = val/days
+gen hh_rate = rate
+gen obs=1
+merge m:1 hhid using "${Nigeria_GHS_W1_created_data}/Nigeria_GHS_W1_hhsize.dta", nogen keep(1 3) keepusing(weight_pop_rururb zone state lga ea)
+
+foreach i in ea lga state zone {
+	preserve
+	bys `i' : egen `i'_obs = total(obs)
+	collapse (median) `i'_rate = rate [aw=weight_pop_rururb], by(`i' gender `i'_obs)
+	tempfile `i'_labor
+	save ``i'_labor'
+	restore
+	merge m:1 `i' gender using ``i'_labor', nogen keep(1 3)
+}
+preserve
+collapse (median) country_rate=rate (sum) country_obs=obs [aw=weight_pop_rururb], by(gender)
+tempfile country_labor
+save `country_labor'
+restore
+merge m:1 gender using `country_labor', nogen
+
+foreach i in country zone state lga ea {
+	replace rate = `i'_rate if `i'_obs > 9
+}
+replace rate = hh_rate if hh_rate !=. 
+foreach i in child male female {
+	preserve
+	keep if strmatch(gender, "`i'")
+	_pctile rate
+	scalar wins_thresh=r(p95)
+	replace rate = wins_thresh if rate > wins_thresh
+	tempfile `i'_rates
+	save ``i'_rates'
+	restore
+}
+
+use `male_rates', clear
+append using `female_rates'
+append using `child_rates'
+replace rate = rate*0.5
+keep hhid gender rate
+tempfile water_wage_rates
+save `water_wage_rates'
+
+use "${Nigeria_GHS_W1_raw_data}/sect3_plantingw1.dta", clear
+merge 1:1 hhid indiv using "${Nigeria_GHS_W1_created_data}/Nigeria_GHS_W1_person_ids.dta", nogen keep(1 3)
+recode s3q38a (.=0)
+gen hrs_water_perday = s3q38a/7
+gen gender = "child" if age <= 15
+replace gender = "male" if age > 15 & female == 0
+replace gender = "female" if age > 15 & female == 1
+collapse (sum) hrs*, by(zone state lga ea hhid gender)
+merge 1:1 hhid gender using `water_wage_rates', nogen keep(3)
+gen water_cost_labor = rate * hrs_water_perday/6 //assumign workday is 6 hours
+la var water_cost_labor "Daily cost of water-collecting labor hours by gender of hh members"
+la var rate "Estimated value of unskilled labor by gender (based value of 0.5 farm labor hours)"
+la var hrs_water_perday "Total household hours per day spent collecting water"
+save "${Nigeria_GHS_W1_created_data}/Nigeria_GHS_W1_water_labor.dta", replace
+collapse (sum) hrs_water_perday water_cost, by(hhid zone state lga ea)
+merge 1:1 hhid using "${Nigeria_GHS_W1_created_data}/Nigeria_GHS_W1_total_water_costs.dta", nogen
+egen hh_water_labor = rowtotal(water_cost_labor val_water_own)
+egen hh_water_purch = rowtotal(val_water_purch water_mo val_water_services)
+egen hh_water_all = rowtotal(hh_water*)
+keep zone state lga hhid hrs* hh_water_labor hh_water_purch hh_water_all
+la var hh_water_labor "Cost for collected water and value of self-produced bottled/sachet water"
+la var hh_water_purch "Cost of purchased sachet/bottled water and other water services"
+la var hh_water_all "Total hh cost of water"
+save "${Nigeria_GHS_W1_created_data}/Nigeria_GHS_W1_water_costs_hh.dta", clear
+
+//no distinction between travel time for wet and dry season, so just taking the travel time written regardless of wet or dry season
+use "${Nigeria_GHS_W1_raw_data}/sect8_harvestw1.dta", clear
+ren s8q34a travel_time
+replace travel_time = travel_time*60 if s8q34 == 2 //convert all time units to minutes
+
+//no filter or water insecurity quesitons in this questionaire
+
+replace s8q33a = s8q33b if s8q33a == 10
+replace s8q33c = s8q33d if s8q33c == 10
+replace s8q33a = s8q33c if missing(s8q33c)
+gen dep_water = travel_time > 30 | (!inlist(s8q33a, 1,3,4,8,9) | !inlist(s8q33c, 1, 3, 4, 8,9))
+gen daily_water_bill = s8q35/30
+gen dep_housing = inlist(s8q6,1,2,3,9) | inlist(s8q7, 1,6,7) | inlist(s8q8,1,2,6)
+gen dep_fuel = inlist(s8q11,1,2,4,9)
+gen dep_elec = s8q17 == 2
+gen dep_sanit = s8q37 == 2 | inlist(s8q36a, 1, 7, 9, 5)
+
+keep hhid travel_* water_* has_* daily* dep*
+save "${Nigeria_GHS_W1_created_data}/Nigeria_GHS_W1_mpi_housing.dta"
+
+
+
 ***************************************************
 ***************************************************
 **                                               **
@@ -4933,8 +5324,9 @@ la var poverty_under_190 "Household per-capita conumption is below $1.90 in 2011
 gen poverty_under_215 = daily_percap_cons < $Nigeria_GHS_W1_poverty_215
 la var poverty_under_215 "Household per-capita consumption is below $2.15 in 2017 $ PPP"
 gen poverty_under_npl = daily_percap_cons < $Nigeria_GHS_W1_poverty_npl
-gen poverty_under_300 = daily_percap_cons < $Nigeria_GHS_W1_poverty_300
-la var poverty_under_300 "Household per-capita consumption is below $3.00 in 2021 $PPP"
+gen poverty_under_300 = (daily_percap_cons < $Nigeria_GHS_W1_poverty_300)
+la var poverty_under_300 "Household per-capita consumption is below $3.00 in 2021 $ PPP"
+
 *generating clusterid and strataid
 gen clusterid=ea
 gen strataid=state
@@ -4960,9 +5352,9 @@ keep hhid fhh clusterid strataid *weight* *wgt* zone state lga ea rural farm_siz
 
 
 ren weight weight_sample 
-la var weight_sample "Original survey sampling weight"
+la var weight_sample "Original survey weight"
 ren weight_pop_rururb weight
-la var weight "Weight adjusted by rural and urban population"
+la var weight "Weight adjusted to match rural/urban population"
 
 //////////Identifier Variables ////////
 *Add variables and ren household id so dta file can be appended with dta files from other instruments
@@ -5046,9 +5438,9 @@ foreach v in $empty_vars {
 }
 
 ren weight weight_sample 
-la var weight_sample "Original survey sampling weight"
+la var weight_sample "Original survey weight"
 ren weight_pop_rururb weight
-la var weight "Weight adjusted by rural and urban population"
+la var weight "Weight adjusted to match rural/urban population"
 
 //////////Identifier Variables ////////
 *Add variables and ren household id so dta file can be appended with dta files from other instruments
@@ -5297,9 +5689,9 @@ foreach i in 1ppp 2ppp loc {
 }
 
 ren weight weight_sample 
-la var weight_sample "Original survey sampling weights"
+la var weight_sample "Original survey weights"
 ren weight_pop_rururb weight
-la var weight "Weight adjusted by rural and urban populations"
+la var weight "Weight adjusted to match rural/urban populations"
 
 //////////Identifier Variables ////////
 *Add variables and ren household id so dta file can be appended with dta files from other instruments

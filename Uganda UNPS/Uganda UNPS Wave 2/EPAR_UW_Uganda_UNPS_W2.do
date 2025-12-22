@@ -2583,7 +2583,7 @@ rename	a6aq3 livestock_code
  *	vaccinated, response of 2 is some animals vaccinated
  */
 gen		vac_animal	= inlist(a6aq18, 1, 2)
-
+replace vac_animal =. if missing(a6aq18) //no reported livestock
 gen		species = 	inrange(livestock_code, 1, 10) + /*
 				*/	4*(inlist(livestock_code, 11, 12))	
 * Don't use data if no species is specified
@@ -2591,12 +2591,16 @@ recode species (0=.)
 
 * Set the value labels based on the species value labels created earlier
 label values species species
-disp "`species_len'"
-* Use a loop to reshape the data
-forvalues k=1(1)`species_len' {
-	local s	: word `k' of `species_list'
-	gen vac_animal_`s' = vac_animal if species == `k'
-}
+la def species 1 "Large ruminants (cows, buffalos)" 4 "Equines (donkeys, mules, horses)"
+
+*A loop to create species variables
+foreach i in vac_animal {
+	gen `i'_lrum = `i' if species==1
+// 	gen `i'_srum = `i' if species==2
+// 	gen `i'_pigs = `i' if species==3
+	gen `i'_equines = `i' if species==4
+// 	gen `i'_poultry = `i' if species==5
+	}
 * Finish the reshape by collapsing species to the household level
 *ren HHId hhid
 collapse (max) vac_animal*, by(HHID)
@@ -2607,86 +2611,37 @@ lab var vac_animal "1= Household has an animal vaccinated"
 foreach i in vac_animal {
 	local l`i' : var lab `i'
 	lab var `i'_lrum "`l`i'' - large ruminants"
-	lab var `i'_srum "`l`i'' - small ruminants"
-	lab var `i'_pigs "`l`i'' - pigs"
+// 	lab var `i'_srum "`l`i'' - small ruminants"
+// 	lab var `i'_pigs "`l`i'' - pigs"
 	lab var `i'_equine "`l`i'' - equine"
-	lab var `i'_poultry "`l`i'' - poultry"
+// 	lab var `i'_poultry "`l`i'' - poultry"
 }
 
 * Save the Vaccine dummies to disk
 ren HHID hhid
-save "${Uganda_NPS_W2_created_data}/Uganda_NPS_W2_vaccine", replace
+save "${Uganda_NPS_W2_created_data}/Uganda_NPS_W2_vaccine.dta", replace
 
-* Load AgSec 6A, B, and C: Livestock Ownership. (contains vaccine data)
-use "${Uganda_NPS_W2_raw_data}/AGSEC6A", replace
-append using "${Uganda_NPS_W2_raw_data}/AGSEC6B"
-append using "${Uganda_NPS_W2_raw_data}/AGSEC6C"
-
-* Create a dummy variable of "livestock keeper uses vaccines" across all animals
-gen all_vac_animal = inlist(a6aq18, 1, 2)
-* Set to missing if they don't own any of the animal in question
-replace all_vac_animal = . if missing(a6aq18) | a6aq4 != 1
-* Rename farmer id
-rename a6aq17a personid1
-rename a6aq17b personid2
-
-replace personid1 = a6bq17a if missing(personid1)
-replace personid2 = a6bq17b if missing(personid2)
-
-replace personid1 = a6cq17a if missing(personid1)
-replace personid2 = a6cq17b if missing(personid2)
-
-rename a6aq3 lvstckid  
-
-replace lvstckid = a6bq3 if missing(lvstckid)
-replace lvstckid = a6cq3 if missing(lvstckid)
-
-
-* Only keep the relevant variables a6aq3 is needed for the reshape
-keep HHID lvstckid all_vac_animal personid*
-
-* Drop entries with no livestock keeper listed
-drop if missing(personid1) & missing(personid2)
-
-* DO NOT DUPLICATE
-* There are duplicate entries in agsec6b and agsec6c, since this data is only
-* used for livestock keeper information, this sorting then dropping duplicates
-* method insures that entries with missing second farmers are below ones with
-* both farmers meaning all data is preserved. There are no instances in this 
-* data where one farmer is in the entry with one farmer and not also in the 
-* other entry (whether it has one or two farmers).
-sort HHID lvstckid personid1 personid2
-duplicates drop HHID lvstckid, force
-* END DO NOT DUPLICATE
-
-* Reshaping data to create a file at the livestock-keeper unit of analysis 
-* rather than the livestock species unit of analysis. 
-reshape long personid, i(HHID lvstckid) j(_)
-
-* Get rid of any entries which are missing a personid
-drop if missing(personid)
-
-* Condense down to one entry per livestock keeper. 
-collapse (max) all_vac_animal, by(HHID personid)
-
-
-* Mark all of the remaining people as livestock-keepers with a dummy variable
-gen livestock_keeper = 1
-rename HHID hhid
-* Merge in gender data for later gender disaggregation of proportions
-merge 1:1 hhid personid using "${Uganda_NPS_W2_created_data}/Uganda_NPS_W2_person_ids", nogen
-
-* Any people which were not part of the data before the merge should be set as
-* not being livestock keepers
+use "${Uganda_NPS_W2_raw_data}/AGSEC6A", clear
+gen all_vac_animal=a6aq18<=2 
+rename a6aq3 livestock_code
+ren HHID hhid
+keep hhid all_vac_animal a6aq17a
+ren a6aq17a farmerid1
+ren a6aq17b farmerid2
+keep hhid all_vac_animal farmerid*
+reshape long farmerid, i(hhid all_vac_animal) j(obs)
+recode all_vac_animal (.=0)
+collapse (max) all_vac_animal , by(hhid farmerid)
+gen personid = farmerid
+drop if personid==. 
+merge 1:1 hhid personid using "${Uganda_NPS_W2_created_data}/Uganda_NPS_W2_person_ids.dta", nogen keep(1 3)
+keep hhid farmerid all_vac_animal personid female age hh_head
+lab var all_vac_animal "1 = Individual farmer (livestock keeper) uses vaccines"
+gen livestock_keeper=1 if farmerid!=.
 recode livestock_keeper (.=0)
+lab var livestock_keeper "1=Indvidual is listed as a livestock keeper (at least one type of livestock)" 
+save "${Uganda_NPS_W2_created_data}/Uganda_NPS_W2_farmer_vaccine.dta", replace
 
-* Label newly created variables
-label variable all_vac_animal /*
-	*/	"1= Individual farmer (livestock keeper) uses vaccines"
-label variable livestock_keeper /*
-	*/	"1= Individual is listed as a livestock keeper (at least one type of livestock)"
-duplicates drop PID hhid, force
-save "${Uganda_NPS_W2_created_data}/Uganda_NPS_W2_farmer_vaccine", replace
 ********************************************************************************
 *                           ANIMAL HEALTH - DISEASES                           *
 ********************************************************************************

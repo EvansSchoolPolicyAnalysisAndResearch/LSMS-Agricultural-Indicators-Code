@@ -5464,9 +5464,9 @@ keep hhid fhh clusterid strataid *weight* *wgt* zone state lga ea rural farm_siz
 gen ssp = (farm_size_agland <= 2 & farm_size_agland != 0) & (nb_largerum_today <= 10 & nb_smallrum_today <= 10 & nb_chickens_today <= 50)
 
 ren weight weight_sample 
-la var weight_sample "Original survey sampling weight"
+la var weight_sample "Original survey weight"
 ren weight_pop_rururb weight
-la var weight "Weight adjusted by rural and urban population"
+la var weight "Weight adjusted to match rural/urban population"
 
 //////////Identifier Variables ////////
 *Add variables and ren household id so dta file can be appended with dta files from other instruments
@@ -5568,9 +5568,9 @@ foreach v of varlist $empty_vars {
 	replace `v' = .
 }
 ren weight weight_sample 
-la var weight_sample "Original survey sampling weight"
+la var weight_sample "Original survey weight"
 ren weight_pop_rururb weight
-la var weight "Weight adjusted by rural and urban population"
+la var weight "Weight adjusted to match rural/urban population"
 
 //////////Identifier Variables ////////
 *Add variables and ren household id so dta file can be appended with dta files from other instruments
@@ -5818,9 +5818,9 @@ foreach i in 1ppp 2ppp loc{
 	gen w_plot_labor_prod_mixed_`i'=w_plot_labor_prod_`i' if dm_gender==3
 }
 ren weight weight_sample 
-la var weight_sample "Original survey sampling weight"
+la var weight_sample "Original survey weight"
 ren weight_pop_rururb weight
-la var weight "Weight adjusted by rural and urban population"
+la var weight "Weight adjusted to match rural/urban population"
 
 //////////Identifier Variables ////////
 *Add variables and ren household id so dta file can be appended with dta files from other instruments

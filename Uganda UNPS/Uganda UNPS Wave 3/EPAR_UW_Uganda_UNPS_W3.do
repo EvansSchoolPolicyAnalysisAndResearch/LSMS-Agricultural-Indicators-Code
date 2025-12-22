@@ -2594,6 +2594,7 @@ save "${Uganda_NPS_W3_created_data}/Uganda_NPS_W3_family_hired_labor.dta", repla
 use "${Uganda_NPS_W3_raw_data}/AGSEC7B", clear
 gen vac_animal = a7bq5a==1 | a7bq5a==2 // SAW This dataset only includes cattle owned by households
 *Disagregating vaccine usage by animal type
+replace vac_animal =. if missing(a7bq5a) //doesn't change anything, all livestock is reported for as None or 1,2
 gen species = (inlist(AGroup_ID,101,105)) + 2*(inlist(AGroup_ID,102,106)) + 3*(inlist(AGroup_ID,104,108)) + 4*(inlist(AGroup_ID,103,107))
 recode species (0=.)
 la def species 1 "Large ruminants (cows, buffalos)" 2 "Small ruminants (sheep, goats)" 3 "Pigs" 4 "Poultry"
@@ -2644,14 +2645,15 @@ keep HHID indiv* lvstid
 *SAW We need to create from livestockid to AgroupID categories variables so the merge can occur. SAW I'll use species since it's easier
 gen species = (inlist(lvstid,1,2,3,4,5,6,7,8,9,10,11,12)) + 2*(inlist(lvstid,13,14,15,16,18,19,20,21)) + 3*(inlist(lvstid,17,22)) + 4*(inlist(lvstid,23,24,25,26,27,28))
 *la def species 1 "Large ruminants (cows, buffalos)" 2 "Small ruminants (sheep, goats)" 3 "Pigs" 4 "Poultry"
+	//DA: observation that no AGroup_ID for equine, so donkeys/mules categorized under large ruminants (1) here.
 *la val species species
 reshape long indiv, i(HHID lvstid species) j(indivno)
-merge m:m HHID species using `vaccines' 
+merge m:m HHID species using `vaccines'
 collapse (max) vac_animal all_vac_animal , by(HHID indiv)
 tostring HHID, format(%18.0f) replace
 tostring indiv, format(%18.0f) replace
 gen farmerid=indiv
-merge 1:1 HHID indiv using "${Uganda_NPS_W3_created_data}/Uganda_NPS_W3_person_ids.dta", nogen
+merge 1:1 HHID indiv using "${Uganda_NPS_W3_created_data}/Uganda_NPS_W3_person_ids.dta", nogen keep(1 3)
 keep HHID farmerid vac_animal age female hh_head indiv all_vac_animal
 lab var vac_animal "1 = Individual farmer (livestock keeper) uses vaccines"
 gen livestock_keeper= farmerid!=""

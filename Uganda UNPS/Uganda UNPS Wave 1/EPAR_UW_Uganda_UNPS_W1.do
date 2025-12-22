@@ -2717,8 +2717,9 @@ rename	A6aq3 livestock_code
  *	vaccinated, response of 2 is some animals vaccinated
  */
 gen		vac_animal	= inlist(A6aq18, 1, 2)
+replace vac_animal=. if missing(A6aq18) //no reported livestock
 *Don't have as many categories as other waves. Also mules and donkeys have been labelled as indigenous bulls and oxen. Have taken the livestock_code as the correct label. 
-gen		species = 	inrange(livestock_code, 1, 6) + /*
+gen		species = 	inlist(livestock_code, 1,2,3,4,5,6) + /*
 				*/	4*(inlist(livestock_code, 7, 8))	
 * Don't use data if no species is specified
 recode species (0=.)
@@ -2739,13 +2740,12 @@ foreach i in vac_animal {
 	lab var `i'_lrum "`l`i'' - large ruminants"
 	*lab var `i'_srum "`l`i'' - small ruminants"
 	*lab var `i'_pigs "`l`i'' - pigs"
-	lab var `i'_equines "`l`i'' - equine"
+	lab var `i'_equines "`l`i'' - equine" 
+	*lab var `i'_poultry "`l`i'' - poultry"
 }
-
 tostring HHID, format(%18.0f) replace
 save "${Uganda_NPS_W1_created_data}/Uganda_NPS_W1_vaccine.dta", replace
 
-*basing this off of Nigeria W3
 use "${Uganda_NPS_W1_raw_data}/2009_AGSEC6A", clear
 gen all_vac_animal=A6aq18<=2 
 rename A6aq3 livestock_code
@@ -2767,13 +2767,13 @@ append using  `farmer2'
 collapse (max) all_vac_animal , by(HHID farmerid)
 gen personid = farmerid
 drop if personid==. 
-merge 1:1 HHID personid using "${Uganda_NPS_W1_created_data}/Uganda_NPS_W1_person_ids.dta", nogen
-keep HHID farmerid all_vac_animal personid female age
+merge 1:1 HHID personid using "${Uganda_NPS_W1_created_data}/Uganda_NPS_W1_person_ids.dta", nogen keep(1 3)
+keep HHID farmerid all_vac_animal personid female age hh_head
 lab var all_vac_animal "1 = Individual farmer (livestock keeper) uses vaccines"
 gen livestock_keeper=1 if farmerid!=.
 recode livestock_keeper (.=0)
 lab var livestock_keeper "1=Indvidual is listed as a livestock keeper (at least one type of livestock)" 
-save "${Uganda_NPS_W1_created_data}/Uganda_NPS_W1_farmer_vaccine", replace
+save "${Uganda_NPS_W1_created_data}/Uganda_NPS_W1_farmer_vaccine.dta", replace
 
 ********************************************************************************
 **                        ANIMAL HEALTH - DISEASES     	    	              **

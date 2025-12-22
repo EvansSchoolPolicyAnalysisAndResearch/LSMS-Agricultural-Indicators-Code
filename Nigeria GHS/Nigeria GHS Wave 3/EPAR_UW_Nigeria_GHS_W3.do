@@ -4817,8 +4817,6 @@ recode grew* (.=0)
 forvalues k=1(1)$nb_topcrops {
 	local cn: word `k' of $topcropname_area
 	recode value_harv_`cn' value_sold_`cn' kgs_harvest_`cn' total_planted_area_`cn' total_harv_area_`cn' `cn'_exp (.=0) if grew_`cn'==1 & ((no_harvest_`cn' !=1 & !no_units_`cn') | (lost_pest_`cn'==1 | lost_flood_`cn'==1 | lost_drought_`cn'==1))
-	recode value_harv_`cn' value_sold_`cn' kgs_harvest_`cn' total_planted_area_`cn' total_harv_area_`cn' `cn'_exp (nonmissing=.) if grew_`cn'==0
-}
 drop no_harvest_* lost_pest_* lost_flood_* lost_drought_* no_units*
 *all rural households engaged in livestcok production of a given species
 foreach i in lrum srum poultry{
