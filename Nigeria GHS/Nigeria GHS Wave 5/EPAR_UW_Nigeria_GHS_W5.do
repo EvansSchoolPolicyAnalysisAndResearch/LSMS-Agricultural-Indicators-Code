@@ -1041,12 +1041,12 @@ recode sales_value (.=0)
 merge m:1 cropcode unit condition size using "${Nigeria_GHS_W5_created_data}/Nigeria_GHS_W5_cf.dta", gen(cf_merge)
 //ALT 02.15.22: More accurate conversion, hopefully
 replace conv_fact = sa3iiq1_conv if sa3iiq1_conv!=.
-gen kgs_sold= quantity_sold*conv_fact
+gen kg_sold= quantity_sold*conv_fact
 //ALT 02.15.22: Needed for crop value lost
 recode cropcode (2170=2030) (2142 = 2141) (1121 1122 1123 /*1124*/=1120) //Only things that carry over from W3 are bananas/plantains, yams, and peppers. The generic pepper category 2040 in W3 is missing from this wave. 10.09.24: Excluding three leaved yams.
 label define CROPCODE 1120 "1120. YAM", replace
 ren cropcode crop_code
-collapse (sum) sales_value kgs_sold, by (hhid crop_code)
+collapse (sum) sales_value kg_sold, by (hhid crop_code)
 lab var sales_value "Value of sales of this crop"
 save "${Nigeria_GHS_W5_created_data}/Nigeria_GHS_W5_cropsales_value.dta", replace 
 
@@ -1796,7 +1796,7 @@ use "${Nigeria_GHS_W5_created_data}/Nigeria_GHS_W5_all_plots.dta", clear
 	//PA 1.13 banana and cocoa have no purestand obs. just had to include them to make the code run. 
 	merge m:1 hhid plot_id using "${Nigeria_GHS_W5_created_data}/Nigeria_GHS_W5_plot_decision_makers.dta", nogen keep(1 3) keepusing(dm_gender)
 	ren ha_planted monocrop_ha
-	ren quant_harv_kg kgs_harv_mono
+	ren quant_harv_kg kg_harv_mono
 	ren value_harvest val_harv_mono
 	
 	
@@ -1812,13 +1812,13 @@ preserve
 	if r(N) > 0 {
 	ren monocrop_ha `cn'_monocrop_ha
 	drop if `cn'_monocrop_ha==0 | `cn'_monocrop_ha==.
-	ren kgs_harv_mono kgs_harv_mono_`cn'
+	ren kg_harv_mono kg_harv_mono_`cn'
 	ren val_harv_mono val_harv_mono_`cn'
 	gen `cn'_monocrop=1
 	la var `cn'_monocrop "HH grows `cn_full' on a monocropped plot"
 	capture save "${Nigeria_GHS_W5_created_data}/Nigeria_GHS_W5_`cn'_monocrop.dta", replace
 	
-	foreach i in `cn'_monocrop_ha kgs_harv_mono_`cn' val_harv_mono_`cn' { 
+	foreach i in `cn'_monocrop_ha kg_harv_mono_`cn' val_harv_mono_`cn' { 
 		gen `i'_male = `i' if dm_gender==1
 		gen `i'_female = `i' if dm_gender==2
 		gen `i'_mixed = `i' if dm_gender==3
@@ -1826,15 +1826,15 @@ preserve
 
 	la var `cn'_monocrop_ha "Total `cn' monocrop hectares - Household"
 	la var `cn'_monocrop "Household has at least one `cn' monocrop"
-	la var kgs_harv_mono_`cn' "Total kilograms of `cn' harvested - Household"
+	la var kg_harv_mono_`cn' "Total kilograms of `cn' harvested - Household"
 	la var val_harv_mono_`cn' "Value of harvested `cn' (Naira)"
 	foreach g in male female mixed {		
 		la var `cn'_monocrop_ha_`g' "Total `cn' monocrop hectares on `g' managed plots - Household"
-		la var kgs_harv_mono_`cn'_`g' "Total kilograms of `cn' harvested on `g' managed plots - Household"
+		la var kg_harv_mono_`cn'_`g' "Total kilograms of `cn' harvested on `g' managed plots - Household"
 		la var val_harv_mono_`cn'_`g' "Total value of `cn' harvested on `g' managed plots - Household"
 	}
-	collapse (sum) *monocrop* kgs_harv* val_harv* (max) dm*, by(hhid)
-	foreach i in kgs_harv_mono_`cn' val_harv_mono_`cn' {
+	collapse (sum) *monocrop* kg_harv* val_harv* (max) dm*, by(hhid)
+	foreach i in kg_harv_mono_`cn' val_harv_mono_`cn' {
 	foreach j in male female mixed {
 	replace `i'_`j' = . if dm_`j'==0
 	}
@@ -3820,7 +3820,7 @@ save "${Nigeria_GHS_W5_created_data}/Nigeria_GHS_W5_ownasset.dta", replace
 			value_sold 
 			harvested 
 			grew
-			kgs_harvest 
+			kg_harvest 
 		Suffixes: crop (only)
 */
 /*
@@ -3919,22 +3919,22 @@ foreach i in harvest area lost{
 }
 gen total_planted_area_ = area_plan_
 gen total_harv_area_ = area_harv_ 
-gen kgs_harvest_ = harvest_
+gen kg_harvest_ = harvest_
 
 drop crop_code
 unab vars : *_
 reshape wide `vars', i(hhid) j(crop_name) string
 //merge 1:1 hhid using "${Nigeria_GHS_W5_created_data}/Nigeria_GHS_W5_trees.dta"
 collapse (sum) harvest* area_harv*  area_plan* total_planted_area* total_harv_area* kgs_harvest*  value_harv* value_sold* (max)lost* no_harvest*  , by(hhid) 
-recode harvest*   area_harv* area_plan* kgs_harvest* total_planted_area* total_harv_area* value_harv* value_sold* (0=.)
-egen kgs_harvest = rowtotal(kgs_harvest_*)
-la var kgs_harvest "Quantity harvested of all crops (kgs) (household) (summed accross all seasons)" 
+recode harvest*   area_harv* area_plan* kg_harvest* total_planted_area* total_harv_area* value_harv* value_sold* (0=.)
+egen kg_harvest = rowtotal(kg_harvest_*)
+la var kg_harvest "Quantity harvested of all crops (kgs) (household) (summed accross all seasons)" 
 
 *ren variable
 foreach p of global topcropname_area {
 	lab var value_harv_`p' "Value harvested of `p' (Naira) (household)" 
 	lab var value_sold_`p' "Value sold of `p' (Naira) (household)" 
-	lab var kgs_harvest_`p'  "Quantity harvested of `p' (kgs) (household) (summed accross all seasons)" 
+	lab var kg_harvest_`p'  "Quantity harvested of `p' (kgs) (household) (summed accross all seasons)" 
 	lab var total_harv_area_`p'  "Total area harvested of `p' (ha) (household) (summed accross all seasons)" 
 	lab var total_planted_area_`p'  "Total area planted of `p' (ha) (household) (summed accross all seasons)" 
 	lab var harvest_`p' "Quantity harvested of `p' (kgs) (household)" 
@@ -6064,8 +6064,8 @@ recode grew* (.=0)
 *all rural households growing specific crops 
 forvalues k=1(1)$nb_topcrops {
 	local cn: word `k' of $topcropname_area
-	recode value_harv_`cn' value_sold_`cn' kgs_harvest_`cn' total_planted_area_`cn' total_harv_area_`cn' `cn'_exp (.=0) if grew_`cn'==1 & ((no_harvest_`cn' !=1 & !no_units_`cn') | (lost_pest_`cn'==1 | lost_flood_`cn'==1 | lost_drought_`cn'==1))
-	recode value_harv_`cn' value_sold_`cn' kgs_harvest_`cn' total_planted_area_`cn' total_harv_area_`cn' `cn'_exp (nonmissing=.) if grew_`cn'==0
+	recode value_harv_`cn' value_sold_`cn' kg_harvest_`cn' total_planted_area_`cn' total_harv_area_`cn' `cn'_exp (.=0) if grew_`cn'==1 & ((no_harvest_`cn' !=1 & !no_units_`cn') | (lost_pest_`cn'==1 | lost_flood_`cn'==1 | lost_drought_`cn'==1))
+	recode value_harv_`cn' value_sold_`cn' kg_harvest_`cn' total_planted_area_`cn' total_harv_area_`cn' `cn'_exp (nonmissing=.) if grew_`cn'==0
 }
 drop no_harvest_* lost_pest_* lost_flood_* lost_drought_* no_units_*
 *all rural households engaged in livestcok production of a given species
@@ -6099,7 +6099,7 @@ gen wage_paid_aglabor_all = wage_paid_aglabor //ALT 06.23.2020: Added
 global gender "female male mixed" //ALT 06.23.2020: 'All' is included in the gender list in the final summary statistics file, and some variables don't get generated if it's not included here.
 *Variables winsorized at the top 1% only 
 global wins_var_top1 /*
-*/ value_crop_production value_crop_sales value_harv* value_sold* kgs_harvest* kgs_harv_mono* total_planted_area* total_harv_area* /*
+*/ value_crop_production value_crop_sales value_harv* value_sold* kg_harvest* kg_harv_mono* total_planted_area* total_harv_area* /*
 */ labor_hired labor_family labor_nonhired /*
 */ animals_lost12months mean_12months lost_disease* /*			
 */ liters_milk_produced costs_dairy /*	
@@ -6461,10 +6461,10 @@ lab var w_prop_farm_prod_sellers "Proportion of farm production (winsorized) sol
 *unit cost of production
 *all top crops
 foreach c in $topcropname_area{
-	gen `c'_exp_kg = w_`c'_exp /w_kgs_harv_mono_`c' 
+	gen `c'_exp_kg = w_`c'_exp /w_kg_harv_mono_`c' 
 	la var `c'_exp_kg "Costs per kg - Monocropped `c' plots"
 	foreach g of global gender {
-		gen `c'_exp_kg_`g'=w_`c'_exp_`g'/ w_kgs_harv_mono_`c'_`g' 
+		gen `c'_exp_kg_`g'=w_`c'_exp_`g'/ w_kg_harv_mono_`c'_`g' 
 		la var `c'_exp_kg_`g' "Costs per kg - Monocropped `c' `g' managed plots"		 
 	}
 }
@@ -6727,10 +6727,10 @@ gen weight_egg = poultry_owned*weight
 *generate area weights for monocropped plots
 foreach cn in $topcropname_area {
 	gen ar_pl_mono_wgt_`cn'_all = weight*`cn'_monocrop_ha
-	gen kgs_harv_wgt_`cn'_all = weight*kgs_harv_mono_`cn'
+	gen kg_harv_wgt_`cn'_all = weight*kg_harv_mono_`cn'
 	foreach g in male female mixed {
 		gen ar_pl_mono_wgt_`cn'_`g' = weight*`cn'_monocrop_ha_`g'
-		gen kgs_harv_wgt_`cn'_`g' = weight*kgs_harv_mono_`cn'_`g'
+		gen kg_harv_wgt_`cn'_`g' = weight*kg_harv_mono_`cn'_`g'
 	}
 }
 
@@ -6807,8 +6807,8 @@ keep hhid fhh clusterid strataid weight *weight_pop_rururb* *_weight* *wgt* zone
 */ *livestock_expenses* *ls_exp_vac* *prop_farm_prod_sold /*DYA.10.26.2020*/ *hrs_*   months_food_insec *value_assets* hhs_* *dist_agrodealer /*
 */ encs* num_crops_* multiple_crops* imprv_seed_* hybrid_seed_* *labor_total *farm_area *labor_productivity* *land_productivity* /*
 */ *wage_paid_aglabor* *labor_hired ar_h_wgt_* *yield_hv_* ar_pl_wgt_* *yield_pl_* *liters_per_* milk_animals poultry_owned *costs_dairy* *cost_per_lit* /*
-*/ *egg_poultry_year* *rate* *ha_planted* *cost_expli_hh* *cost_expli_ha* *monocrop_ha* *kgs_harv_mono* *cost_total_ha* /*
-*/ *_exp* poverty* *value_crop_production* *value_farm* *value_harv* *value_crop_sales* *value_sold* *kgs_harvest* *total_planted_area* *total_harv_area* /*
+*/ *egg_poultry_year* *rate* *ha_planted* *cost_expli_hh* *cost_expli_ha* *monocrop_ha* *kg_harv_mono* *cost_total_ha* /*
+*/ *_exp* poverty* *value_crop_production* *value_farm* *value_harv* *value_crop_sales* *value_sold* *kg_harvest* *total_planted_area* *total_harv_area* /*
 */ *all_area_* grew_* agactivities_hh ag_hh crop_hh livestock_hh fishing_hh *_milk_produced* *eggs_total_year *value_eggs_produced* /*
 */ *value_livestock_products* *value_livestock_sales* *total_cons* nb_cattle_today /*HKS 6.6.23*/ nb_largerum_t nb_smallrum_t nb_chickens_t  *sales_livestock_products nb_cows_today lvstck_holding_srum  nb_smallrum_today nb_chickens_today nb_poultry_today bottom_40_percap bottom_40_peraeq /*
 */ ccf_loc ccf_usd ccf_1ppp ccf_2ppp *sales_livestock_products  *value_pro* *value_sal* *inter* *pure* /* 
