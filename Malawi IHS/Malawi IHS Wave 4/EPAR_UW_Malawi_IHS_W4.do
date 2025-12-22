@@ -4032,121 +4032,41 @@ la var nworker_self_off_farm  "Number of HH members with positve hours - self-em
 save "${MWI_IHS_IHPS_W4_created_data}/MWI_IHS_IHPS_W4_off_farm_hours.dta", replace
 
 ********************************************************************************
-*FARM SIZE / LAND SIZE - Complete & Pending Review CG 1.12.2024 
+*FARM SIZE / LAND SIZE - Efficiency Update 11/25
 ********************************************************************************
 //missing necessary dry raw data for ag_mod_k
+use "${MWI_IHS_IHPS_W4_created_data}/MWI_IHS_IHPS_W4_all_plots.dta", clear
+collapse (sum) ha_planted, by(hhid garden_id plot_id season) 
+collapse (max) ha_planted, by(hhid garden_id plot_id)
+collapse (sum) cultivated_area=ha_planted, by(hhid)
+lab var cultivated_area "Total area"
+tempfile cultivated_area
+save `cultivated_area'
 
-***Determining whether crops were grown on a plot
-use "${MWI_IHS_IHPS_W4_appended_data}\ag_mod_g.dta", clear
-append using "${MWI_IHS_IHPS_W4_appended_data}\ag_mod_m.dta"
+
+use "${MWI_IHS_IHPS_W4_appended_data}/ag_mod_d.dta", clear 
+gen season=0
+append using "${MWI_IHS_IHPS_W4_appended_data}/ag_mod_k.dta"
+replace season=1 if season==.
+append using "${MWI_IHS_IHPS_W4_appended_data}/ag_mod_p.dta"
+replace season=2 if season==.
 ren plotid plot_id
 ren gardenid garden_id
-drop if plot_id==""
-drop if crop_code==. 
-gen crop_grown = 1 
-collapse (max) crop_grown, by(hhid garden_id plot_id)
-save "${MWI_IHS_IHPS_W4_created_data}\MWI_IHS_IHPS_W4_crops_grown.dta", replace
 
-use "${MWI_IHS_IHPS_W4_appended_data}\ag_mod_k.dta", clear
-ren plotid plot_id
-ren gardenid garden_id
-tempfile ag_mod_k_13_numeric //comparing this to MWI W2, W4 does not have a variable for ag_k13 but this still runs/creates a tempfile. is that okay? 
-save `ag_mod_k_13_numeric'
-
-use "${MWI_IHS_IHPS_W4_appended_data}\ag_mod_d.dta", clear
-ren gardenid garden_id
-ren plotid plot_id
-append using `ag_mod_k_13_numeric'
-gen cultivated = (ag_d14==1) // | ag_k15==1) question is in instrument but missing from raw data CG 1.5.2024 // VAP: cultivated plots in rainy or dry seasons
-collapse (max) cultivated, by (hhid plot_id garden_id)
-lab var cultivated "1= Parcel was cultivated in this data set"
-save "${MWI_IHS_IHPS_W4_created_data}\MWI_IHS_IHPS_W4_parcels_cultivated.dta", replace
-
-use "${MWI_IHS_IHPS_W4_created_data}\MWI_IHS_IHPS_W4_parcels_cultivated.dta", clear
-merge 1:1 hhid plot_id garden_id using "${MWI_IHS_IHPS_W4_created_data}\MWI_IHS_IHPS_W4_plot_areas.dta",
-drop if _merge==2
-keep if cultivated==1
-
-replace area_acres_meas=. if area_acres_meas<0 
-replace area_acres_meas = area_acres_est if area_acres_meas==. 
-collapse (sum) area_acres_meas, by (hhid)
-rename area_acres_meas farm_area
-replace farm_area = farm_area * (1/2.47105) /* Convert to hectares */
-lab var farm_area "Land size (denominator for land productivitiy), in hectares" 
-save "${MWI_IHS_IHPS_W4_created_data}\MWI_IHS_IHPS_W4_land_size.dta", replace
-
-* All agricultural land
-use "${MWI_IHS_IHPS_W4_appended_data}\ag_mod_d.dta", clear
-ren plotid plot_id
-ren gardenid garden_id
-append using `ag_mod_k_13_numeric'
-drop if plot_id==""
-merge m:1 hhid garden_id plot_id using "${MWI_IHS_IHPS_W4_created_data}\MWI_IHS_IHPS_W4_crops_grown.dta", nogen // 747 matched, 25,267 not matched 
-gen rented_out = (ag_d14==2) // rented out (2), missing dry raw data for ag_k15
-//gen cultivated_dry = (ag_k15==1)
-//bys hhid plot_id: egen plot_cult_dry = max(cultivated_dry)
-//replace rented_out = 0 if plot_cult_dry==1 // VAP: From TZ:If cultivated in short season, not considered rented out in long season.
-drop if rented_out==1 & crop_grown!=1
-//237 obs dropped
-gen agland = (ag_d14==1 | ag_d14==4) // cultivated (1) and fallow (4), missing dry raw data for ag_k15
-drop if agland!=1 & crop_grown==.
-//185 obs dropped
-collapse (max) agland, by (hhid garden_id plot_id)
-lab var agland "1= Parcel was used for crop cultivation or left fallow in this past year (forestland and other uses excluded)"
-save "${MWI_IHS_IHPS_W4_created_data}\MWI_IHS_IHPS_W4_parcels_agland.dta", replace
-
-use "${MWI_IHS_IHPS_W4_appended_data}\ag_mod_d.dta", clear
-ren plotid plot_id
-ren gardenid garden_id
-append using `ag_mod_k_13_numeric'
-drop if plot_id==""
-gen rented_out = (ag_d14==2 | ag_d14==3) // | ag_k15==2 | ag_k15==3) //rented out (2), gave out for free (3)
-//gen cultivated_dry = (ag_k15==1)
-//bys hhid plot_id: egen plot_cult_dry = max(cultivated_dry)
-//replace rented_out = 0 if plot_cult_dry==1 // If cultivated in dry season, not considered rented out in rainy season.
-drop if rented_out==1
-gen plot_held = 1
-collapse (max) plot_held, by (hhid garden_id plot_id)
-lab var plot_held "1= Parcel was NOT rented out in the main season"
-save "${MWI_IHS_IHPS_W4_created_data}\MWI_IHS_IHPS_W4_parcels_held.dta", replace
-
-use "${MWI_IHS_IHPS_W4_created_data}\MWI_IHS_IHPS_W4_parcels_held.dta", clear
-merge 1:1 hhid garden_id plot_id using "${MWI_IHS_IHPS_W4_created_data}\MWI_IHS_IHPS_W4_plot_areas.dta"
-drop if _merge==2
-replace area_acres_meas=. if area_acres_meas<0
-replace area_acres_meas = area_acres_est if area_acres_meas==. 
-collapse (sum) area_acres_meas, by (hhid)
-rename area_acres_meas land_size
-lab var land_size "Land size in hectares, including all plots listed by the household except those rented out" 
-save "${MWI_IHS_IHPS_W4_created_data}\MWI_IHS_IHPS_W4_land_size_all.dta", replace
-
-use "${MWI_IHS_IHPS_W4_created_data}\MWI_IHS_IHPS_W4_plot_areas.dta", clear
-merge 1:1 hhid plot_id garden_id using "${MWI_IHS_IHPS_W4_created_data}\MWI_IHS_IHPS_W4_parcels_agland.dta", nogen
-keep if agland==1
-collapse (sum) field_size, by (hhid)
-ren field_size farm_size_agland
-lab var farm_size_agland "Land size in hectares, including all plots cultivated, fallow, or pastureland"
-save "${MWI_IHS_IHPS_W4_created_data}\MWI_IHS_IHPS_W4_farmsize_all_agland.dta", replace
-
-*Total land holding including cultivated and rented out
-use "${MWI_IHS_IHPS_W4_appended_data}\ag_mod_d.dta", clear
-ren plotid plot_id
-ren gardenid garden_id
-append using `ag_mod_k_13_numeric'
-drop if plot_id==""
-merge m:1 hhid garden_id plot_id using "${MWI_IHS_IHPS_W4_created_data}\MWI_IHS_IHPS_W4_plot_areas.dta", nogen keep(1 3)
-replace area_acres_meas=. if area_acres_meas<0
-replace area_acres_meas = area_acres_est if area_acres_meas==. 
-replace area_acres_meas = area_acres_est if area_acres_meas==0 & (area_acres_est>0 & area_acres_est!=.)	
-collapse (max) area_acres_meas, by(hhid garden_id plot_id)
-rename area_acres_meas land_size_total
-collapse (sum) land_size_total, by(hhid)
-//replace case_id = hhid if case_id == ""
-//drop case_id
-//merge m:1 hhid using "${MWI_IHS_IHPS_W4_created_data}\MWI_IHS_IHPS_W4_hhids.dta", keepusing(case_id) keep(1 3)
-replace land_size_total = land_size_total * (1/2.47105) /* Convert to hectares */
-lab var land_size_total "Total land size in hectares, including rented in and rented out plots"
-save "${MWI_IHS_IHPS_W4_created_data}\MWI_IHS_IHPS_W4_land_size_total.dta", replace
+gen rented_out = (ag_d14==2 | ag_d14==3)
+gen agland = (ag_d14==1 | ag_d14==4 ) | season!=0 //responses for dry season are missing.
+collapse (max) rented_out (min) agland, by(hhid plot_id garden_id)
+merge 1:1 hhid plot_id garden_id using "${MWI_IHS_IHPS_W4_created_data}\MWI_IHS_IHPS_W4_plot_areas.dta", nogen
+gen farm_area = field_size if agland
+recode farm_area field_size (.=0)
+collapse (max) farm_area field_size, by (hhid plot_id)
+collapse (sum) farm_area hh_agland=field_size, by(hhid)
+merge 1:1 hhid using `cultivated_area', nogen
+replace farm_area=cultivated_area if farm_area < cultivated_area & cultivated_area!=. //Discrepancies between what's reported as cultivated and area reported as cultivated. 
+lab var hh_agland "All land owned or cultivated by the household (hectares)"
+lab var farm_area "All land kept or cultivated by the household, excluding plots rented out (hectares)" 
+lab var cultivated_area "All land cultivated by the household (hectares)"
+save "${MWI_IHS_IHPS_W4_created_data}\MWI_IHS_IHPS_W4_hh_agland.dta", replace
 
 ********************************************************************************
 *FARM LABOR - COMPLETE 2.14.2024 CG
@@ -4770,9 +4690,26 @@ append using "${MWI_IHS_IHPS_W4_appended_data}\hh_mod_o.dta"
 ren gardenid garden_id
 ren plotid plot_id
 gen type_decision="" 
-gen controller_income1=. 
-gen controller_income2=.
+forvalues k=1(1)30 {
+gen controller_income`k'=. 
+}
 
+//This creates a pretty massive file that can take a lot of time to run through.
+/* final variables
+lab var control_cropincome "1=individual has control over crop income"
+lab var control_livestockincome "1=individual has control over livestock income"
+lab var control_farmincome "1=individual has control over farm (crop or livestock) income"
+lab var control_businessincome "1=individual has control over business income"
+lab var control_salaryincome "1= individual has control over salary income"
+lab var control_nonfarmincome "1=individual has control over non-farm (business, salary, assistance, remittances or other income) income"
+lab var control_all_income "1=individual has control over at least one type of income"
+*/
+gen control_cropincome=0
+gen control_livestockincome=0
+//gen control_farmincome=0
+gen control_businessincome=0
+gen control_salaryincome=0
+gen control_nonfarmincome=0
 /* No question in MW4
 * control of harvest from permanent crops
 replace type_decision="control_permharvest" if  !inlist( ag6a_08_1, .,0,99) |  !inlist( ag6a_08_2, .,0,99) 
@@ -4794,41 +4731,28 @@ replace controller_income2=ag_o23b if !inlist( ag_o23b, .,0,99)
 keep if !inlist( ag_g14a, .,0,99) |  !inlist( ag_g14b, .,0,99)  | !inlist( ag_m13a, .,0,99) |  !inlist( ag_m13b, .,0,99) */
 
 * control annualsales
-replace type_decision="control_annualsales" if  !inlist( ag_i14a, .,0,99) | !inlist( ag_i14b, .,0,99) 
-replace controller_income1=ag_i14a if !inlist(ag_i14a, .,0,99)  
-replace controller_income2=ag_i14b if !inlist(ag_i14b, .,0,99)
-replace type_decision="control_annualsales" if  !inlist(ag_o14a, .,0,99) | !inlist( ag_o14b, .,0,99) 
-replace controller_income1=ag_o14a if !inlist( ag_o14a, .,0,99)  
-replace controller_income2=ag_o14b if !inlist( ag_o14b, .,0,99)
+replace control_cropincome=1 if !inlist( ag_i14a, .,0,99) | !inlist( ag_i14b, .,0,99) | /*
+*/ 								!inlist(ag_o14a, .,0,99) | !inlist( ag_o14b, .,0,99) | /*
+*/ 								!inlist( ag_i23a, .,0,99) | !inlist( ag_i23b, .,0,99) | /*
+*/ 								!inlist( ag_q14a, .,0,99) | !inlist( ag_q14b, .,0,99) | /*
+*/								!inlist( ag_q23a, .,0,99) | !inlist( ag_q23b, .,0,99)
 
-* append who controls earning from sale to customer 2 
-preserve
-replace type_decision="control_annualsales" if  !inlist( ag_i23a, .,0,99) | !inlist( ag_i23b, .,0,99) 
-replace controller_income1=ag_i23a if !inlist( ag_i23a, .,0,99)  
-replace controller_income2=ag_i23b if !inlist( ag_i23b, .,0,99)
-**No data for W4
-/*replace type_decision="control_annualsales" if  !inlist( ag_o23a, .,0,99) |  !inlist( ag_o23b, .,0,99) 
-replace controller_income1=ag_o23a if !inlist( ag_o23a, .,0,99)  
-replace controller_income2=ag_o23b if !inlist( ag_o23b, .,0,99)
-keep if !inlist( ag_i23a, .,0,99) |  !inlist( ag_i23b, .,0,99)  | !inlist( ag_o23a, .,0,99) |  !inlist( ag_o23b, .,0,99) */
-keep hhid plot_id garden_id type_decision controller_income1 controller_income2
-tempfile saletocustomer2
-save `saletocustomer2'
-restore
-append using `saletocustomer2'
 
-* control_permsales
-replace type_decision="control_permsales" if  !inlist( ag_q14a, .,0,99) | !inlist( ag_q14b, .,0,99) 
-replace controller_income1=ag_q14a if !inlist( ag_q14a, .,0,99)  
-replace controller_income2=ag_q14b if !inlist( ag_q14b, .,0,99)
-replace type_decision="control_permsales" if  !inlist( ag_q23a, .,0,99) | !inlist( ag_q23b, .,0,99) 
-replace controller_income1=ag_q23a if !inlist( ag_q23a, .,0,99)  
-replace controller_income2=ag_q23b if !inlist( ag_q23b, .,0,99)
+replace controller_income1=ag_i14a if control_cropincome & ag_i14a!=.
+replace controller_income2=ag_i14b if control_cropincome & ag_i14b!=.
+replace controller_income3=ag_o14a if control_cropincome & ag_o14a!=.
+replace controller_income4=ag_o14b if control_cropincome & ag_o14b!=.
+replace controller_income5=ag_i23a if control_cropincome & ag_i23a!=. 
+replace controller_income6=ag_i23b if control_cropincome & ag_i23a!=.
+replace controller_income7=ag_q14a if control_cropincome & ag_q14a!=.
+replace controller_income8=ag_q14b if control_cropincome & ag_q14b!=.
+replace controller_income9=ag_q23a if control_cropincome & ag_q23a!=.
+replace controller_income10=ag_q23b if control_cropincome & ag_q23b!=.
 
 * livestock_sales (products- milk, eggs, meat) 
-replace type_decision="control_livestocksales" if  !inlist( ag_s07a, .,0,99) | !inlist( ag_s07b, .,0,99) 
-replace controller_income1=ag_s07a if !inlist( ag_s07a, .,0,99)  
-replace controller_income2=ag_s07b if !inlist( ag_s07b, .,0,99)
+replace control_livestockincome=1 if  !inlist( ag_s07a, .,0,99) | !inlist( ag_s07b, .,0,99) 
+replace controller_income11=ag_s07a if !inlist( ag_s07a, .,0,99)  
+replace controller_income12=ag_s07b if !inlist( ag_s07b, .,0,99)
 
 * Fish production income 
 *No information available in MW4
@@ -4836,124 +4760,58 @@ replace controller_income2=ag_s07b if !inlist( ag_s07b, .,0,99)
 * Business income 
 * W4 did not ask directly about of who controls Business Income. We are making the assumption that whoever owns the business might have some sort of control over the income generated by the business. We don't think that the business manager have control of the business income. If they do, they are probably listed as owner
 * control_businessincome
-replace type_decision="control_businessincome" if  !inlist( hh_n12a, .,0,99) | !inlist( hh_n12b, .,0,99) 
-replace controller_income1=hh_n12a if !inlist( hh_n12a, .,0,99)  
-replace controller_income2=hh_n12b if !inlist( hh_n12b, .,0,99)
+replace control_businessincome = 1 if !inlist( hh_n12a, .,0,99) | !inlist( hh_n12b, .,0,99) 
+replace controller_income13=hh_n12a if !inlist( hh_n12a, .,0,99)  
+replace controller_income14=hh_n12b if !inlist( hh_n12b, .,0,99)
 
 ** --- Wage income --- **
 * W4 has questions on control over salary payments & allowances/gratuities in main + secondary job & ganyu earnings
 
 * control_salary
-replace type_decision="control_salary" if  !inlist( hh_e26_1a, .,0,99) | !inlist( hh_e26_1b, .,0,99) // main wage job
-replace controller_income1=hh_e26_1a if !inlist( hh_e26_1a , .,0,99)  
-replace controller_income2=hh_e26_1b if !inlist( hh_e26_1b, .,0,99)
-* append who controls salary earnings from secondary job
-preserve
-replace type_decision="control_salary" if  !inlist(hh_e40_1a , .,0,99) | !inlist(hh_e40_1b, .,0,99) 
-replace controller_income1=hh_e40_1a if !inlist( hh_e40_1a , .,0,99)  
-replace controller_income2=hh_e40_1b if !inlist( hh_e40_1b, .,0,99)
-keep if !inlist( hh_e40_1a, .,0,99) |  !inlist( hh_e40_1b, .,0,99)  
-keep hhid plot_id garden_id type_decision controller_income1 controller_income2
-tempfile wages2
-save `wages2'
-restore
-append using `wages2'
-
-* control_allowances
-replace type_decision="control_allowances" if  !inlist(hh_e28_1a , .,0,99) | !inlist(hh_e28_1b , .,0,99) 
-replace controller_income1=hh_e28_1a if !inlist(hh_e28_1a , .,0,99)  
-replace controller_income2=hh_e28_1b if !inlist(hh_e28_1b , .,0,99)
-* append who controls  allowance/gratuity earnings from secondary job
-preserve
-replace type_decision="control_allowances" if  !inlist(hh_e42_1a , .,0,99) | !inlist(hh_e42_1b , .,0,99) 
-replace controller_income1=hh_e42_1a if !inlist( hh_e42_1a, .,0,99)  
-replace controller_income2= hh_e42_1b if !inlist( , .,0,99)
-keep if !inlist( hh_e42_1a, .,0,99) |  !inlist(hh_e42_1b , .,0,99) 
-keep hhid plot_id garden_id type_decision controller_income1 controller_income2
-tempfile allowances2
-save `allowances2'
-restore
-append using `allowances2'
-
-* control_ganyu
 destring hh_e59_1a, replace
 destring hh_e59_1b, replace
-replace type_decision="control_ganyu" if !inlist(hh_e59_1a, .,0,99) | !inlist(hh_e59_1b, .,0,99) 
-replace controller_income1=hh_e59_1a if !inlist( hh_e59_1a, .,0,99)  
-replace controller_income2=hh_e59_1b if !inlist( hh_e59_1b, .,0,99)
+replace control_salaryincome=1 if !inlist( hh_e26_1a, .,0,99) | !inlist( hh_e26_1b, .,0,99) | !inlist(hh_e40_1a , .,0,99) | !inlist(hh_e40_1b, .,0,99) | /*
+*/								  !inlist(hh_e28_1a , .,0,99) | !inlist(hh_e28_1b , .,0,99) |  !inlist(hh_e42_1a , .,0,99) | !inlist(hh_e42_1b , .,0,99) | /*
+*/								  !inlist(hh_e59_1a, .,0,99) | !inlist(hh_e59_1b, .,0,99) 
+replace controller_income15=hh_e26_1a if control_salaryincome & !inlist( hh_e26_1a , .,0,99)  
+replace controller_income16=hh_e26_1b if control_salaryincome & !inlist( hh_e26_1b, .,0,99)  
+replace controller_income17=hh_e40_1a if control_salaryincome & !inlist( hh_e40_1a , .,0,99)  
+replace controller_income18=hh_e40_1b if control_salaryincome & !inlist( hh_e40_1b, .,0,99)
+replace controller_income19=hh_e28_1a if control_salaryincome & !inlist(hh_e28_1a , .,0,99)  
+replace controller_income20=hh_e28_1b if control_salaryincome & !inlist(hh_e28_1b , .,0,99)
+replace controller_income21=hh_e42_1a if control_salaryincome & !inlist(hh_e42_1a, .,0,99)  
+replace controller_income22=hh_e42_1b if control_salaryincome & !inlist(hh_e42_1b , .,0,99)
+replace controller_income23=hh_e59_1a if control_salaryincome & !inlist( hh_e59_1a, .,0,99)  
+replace controller_income24=hh_e59_1b if control_salaryincome & !inlist( hh_e59_1b, .,0,99)
 
 
 * control_remittance
-replace type_decision="control_remittance" if  !inlist( hh_o14_1a, .,0,99) | !inlist( hh_o14_1b, .,0,99) 
-replace controller_income1=hh_o14_1a if !inlist( hh_o14_1a, .,0,99)  
-replace controller_income2=hh_o14_1b if !inlist( hh_o14_1b, .,0,99)
-* append who controls in-kind remittances
-preserve
-replace type_decision="control_remittance" if  !inlist( hh_o18a, .,0,99) | !inlist( hh_o18b, .,0,99) 
-replace controller_income1=hh_o18a if !inlist( hh_o18a, .,0,99)  
-replace controller_income2=hh_o18b if !inlist( hh_o18b, .,0,99)
-keep if  !inlist( hh_o18a, .,0,99) |  !inlist( hh_o18b, .,0,99) 
-keep hhid plot_id garden_id type_decision controller_income1 controller_income2
-tempfile control_remittance2
-save `control_remittance2'
-restore
-append using `control_remittance2'
+replace control_nonfarmincome=1 if !inlist( hh_o14_1a, .,0,99) | !inlist( hh_o14_1b, .,0,99) | !inlist( hh_o18a, .,0,99) | !inlist( hh_o18b, .,0,99) | /*
+*/ !inlist( hh_r05a, .,0,99) | !inlist( hh_r05b, .,0,99) | !inlist(hh_p04a , .,0,99) | !inlist(hh_p04b , .,0,99) 
+replace controller_income25=hh_o14_1a if control_nonfarmincome & !inlist( hh_o14_1a, .,0,99)  
+replace controller_income26=hh_o14_1b if control_nonfarmincome & !inlist( hh_o14_1b, .,0,99)
+replace controller_income27=hh_o18a if control_nonfarmincome & !inlist( hh_o18a, .,0,99)  
+replace controller_income28=hh_o18b if control_nonfarmincome & !inlist( hh_o18b, .,0,99)
+replace controller_income29=hh_p04a if !inlist(hh_p04a , .,0,99)  
+replace controller_income30=hh_p04b if !inlist(hh_p04b , .,0,99) 
 
-* control_assistance income
-replace type_decision="control_assistance" if  !inlist( hh_r05a, .,0,99) | !inlist( hh_r05b, .,0,99) 
-replace controller_income1=hh_r05a if !inlist( hh_r05a, .,0,99)  
-replace controller_income2=hh_r05b if !inlist( hh_r05b, .,0,99)
-
-* control_other income 
-replace type_decision="control_otherincome" if  !inlist(hh_p04a , .,0,99) | !inlist(hh_p04b , .,0,99) 
-replace controller_income1=hh_p04a if !inlist(hh_p04a , .,0,99)  
-replace controller_income2=hh_p04b if !inlist(hh_p04b , .,0,99) 
-
-keep hhid plot_id garden_id type_decision controller_income1 controller_income2
-
-preserve
-keep hhid plot_id garden_id type_decision controller_income2
-drop if controller_income2==.
-ren controller_income2 controller_income
-tempfile controller_income2
-save `controller_income2'
-restore
-keep hhid plot_id garden_id type_decision controller_income1
-drop if controller_income1==.
-ren controller_income1 controller_income
-append using `controller_income2'
- 
-* create group
-
-
-gen control_cropincome=1 if  /*type_decision=="control_annualharvest" ///
-							| */type_decision=="control_annualsales" ///
-							| type_decision=="control_permsales" ///
-						
-recode 	control_cropincome (.=0)		
-							
-gen control_livestockincome=1 if  type_decision=="control_livestocksales" 												
-recode 	control_livestockincome (.=0)
-
-gen control_farmincome=1 if  control_cropincome==1 | control_livestockincome==1							
-recode 	control_farmincome (.=0)		
-							
-gen control_businessincome=1 if  type_decision=="control_businessincome" 
-recode 	control_businessincome (.=0)
-
-gen control_salaryincome=1 if type_decision=="control_salary"| type_decision=="control_allowances"| type_decision=="control_ganyu"						 
-																					
-gen control_nonfarmincome=1 if type_decision=="control_remittance" | type_decision=="control_assistance" | type_decision=="control_otherincome" | control_salaryincome== 1 | control_businessincome== 1 
-recode 	control_nonfarmincome (.=0)
+keep hhid control*
+egen any_income = rowtotal(control_*income)
+recode controller_income* (.a=.)
+drop if any_income==0
+drop any_income
+gen dummy = _n
+reshape long controller_income, i(hhid control_*income dummy) j(personid)
+drop if controller_income==. 
+collapse (max) control_*income, by(hhid controller_income)
+gen control_farmincome= control_cropincome==1 | control_livestockincome==1																						
+replace control_nonfarmincome=1 if control_salaryincome== 1 | control_businessincome== 1 
 																		
-collapse (max) control_* , by(hhid controller_income)  //any decision
-gen control_all_income=1 if  control_farmincome== 1 | control_nonfarmincome==1
-recode 	control_all_income (.=0)															
+gen control_all_income =  control_farmincome== 1 | control_nonfarmincome==1														
 ren controller_income indiv
 *	Now merge with member characteristics
-merge 1:m hhid indiv using "${MWI_IHS_IHPS_W4_created_data}\MWI_IHS_IHPS_W4_person_ids.dta", nogen keep (3) // 21,673 matched
-
-recode control_* (.=0)
+merge 1:1 hhid indiv using "${MWI_IHS_IHPS_W4_created_data}\MWI_IHS_IHPS_W4_person_ids.dta", nogen keep (3) // 27903 matched
+//recode control_* (.=0)
 lab var control_cropincome "1=individual has control over crop income"
 lab var control_livestockincome "1=individual has control over livestock income"
 lab var control_farmincome "1=individual has control over farm (crop or livestock) income"
@@ -6076,19 +5934,15 @@ drop /*pension_income*/ remittance_income /*assistance_income*/ rental_income ot
 //no empty variable needed for pension_income or assistance_income
 
 *Farm size
-merge 1:1 hhid using  "${MWI_IHS_IHPS_W4_created_data}/MWI_IHS_IHPS_W4_land_size.dta", nogen
-merge 1:1 hhid using  "${MWI_IHS_IHPS_W4_created_data}/MWI_IHS_IHPS_W4_land_size_all.dta", nogen 
-merge 1:1 hhid using  "${MWI_IHS_IHPS_W4_created_data}/MWI_IHS_IHPS_W4_farmsize_all_agland.dta", nogen
-merge 1:1 hhid using "${MWI_IHS_IHPS_W4_created_data}/MWI_IHS_IHPS_W4_land_size_total.dta", nogen 
-recode land_size (.=0)
+merge 1:1 hhid using "${MWI_IHS_IHPS_W4_created_data}/MWI_IHS_IHPS_W4_hh_agland.dta", nogen 
 
 *Add farm size categories
-recode farm_size_agland (.=0)
-gen  farm_size_0_0=farm_size_agland==0
-gen  farm_size_0_1=farm_size_agland>0 & farm_size_agland<=1
-gen  farm_size_1_2=farm_size_agland>1 & farm_size_agland<=2
-gen  farm_size_2_4=farm_size_agland>2 & farm_size_agland<=4
-gen  farm_size_4_more=farm_size_agland>4
+//recode farm_area (.=0) //Many hh's have missing because of measurement absences.
+gen  farm_size_0_0=farm_area==0
+gen  farm_size_0_1=farm_area>0 & farm_area<=1
+gen  farm_size_1_2=farm_area>1 & farm_area<=2
+gen  farm_size_2_4=farm_area>2 & farm_area<=4
+gen  farm_size_4_more=farm_area>4
 lab var farm_size_0_0 "1=Household has no farm"
 lab var farm_size_0_1 "1=Household farm size > 0 Ha and <=1 Ha"
 lab var farm_size_1_2 "1=Household farm size > 1 Ha and <=2 Ha"
@@ -6112,10 +5966,10 @@ merge 1:1 hhid using "${MWI_IHS_IHPS_W4_created_data}/MWI_IHS_IHPS_W4_any_ext.dt
 merge 1:1 hhid using "${MWI_IHS_IHPS_W4_created_data}/MWI_IHS_IHPS_W4_fin_serv.dta", nogen
 recode use_fin_serv* ext_reach* use_* vac_animal (.=0)
 replace vac_animal=. if tlu_today==0
-replace use_inorg_fert=. if farm_area==0 | farm_area==. 
-recode ext_reach* (0 1=.) if (value_crop_production==0 & livestock_income==0 & farm_area==0 & tlu_today==0)
-recode ext_reach* (0 1=.) if farm_area==.
-replace use_imprv_seed=. if farm_area==.
+replace use_inorg_fert=. if cultivated_area==0 | cultivated_area==. 
+recode ext_reach* (0 1=.) if (value_crop_production==0 & livestock_income==0 & cultivated_area==0 & tlu_today==0)
+recode ext_reach* (0 1=.) if cultivated_area==.
+replace use_imprv_seed=. if cultivated_area==.
 gen imprv_seed_banana=.
 gen hybrid_seed_banana =.
 global empty_vars $empty_vars imprv_seed_banana hybrid_seed_banana
@@ -6195,8 +6049,8 @@ lab var value_farm_prod_sold "Total value of farm production that is sold"
 replace value_farm_prod_sold = 0 if value_farm_prod_sold==. & value_farm_production!=. 
 
 *Agricultural households
-recode value_crop_production crop_income livestock_income farm_area tlu_today (.=0)
-gen ag_hh = (value_crop_production!=0 | crop_income!=0 | livestock_income!=0 | farm_area!=0 | tlu_today!=0)
+recode value_crop_production crop_income livestock_income cultivated_area tlu_today (.=0)
+gen ag_hh = (value_crop_production!=0 | crop_income!=0 | livestock_income!=0 | cultivated_area!=0 | tlu_today!=0)
 lab var ag_hh "1= Household has some land cultivated, some livestock, some crop income, or some livestock income"
 
 *households engaged in egg production 
@@ -6212,7 +6066,7 @@ gen agactivities_hh =ag_hh==1 | (agwage_income!=0 & agwage_income!=.)
 lab var agactivities_hh "1=Household has some land cultivated, livestock, crop income, livestock income, or ag wage income"
 
 *Creating crop household and livestock household
-gen crop_hh = (value_crop_production!=0  | farm_area!=0)
+gen crop_hh = (value_crop_production!=0  | cultivated_area!=0)
 lab var crop_hh "1= Household has some land cultivated or some crop income"
 gen livestock_hh = (livestock_income!=0 | tlu_today!=0)
 lab  var livestock_hh "1= Household has some livestock or some livestock income"
@@ -6238,8 +6092,8 @@ foreach i in lrum srum poultry{
 }
 
 *households engaged in crop production
-recode cost_expli_hh value_crop_production value_crop_sales labor_hired labor_family farm_size_agland all_area_harvested all_area_planted  encs num_crops_hh multiple_crops (.=0) if crop_hh==1
-recode cost_expli_hh value_crop_production value_crop_sales labor_hired labor_family farm_size_agland all_area_harvested all_area_planted  encs num_crops_hh multiple_crops (nonmissing=.) if crop_hh==0
+recode cost_expli_hh value_crop_production value_crop_sales labor_hired labor_family farm_area all_area_harvested all_area_planted  encs num_crops_hh multiple_crops (.=0) if crop_hh==1
+recode cost_expli_hh value_crop_production value_crop_sales labor_hired labor_family farm_area all_area_harvested all_area_planted  encs num_crops_hh multiple_crops (nonmissing=.) if crop_hh==0
 
 *all rural households engaged in livestock production 
 recode animals_lost12months* mean_12months* livestock_expenses disease_animal /*feed_grazing water_source_nat water_source_const water_source_cover lvstck_housed */(.=0) if livestock_hh==1
@@ -6309,9 +6163,9 @@ lab var w_labor_total "`labor_total' - Winsorized top $wins_upper_thres%"
 
 *Variables winsorized both at the top 1% and bottom 1% 
 global wins_var_top1_bott1  /* 
-*/ farm_area farm_size_agland all_area_harvested all_area_planted ha_planted /*
+*/ cultivated_area farm_area all_area_harvested all_area_planted ha_planted /*
 */ crop_income livestock_income fishing_income self_employment_income nonagwage_income agwage_income transfers_income all_other_income total_cons percapita_cons daily_percap_cons peraeq_cons daily_peraeq_cons /* 
-*/ *_monocrop_ha* dist_agrodealer land_size_total
+*/ *_monocrop_ha* dist_agrodealer hh_agland
 
 foreach v of varlist $wins_var_top1_bott1 {
 	_pctile `v' [aw=weight] , p($wins_lower_thres $wins_upper_thres) 
@@ -6481,7 +6335,7 @@ gen cost_expli_hh_ha = w_cost_expli_hh / w_ha_planted
 lab var cost_expli_hh_ha "Explicit costs (per ha) of crop production (household level)"
 
 *land and labor productivity
-gen land_productivity = w_value_crop_production/w_farm_area
+gen land_productivity = w_value_crop_production/w_cultivated_area
 gen labor_productivity = w_value_crop_production/w_labor_total 
 lab var land_productivity "Land productivity (value production per ha cultivated)"
 lab var labor_productivity "Labor productivity (value production per labor-day)"   
@@ -6700,11 +6554,11 @@ recode vac_animal w_share_livestock_prod_sold livestock_expenses w_ls_exp_vac (n
 // }
 
 *households engaged in crop production
-recode w_proportion_cropvalue_sold w_farm_size_agland w_labor_family w_labor_hired /*
+recode w_proportion_cropvalue_sold w_farm_area w_labor_family w_labor_hired /*
 */ use* w_labor_productivity w_land_productivity /*
 */ w_*_rate w_cost_expli_hh w_cost_expli_hh_ha w_cost_expli_ha w_cost_total_ha /*
 */ w_value_crop_production w_value_crop_sales w_all_area_planted w_all_area_harvested (.=0) if crop_hh==1
-recode w_proportion_cropvalue_sold w_farm_size_agland w_labor_family w_labor_hired /*
+recode w_proportion_cropvalue_sold w_farm_area w_labor_family w_labor_hired /*
 */ w_labor_productivity w_land_productivity /*
 */ w_*_rate w_cost_expli_hh w_cost_expli_hh_ha w_cost_expli_ha w_cost_total_ha /*
 */ w_value_crop_production w_value_crop_sales w_all_area_planted w_all_area_harvested (nonmissing= . ) if crop_hh==0
@@ -6743,25 +6597,28 @@ recode costs_dairy liters_milk_produced value_milk_produced (nonmissing=.) if da
 recode w_eggs_total_year value_eggs_produced (.=0) if egg_hh==1
 recode w_eggs_total_year value_eggs_produced (nonmissing=.) if egg_hh==0
   
+ /* replaced by ssp definition
+ 
 *Identify smallholder farmers (RULIS definition)
-global small_farmer_vars land_size tlu_today total_income 
+global small_farmer_vars farm_area tlu_today total_income 
 foreach p of global small_farmer_vars {
 	gen `p'_aghh = `p' if ag_hh==1
 	_pctile `p'_aghh  [aw=weight] , p(40) 
 	gen small_`p' = (`p' <= r(r1))
 	replace small_`p' = . if ag_hh!=1
 }
-gen small_farm_household = (small_land_size==1 & small_tlu_today==1 & small_total_income==1)
+gen small_farm_household = (small_farm_area==1 & small_tlu_today==1 & small_total_income==1)
 replace small_farm_household = . if ag_hh != 1
 sum small_farm_household if ag_hh==1 
-drop land_size_aghh small_land_size tlu_today_aghh small_tlu_today total_income_aghh small_total_income   
+drop farm_area_aghh small_land_size tlu_today_aghh small_tlu_today total_income_aghh small_total_income   
 lab var small_farm_household "1= HH is in bottom 40th percentiles of land size, TLU, and total revenue"
+*/
 
 *create different weights 
 gen w_labor_weight=weight //*w_labor_total //we don't have this
 //lab var w_labor_weight "labor-adjusted household weights"
 lab var w_labor_weight "weight for labor - equal to household weight"
-gen w_land_weight=weight*w_farm_area
+gen w_land_weight=weight*w_cultivated_area
 lab var w_land_weight "land-adjusted household weights"
 gen w_aglabor_weight_all=weight //*w_labor_hired //Also do not have
 lab var w_aglabor_weight_all "weight for labor - equal to household weight"
@@ -6845,10 +6702,10 @@ replace `v' =.
 // Removing intermediate variables to get below 5,000 vars
 keep hhid fhh clusterid strataid *weight* *wgt* region district ta ea rural farm_size* *total_income* /*
 */ *percapita_income* *percapita_cons* *daily_percap_cons* *peraeq_cons* *daily_peraeq_cons* /*
-*/ *income* *share* *irr* *proportion_cropvalue_sold *farm_size_agland hh_members adulteq *labor_family *labor_hired vac_* /*
+*/ *income* *share* *irr* *proportion_cropvalue_sold *farm_area hh_members adulteq *labor_family *labor_hired vac_* /*
 */ feed*  water* lvstck_housed* ext_* use_* lvstck_holding* *mortality_rate* lost_disease* disease* any_imp* formal_land_rights_hh /*
 */ *livestock_expenses* *ls_exp_vac* *prop_farm_prod_sold *value_*_prod* *hrs_*   months_food_insec *value_assets* hhs_* *dist_agrodealer /*
-*/ encs* num_crops_* multiple_crops* use* *labor_total *farm_area *labor_productivity* *land_productivity* /*
+*/ encs* num_crops_* multiple_crops* use* *labor_total *cultivated_area *labor_productivity* *land_productivity* /*
 */ wage_paid_aglabor* *labor_hired ar_h_wgt_* *yield_hv_* ar_pl_wgt_* *yield_pl_* *liters_per_* milk_animals poultry_owned *costs_dairy* *cost_per_lit* /*
 */ *egg_poultry_year* *rate* *ha_planted* *cost_expli_hh* *cost_expli_ha* *monocrop_ha* *kgs_harv_mono* *cost_total_ha* /*
 */ *_exp* poverty_under_* *value_crop_production* *value_harv* *value_crop_sales* *value_sold* *kgs_harvest* *total_planted_area* *total_harv_area* /*
@@ -6857,7 +6714,7 @@ keep hhid fhh clusterid strataid *weight* *wgt* region district ta ea rural farm
 */ ccf_loc ccf_usd ccf_1ppp ccf_2ppp *sales_livestock_products area_plan* area_harv*  value_pro* *_rate* *value_sal* *inter* panel
 
 recode nb_cows_today nb_smallrum_today nb_chickens_today (.=0) if ag_hh==1
-gen ssp = (farm_size_agland <= 2 & farm_size_agland != 0) & (nb_cows_today <= 10 & nb_smallrum_today <= 10 & nb_chickens_today <= 50) if ag_hh==1
+gen ssp = (farm_area <= 2 & farm_area != 0) & (nb_cows_today <= 10 & nb_smallrum_today <= 10 & nb_chickens_today <= 50) if ag_hh==1
 
 
 //////////Identifier Variables ////////
@@ -6998,9 +6855,9 @@ merge 1:1 hhid plot_id garden_id season using "${MWI_IHS_IHPS_W4_created_data}\M
 //merge 1:1 hhid plot_id garden_id season using "${MWI_IHS_IHPS_W4_created_data}/MWI_IHS_IHPS_W4_plot_labor_days.dta", keep (1 3) nogen //Covered by the above
 // merge 1:m hhid using "${MWI_IHS_IHPS_W4_created_data}/MWI_IHS_IHPS_W4_plots_cultivate.dta", keep (1 3) nogen
  
-merge m:1 hhid using "${MWI_IHS_IHPS_W4_final_data}/MWI_IHS_IHPS_W4_household_variables.dta", nogen keep (1 3) keepusing(ag_hh fhh farm_size_agland)
-recode farm_size_agland (.=0)
-gen rural_ssp=(farm_size_agland<=4 & farm_size_agland!=0) & rural == 1
+merge m:1 hhid using "${MWI_IHS_IHPS_W4_final_data}/MWI_IHS_IHPS_W4_household_variables.dta", nogen keep (1 3) keepusing(ag_hh fhh farm_area)
+recode farm_area (.=0)
+gen rural_ssp=(farm_area<=4 & farm_area!=0) & rural == 1
 recode rural_ssp .=0
 
 //keep if cultivate==1

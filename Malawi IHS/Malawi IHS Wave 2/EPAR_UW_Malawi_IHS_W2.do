@@ -90,7 +90,7 @@ Below are the list of the main files created by running this Master do.file
 									MWI_IHPS_W2_land_rental_income.dta
 
 *FARM SIZE / LAND SIZE				MWI_IHPS_W2_land_size.dta
-									MWI_IHPS_W2_farmsize_all_agland.dta
+									MWI_IHPS_W2_farmsize_agland.dta
 									MWI_IHPS_W2_land_size_all.dta
 									MWI_IHPS_W2_land_size_total.dta
 									
@@ -1103,7 +1103,8 @@ use `longcrops', clear
 	replace percent_field = underplant_pct/tot_miss if miss_pct & underplant_pct > 0 
 	replace percent_field = percent_field/tot_pct_planted if tot_pct_planted > 1
     replace percent_field = 1/tot_miss if tot_miss==n_crops & percent_field==.
-	collapse (sum) kg_harvest ha_planted ha_harvest value_harvest* number_trees_planted percent_field (max) months_grown no_harvest use*, by(region district ea ta hhid plot_id crop_code purestand field_size season) //area_meas_hectares should get replaced with field_size for consistency.	recode ha_planted (0=.) 
+	collapse (sum) kg_harvest ha_planted ha_harvest value_harvest* number_trees_planted percent_field (max) months_grown no_harvest use*, by(region district ea ta hhid plot_id crop_code purestand field_size season) //area_meas_hectares should get replaced with field_size for consistency.
+	recode ha_planted (0=.) 
 	ren ea_id ea
  	replace ha_harvest=. if (ha_harvest==0 & no_harvest==1) | (ha_harvest==0 & kg_harvest>0 & kg_harvest!=.)
  	replace kg_harvest = . if kg_harvest==0 & no_harvest==1
@@ -3405,123 +3406,50 @@ save "${MWI_IHPS_W2_created_data}\MWI_IHPS_W2_off_farm_hours.dta", replace
 ********************************************************************************
 *FARM SIZE / LAND SIZE
 ********************************************************************************
-use "${MWI_IHPS_W2_appended_data}/ag_mod_g_13.dta", clear
-append using "${MWI_IHPS_W2_appended_data}/ag_mod_m_13.dta"
-gen cultivated = 1 
-replace ag_g00  = ag_m00 if ag_g00 ==""
-ren ag_g00 plot_id
-drop if plot_id==""
-replace ag_g0a = ag_m0a if ag_g0a == .
-ren ag_g0a cultivated_this_year // Plant any crops during 2012/2013 rainy season or 2013 dry season 
+*old: 
+* land_size_all : total land area owned or cultivated (including rented in/out plots)
+* land_size : total land area owned, excluding rented out 
+* farm_size_agland : land size including all plots cultivated or left fallow  (functionally identical to land_size)
+* farm_area : area of land cultivated (denominator for productivity)
 
-preserve 
-use "${MWI_IHPS_W2_appended_data}/ag_mod_p_13.dta", clear
-gen cultivated = 1 if (ag_p05 !=. & ag_p05 !=0 | ag_p05 !=. & ag_p05 !=0)
-ren ag_p00 plot_id
-collapse (max) cultivated, by (hhid plot_id)
-tempfile tree
-save `tree', replace
-restore
-append using `tree'
+*new 
+* cultivated_area : area of land cultivated (denominator for productivity) - replaces farm_area 
+* farm_area : total area of land cultivated or left fellow - replaces farm_size_agland and land_size
+* hh_agland : total area of land owned - replaces land_size_total
 
-preserve 
-use "${MWI_IHPS_W2_appended_data}/ag_mod_d_13.dta", clear 
-append using "${MWI_IHPS_W2_appended_data}/ag_mod_k_13.dta"
-replace ag_d00  = ag_k00 if ag_d00 =="" 
-ren ag_d00 plot_id
-drop if plot_id==""  
-save "${MWI_IHPS_W2_created_data}\MWI_IHPS_W2_ag_mod_k_d_13_temp.dta", replace
-restore 
-merge m:1 hhid plot_id using "${MWI_IHPS_W2_created_data}\MWI_IHPS_W2_ag_mod_k_d_13_temp.dta"
-replace cultivated = 1 if (ag_d14==1 | ag_k15==1)
-replace cultivated = 1 if cultivated_this_year==1 & cultivated==.
-
-collapse (max) cultivated, by (hhid plot_id)
-lab var cultivated "1= Parcel was cultivated in this data set"
-save "${MWI_IHPS_W2_created_data}\MWI_IHPS_W2_parcels_cultivated.dta", replace
-
-preserve
-ren cultivated cultivate
-keep if cultivate==1
-save "${MWI_IHPS_W2_created_data}\MWI_IHPS_W2_plots_cultivate.dta", replace // for plot-level variables
-restore
-
-use "${MWI_IHPS_W2_created_data}\MWI_IHPS_W2_parcels_cultivated.dta", clear
-merge 1:1 hhid plot_id using "${MWI_IHPS_W2_created_data}/MWI_IHPS_W2_plot_areas.dta", nogen keep(1 3)
-keep if cultivated==1
-replace area_meas_hectares=. if area_meas_hectares<0 
-replace area_meas_hectares = area_est_hectares if area_meas_hectares ==. 
-collapse (sum) area_meas_hectares, by (hhid plot_id)
-rename area_meas_hectares field_size
-save "${MWI_IHPS_W2_created_data}/MWI_IHPS_W2_plot_sizes.dta", replace
-collapse (sum) field_size, by (hhid)
-ren field_size farm_area
-lab var farm_area "Land size (denominator for land productivitiy), in hectares" 
-save "${MWI_IHPS_W2_created_data}\MWI_IHPS_W2_land_size.dta", replace
+use "${MWI_IHPS_W2_created_data}/MWI_IHPS_W2_all_plots.dta", clear
+collapse (sum) ha_planted, by(hhid plot_id season) 
+collapse (max) ha_planted, by(hhid plot_id)
+collapse (sum) cultivated_area=ha_planted, by(hhid)
+lab var cultivated_area "Total area cultivated"
+tempfile cultivated_area
+save `cultivated_area'
 
 * All agricultural land
-use "${MWI_IHPS_W2_created_data}\MWI_IHPS_W2_ag_mod_k_d_13_temp.dta", clear 
-gen agland = (ag_d14==1 | ag_d14==4 |ag_k15==1 | ag_k15==4) // All cultivated AND fallow plots 
-merge m:1 hhid plot_id using "${MWI_IHPS_W2_created_data}\MWI_IHPS_W2_parcels_cultivated.dta", nogen keep(1 3)
-preserve 
-use "${MWI_IHPS_W2_appended_data}/ag_mod_p_13.dta", clear
-gen cultivated = 1 if (ag_p05 !=. & ag_p05 !=0 | ag_p05 !=. & ag_p05 !=0)
-ren ag_p00 plot_id
-collapse (max) cultivated, by (hhid plot_id)
-tempfile tree
-save `tree', replace
-restore
-append using `tree'
-replace agland=1 if cultivated==1
-keep if agland==1
-collapse (max) agland, by (hhid plot_id)
-keep hhid plot_id agland
-lab var agland "1= Parcel was used for crop cultivation or left fallow in this past year (forestland and other uses excluded)"
-save "${MWI_IHPS_W2_created_data}\MWI_IHPS_W2_parcels_agland.dta", replace
-
-use "${MWI_IHPS_W2_created_data}\MWI_IHPS_W2_parcels_agland.dta", clear
-merge 1:1 hhid plot_id using "${MWI_IHPS_W2_created_data}\MWI_IHPS_W2_plot_areas.dta"
-keep if agland==1
-replace area_meas_hectares=. if area_meas_hectares<0 
-replace area_meas_hectares = area_est_hectares if area_meas_hectares ==. 
-replace area_meas_hectares = area_est_hectares if area_meas_hectares==0 & (area_est_hectares>0 & area_est_hectares!=.)	
-collapse (sum) area_meas_hectares, by (hhid)
-ren area_meas_hectares farm_size_agland
-lab var farm_size_agland "Land size in hectares, including all plots cultivated or left fallow" 
-save "${MWI_IHPS_W2_created_data}\MWI_IHPS_W2_farmsize_all_agland.dta", replace
-
-* parcels held
-use "${MWI_IHPS_W2_appended_data}/ag_mod_d_13.dta", clear
-append using "${MWI_IHPS_W2_created_data}\MWI_IHPS_W2_ag_mod_k_d_13_temp.dta"
+use "${MWI_IHPS_W2_appended_data}/ag_mod_d_13.dta", clear 
+append using "${MWI_IHPS_W2_appended_data}/ag_mod_k_13.dta"
+append using "${MWI_IHPS_W2_appended_data}/ag_mod_p_13.dta"
+gen plot_id=ag_d00
+replace plot_id=ag_k00 if plot_id==""
+replace plot_id=ag_p00 if plot_id==""
 drop if plot_id==""
+gen agland = (ag_d14==1 | ag_d14==4 |ag_k15==1 | ag_k15==4 | (ag_p05 !=. & ag_p05 !=0)) // All cultivated AND fallow plots 
 gen rented_out = (ag_d14==2 | ag_d14==3 | ag_k15==2 | ag_k15==3)
+merge m:1 hhid plot_id using "${MWI_IHPS_W2_created_data}\MWI_IHPS_W2_plot_areas.dta", nogen
 gen cultivated_dry = (ag_k15==1)
 bys hhid plot_id: egen plot_cult_dry = max(cultivated_dry)
 replace rented_out = 0 if plot_cult_dry==1 // If cultivated in dry season, not considered rented out in rainy season.
-drop if rented_out==1
-gen plot_held = 1
-collapse (max) plot_held, by (hhid plot_id)
-lab var plot_held "1= Parcel was NOT rented out in the main season"
-save "${MWI_IHPS_W2_created_data}\MWI_IHPS_W2_parcels_held.dta", replace
+gen farm_area = field_size if agland // All cultivated, fallow, or pasture; woodlot captured in land_size_total
+recode farm_area field_size (.=0)
+collapse (max) farm_area field_size, by (hhid plot_id)
+collapse (sum) farm_area hh_agland=field_size, by(hhid)
+merge 1:1 hhid using `cultivated_area', nogen
+replace farm_area=cultivated_area if farm_area < cultivated_area & cultivated_area!=. //Discrepancies between what's reported as cultivated and area reported as cultivated. 
+lab var cultivated_area "All land cultivated by the household (hectares)" //replaces land_size_total
+lab var hh_agland "All land owned or cultivated by the household (hectares)"
+lab var farm_area "All land kept or cultivated by the household, excluding plots rented out (hectares)"  //replaces land_size
 
-use "${MWI_IHPS_W2_created_data}\MWI_IHPS_W2_parcels_held.dta", clear
-merge 1:1 hhid plot_id using "${MWI_IHPS_W2_created_data}\MWI_IHPS_W2_plot_areas.dta"
-drop if _merge==2
-replace area_meas_hectares=. if area_meas_hectares<0 
-replace area_meas_hectares = area_est_hectares if area_meas_hectares ==. 
-collapse (sum) area_meas_hectares, by (hhid)
-rename area_meas_hectares land_size
-lab var land_size "Land size in hectares, including all plots listed by the household except those rented out" 
 save "${MWI_IHPS_W2_created_data}\MWI_IHPS_W2_land_size_all.dta", replace
-
-use "${MWI_IHPS_W2_created_data}\MWI_IHPS_W2_plot_areas.dta", clear
-replace area_meas_hectares=. if area_meas_hectares<0 
-replace area_meas_hectares = area_est_hectares if area_meas_hectares ==. 
-replace area_meas_hectares = area_est_hectares if area_meas_hectares==0 & (area_est_hectares>0 & area_est_hectares!=.)
-collapse (sum) area_meas_hectares, by(hhid)
-ren area_meas_hectares land_size_total
-lab var land_size_total "Total land size in hectares, including rented in and rented out plots"
-save "${MWI_IHPS_W2_created_data}\MWI_IHPS_W2_land_size_total.dta", replace
 
 ********************************************************************************
 *FARM LABOR
@@ -5454,20 +5382,16 @@ lab var all_other_income "Income from all other revenue"
 drop /*pension_income*/ remittance_income /*assistance_income*/ rental_income other_income land_rental_income
 
 *Farm size
-merge 1:1 hhid  using  "${MWI_IHPS_W2_created_data}/MWI_IHPS_W2_land_size.dta", nogen
-merge 1:1 hhid  using  "${MWI_IHPS_W2_created_data}/MWI_IHPS_W2_land_size_all.dta", nogen 
-merge 1:1 hhid  using  "${MWI_IHPS_W2_created_data}/MWI_IHPS_W2_farmsize_all_agland.dta", nogen
-merge 1:1 hhid  using "${MWI_IHPS_W2_created_data}/MWI_IHPS_W2_land_size_total.dta", nogen 
-
-recode land_size (.=0)
+merge 1:1 hhid using  "${MWI_IHPS_W2_created_data}/MWI_IHPS_W2_land_size_all.dta", nogen 
+recode farm_area (.=0)
 
 *Add farm size categories
-recode farm_size_agland (.=0)
-gen  farm_size_0_0=farm_size_agland==0
-gen  farm_size_0_1=farm_size_agland>0 & farm_size_agland<=1
-gen  farm_size_1_2=farm_size_agland>1 & farm_size_agland<=2
-gen  farm_size_2_4=farm_size_agland>2 & farm_size_agland<=4
-gen  farm_size_4_more=farm_size_agland>4
+recode farm_area (.=0)
+gen  farm_size_0_0=farm_area==0
+gen  farm_size_0_1=farm_area>0 & farm_area<=1
+gen  farm_size_1_2=farm_area>1 & farm_area<=2
+gen  farm_size_2_4=farm_area>2 & farm_area<=4
+gen  farm_size_4_more=farm_area>4
 lab var farm_size_0_0 "1=Household has no farm"
 lab var farm_size_0_1 "1=Household farm size > 0 Ha and <=1 Ha"
 lab var farm_size_1_2 "1=Household farm size > 1 Ha and <=2 Ha"
@@ -5492,10 +5416,10 @@ merge 1:1 hhid  using "${MWI_IHPS_W2_created_data}/MWI_IHPS_W2_fin_serv.dta", no
 //ren use_imprv_seed imprv_seed_use
 recode use_fin_serv* ext_reach* use_* vac_animal (.=0)
 replace vac_animal=. if tlu_today==0
-replace use_inorg_fert=. if farm_area==0 | farm_area==.
-recode ext_reach* (0 1=.) if (value_crop_production==0 & livestock_income==0 & farm_area==0 & tlu_today==0)
-recode ext_reach* (0 1=.) if farm_area==.
-replace use_imprv_seed =. if farm_area==.
+replace use_inorg_fert=. if cultivated_area==0 | cultivated_area==.
+recode ext_reach* (0 1=.) if (value_crop_production==0 & livestock_income==0 & cultivated_area==0 & tlu_today==0)
+recode ext_reach* (0 1=.) if cultivated_area==.
+replace use_imprv_seed =. if cultivated_area==.
 
 *Milk productivity
 merge 1:1 hhid  using "${MWI_IHPS_W2_created_data}/MWI_IHPS_W2_milk_animals.dta", nogen
@@ -5583,8 +5507,8 @@ lab var value_farm_prod_sold "Total value of farm production that is sold"
 replace value_farm_prod_sold = 0 if value_farm_prod_sold==. & value_farm_production!=. 
 
 *Agricultural households
-recode value_crop_production livestock_income farm_area tlu_today (.=0)
-gen ag_hh = (value_crop_production!=0 /*| crop_income!=0 */| livestock_income!=0 | farm_area!=0 | tlu_today!=0)
+recode value_crop_production livestock_income cultivated_area tlu_today (.=0)
+gen ag_hh = (value_crop_production!=0 /*| crop_income!=0 */| livestock_income!=0 | cultivated_area!=0 | tlu_today!=0)
 lab var ag_hh "1= Household has some land cultivated, some livestock, some crop income, or some livestock income"
 
 *households engaged in egg production 
@@ -5600,7 +5524,7 @@ gen agactivities_hh =ag_hh==1 | (agwage_income!=0 & agwage_income!=.)
 lab var agactivities_hh "1=Household has some land cultivated, livestock, crop income, livestock income, or ag wage income"
 
 *Creating crop household and livestock household
-gen crop_hh = (value_crop_production!=0  | farm_area!=0)
+gen crop_hh = (value_crop_production!=0  | cultivated_area!=0)
 lab var crop_hh "1= Household has some land cultivated or some crop income"
 gen livestock_hh = (livestock_income!=0 | tlu_today!=0)
 lab  var livestock_hh "1= Household has some livestock or some livestock income"
@@ -5626,8 +5550,8 @@ foreach i in lrum srum poultry{
 }
 
 *households engaged in crop production
-recode cost_expli_hh value_crop_production value_crop_sales labor_hired labor_family farm_size_agland all_area_harvested all_area_planted  encs num_crops_hh multiple_crops (.=0) if crop_hh==1
-recode cost_expli_hh value_crop_production value_crop_sales labor_hired labor_family farm_size_agland all_area_harvested all_area_planted  encs num_crops_hh multiple_crops (nonmissing=.) if crop_hh==0
+recode cost_expli_hh value_crop_production value_crop_sales labor_hired labor_family farm_area all_area_harvested all_area_planted  encs num_crops_hh multiple_crops (.=0) if crop_hh==1
+recode cost_expli_hh value_crop_production value_crop_sales labor_hired labor_family farm_area all_area_harvested all_area_planted  encs num_crops_hh multiple_crops (nonmissing=.) if crop_hh==0
 
 *all rural households engaged in livestock production 
 recode animals_lost12months* mean_12months* livestock_expenses disease_animal feed_grazing* water_source_nat water_source_const water_source_cover lvstck_housed (.=0) if livestock_hh==1
@@ -5696,9 +5620,9 @@ lab var w_labor_total "`labor_total' - Winsorized top 1%"
 
 *Variables winsorized both at the top 1% and bottom 1% 
 global wins_var_top1_bott1  /* 
-*/ farm_area farm_size_agland all_area_harvested all_area_planted ha_planted /*
+*/ cultivated_area farm_area all_area_harvested all_area_planted ha_planted /*
 */ crop_income livestock_income fishing_income self_employment_income nonagwage_income agwage_income transfers_income all_other_income total_cons percapita_cons daily_percap_cons peraeq_cons daily_peraeq_cons /* 
-*/ *_monocrop_ha* dist_agrodealer land_size_total
+*/ *_monocrop_ha* dist_agrodealer hh_agland
 
 foreach v of varlist $wins_var_top1_bott1 {
 	_pctile `v' [aw=weight] , p($wins_lower_thres $wins_upper_thres) 
@@ -5868,7 +5792,7 @@ gen cost_expli_hh_ha = w_cost_expli_hh / w_ha_planted
 lab var cost_expli_hh_ha "Explicit costs (per ha) of crop production (household level)"
 
 *land and labor productivity
-gen land_productivity = w_value_crop_production/w_farm_area
+gen land_productivity = w_value_crop_production/w_cultivated_area
 //gen labor_productivity = w_value_crop_production/w_labor_total 
 gen labor_productivity=.
 lab var land_productivity "Land productivity (value production per ha cultivated)"
@@ -6091,11 +6015,11 @@ recode vac_animal w_share_livestock_prod_sold livestock_expenses w_ls_exp_vac (n
 // }
 
 *households engaged in crop production
-recode w_proportion_cropvalue_sold w_farm_size_agland w_labor_family w_labor_hired /*
+recode w_proportion_cropvalue_sold w_farm_area w_labor_family w_labor_hired /*
 */ use_* /*w_labor_productivity*/ w_land_productivity /*
 */ w_inorg_fert_rate w_cost_expli_hh w_cost_expli_hh_ha w_cost_expli_ha w_cost_total_ha /*
 */ w_value_crop_production w_value_crop_sales w_all_area_planted w_all_area_harvested (.=0) if crop_hh==1
-recode w_proportion_cropvalue_sold w_farm_size_agland w_labor_family w_labor_hired /*
+recode w_proportion_cropvalue_sold w_farm_area w_labor_family w_labor_hired /*
 */ use_* /*w_labor_productivity*/ w_land_productivity /*
 */ w_inorg_fert_rate w_cost_expli_hh w_cost_expli_hh_ha w_cost_expli_ha w_cost_total_ha /*
 */ w_value_crop_production w_value_crop_sales w_all_area_planted w_all_area_harvested (nonmissing= . ) if crop_hh==0
@@ -6134,9 +6058,10 @@ recode costs_dairy liters_milk_produced value_milk_produced (nonmissing=.) if da
 *all rural households eith egg-producing animals
 recode w_eggs_total_year value_eggs_produced (.=0) if egg_hh==1
 recode w_eggs_total_year value_eggs_produced (nonmissing=.) if egg_hh==0
-  
+
+/* Replaced by SSP definition
 *Identify smallholder farmers (RULIS definition)
-global small_farmer_vars land_size tlu_today total_income 
+global small_farmer_vars farm_area tlu_today total_income 
 foreach p of global small_farmer_vars {
 	gen `p'_aghh = `p' if ag_hh==1
 	_pctile `p'_aghh  [aw=weight] , p(40) 
@@ -6148,12 +6073,13 @@ replace small_farm_household = . if ag_hh != 1
 sum small_farm_household if ag_hh==1 
 drop land_size_aghh small_land_size tlu_today_aghh small_tlu_today total_income_aghh small_total_income   
 lab var small_farm_household "1= HH is in bottom 40th percentiles of land size, TLU, and total revenue"
+*/
 
 *create different weights 
 gen w_labor_weight=weight //*w_labor_total //we don't have this
 //lab var w_labor_weight "labor-adjusted household weights"
 lab var w_labor_weight "weight for labor - equal to household weight"
-gen w_land_weight=weight*w_farm_area
+gen w_land_weight=weight*w_cultivated_area
 lab var w_land_weight "land-adjusted household weights"
 gen w_aglabor_weight_all=weight //*w_labor_hired //Also do not have
 lab var w_aglabor_weight_all "weight for labor - equal to household weight"
@@ -6247,10 +6173,10 @@ replace `v' =.
 // Removing intermediate variables to get below 5,000 vars
 keep hhid  fhh clusterid strataid *weight* *wgt* region district ta ea_id rural farm_size* *total_income* /*
 */ *percapita_income* *percapita_cons* *daily_percap_cons* *peraeq_cons* *daily_peraeq_cons* /*
-*/ *income* *share* *proportion_cropvalue_sold *farm_size_agland hh_members adulteq *labor_family *labor_hired use* vac_* /*
+*/ *income* *share* *proportion_cropvalue_sold *farm_area hh_members adulteq *labor_family *labor_hired use* vac_* /*
 */ /*feed*  water* lvstck_housed* */ ext_* lvstck_holding* *mortality_rate* /*lost_disease*/ disease* any_imp* formal_land_rights_hh /*
 */ *livestock_expenses* *ls_exp_vac* *prop_farm_prod_sold *value_*_prod* *hrs_*   months_food_insec *value_assets* hhs_* *dist_agrodealer /*
-*/ encs* num_crops_* multiple_crops* imprv_seed_* hybrid_seed_* *labor_total *farm_area *labor_productivity* *land_productivity* /*
+*/ encs* num_crops_* multiple_crops* imprv_seed_* hybrid_seed_* *labor_total *cultivated_area *labor_productivity* *land_productivity* /*
 */ *wage_paid_aglabor* *labor_hired ar_h_wgt_* *yield_hv_* ar_pl_wgt_* *yield_pl_* *liters_per_* milk_animals poultry_owned *costs_dairy* *cost_per_lit* /*
 */ *egg_poultry_year* *rate* *ha_planted* *cost_expli_hh* *cost_expli_ha* *monocrop_ha* *kgs_harv_mono* *cost_total_ha* /*
 */ *_exp* poverty_under_* *value_crop_production* *value_harv* *value_crop_sales* *value_sold* *kgs_harvest* *total_planted_area* *total_harv_area* /*
@@ -6258,7 +6184,7 @@ keep hhid  fhh clusterid strataid *weight* *wgt* region district ta ea_id rural 
 */ *value_livestock_products* *value_livestock_sales* *total_cons* nb_cattle_today nb_cows_today nb_poultry_today nb_smallrum_today bottom_40_percap bottom_40_peraeq /*
 */ ccf_loc ccf_usd ccf_1ppp ccf_2ppp *sales_livestock_products area_plan* area_harv*  value_pro* *_rate* *value_sal* *pure* *inter*
 
-gen ssp = (farm_size_agland <= 2 & farm_size_agland != 0) & (nb_cows_today <= 10 & nb_smallrum_today <= 10 & nb_poultry_today <= 50) if ag_hh==1
+gen ssp = (farm_area <= 2 & farm_area != 0) & (nb_cows_today <= 10 & nb_smallrum_today <= 10 & nb_poultry_today <= 50) if ag_hh==1
 la var weight_sample "Original survey weight"
 la var weight "Weight adjusted to match rural/urban populations"
 
@@ -6391,9 +6317,9 @@ merge 1:1 hhid plot_id season using "${MWI_IHPS_W2_created_data}\MWI_IHPS_W2_plo
 //merge 1:1 hhid plot_id season using "${MWI_IHPS_W2_created_data}/MWI_IHPS_W2_plot_labor_days.dta", keep (1 3) nogen //redundant
 // merge 1:m hhid using "${MWI_IHPS_W2_created_data}/MWI_IHPS_W2_plots_cultivate.dta", keep (1 3) nogen
  
- merge m:1 hhid using "${MWI_IHPS_W2_final_data}/MWI_IHPS_W2_household_variables.dta", nogen keep (1 3) keepusing(ag_hh fhh farm_size_agland)
- recode farm_size_agland (.=0) 
- gen rural_ssp=(farm_size_agland<=4 & farm_size_agland!=0) & rural==1 
+ merge m:1 hhid using "${MWI_IHPS_W2_final_data}/MWI_IHPS_W2_household_variables.dta", nogen keep (1 3) keepusing(ag_hh fhh farm_area)
+ recode farm_area (.=0) 
+ gen rural_ssp=(farm_area<=4 & farm_area!=0) & rural==1 
 
 global winsorize_vars field_size labor_total
 foreach p of global winsorize_vars { 

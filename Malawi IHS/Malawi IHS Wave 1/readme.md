@@ -160,7 +160,7 @@
 - **Description:** This dataset includes hhid as a unique identifier and estimated total land size (in hectares) including those rented in and out.
 - **Output:** `Malawi_IHS_W1_land_size_total.dta`
 - **Coding Status:** ![Complete](https://placehold.co/15x15/c5f015/c5f015.png) `Complete`
-- **Known Issues:** None
+- **Known Issues:** Area for permanent crops is only reported on an estimated basis if the plants are grown in plantations. For "scattered" plantings, area estimates are only available if the plantings occurred on a plot that was shared with seasonal crops (a relatively small minority). This means that estimates of land productivity that incorporate permanent crops (2,595 households out of the total sample) are likely overestimates. You may want to adjust by dropping permanent crops from the plot variables file.
 
 ### Off Farm Hours
 - **Description:** This dataset includes hhid as a unique identifier, estimated hours spent on non-agricultural activities annualized, and number of household members working hours off the farm.

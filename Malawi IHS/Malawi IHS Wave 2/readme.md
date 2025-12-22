@@ -16,13 +16,11 @@
 ## Table of Contents
 ### Globals
 * This section sets global variables for use later in the script, including:
-* **Population
+* **Population**
     * MWI_IHPS_W2_pop_tot - Total population in 2013 (World Bank)
     * MWI_IHPS_W2_pop_rur - Rural population in 2013 (World Bank)
     * MWI_IHPS_W2_pop_rur - Urban population in 2013 (World Bank)
-* **Non-GPS-Plots
-    * drop_unmeas_plots - if not 0, this global will remove any plot that is not measured by GPS from the sample. Used to reduce variability in yields that results from uncertainty around farmer area estimation and nonstandard unit conversion
-* **Exchange Rates
+* **Exchange Rates**
     * MWI_IHPS_W2_exchange_rate - USD-Kwacha conversion
     * MWI_IHPS_W2_gdp_ppp_dollar - GDP-based purchasing power parity conversion, World Bank Indicator PA.NUS.PPP
     * MWI_IHPS_W2_cons_ppp_dollar - Private-consumption-based purchasing power parity conversion, World Bank Indicator PA.NUS.PRVT.P
@@ -164,7 +162,7 @@
 - **Description:** This dataset includes hhid as a unique identifier and estimated total land size (in hectares) including those rented in and out.
 - **Output:** `Malawi_IHPS_W2_land_size_total.dta`
 - **Coding Status:** ![Complete](https://placehold.co/15x15/c5f015/c5f015.png) `Complete`
-- **Known Issues:** None
+- **Known Issues:** Area for permanent crops is only reported on an estimated basis if the plants are grown in plantations. For "scattered" plantings, area estimates are only available if the plantings occurred on a plot that was shared with seasonal crops (a relatively small minority). This means that estimates of land productivity that incorporate permanent crops (621 households out of the total sample) are likely overestimates. You may want to adjust by dropping permanent crops from the plot variables file.
 
 ### Farm Labor
 - **Description:** This dataset includes hhid as a unique identifier, number of labor days for hired laborers, number of labor days for family laborers, and number of labor days total.
