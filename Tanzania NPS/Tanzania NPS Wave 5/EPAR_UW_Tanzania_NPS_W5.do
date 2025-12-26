@@ -267,7 +267,7 @@ gen gps_meas = area_meas_hectares!=.
 la var field_size "Plot area, using estimated area if not measured"
 drop area_est_hectares 
 save "${Tanzania_NPS_W5_created_data}/Tanzania_NPS_W5_plot_areas.dta", replace
-stop
+
 ********************************************************************************
 *PLOT DECISION MAKERS
 ********************************************************************************

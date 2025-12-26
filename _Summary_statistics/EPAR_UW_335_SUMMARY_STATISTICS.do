@@ -148,8 +148,8 @@ foreach instrument of global list_instruments {
 		qui lab var `v'4Ha_ "`l`v'' - HH with farm size ]4 ha and more"
 		
 		*DYA 12.19.19  adding income per-capita for household with 0-4ha
-		gen `v'04Ha=`v' if farm_size_0_1==1 | farm_size_1_2==1 | farm_size_2_4==1
-		gen `v'02Ha=`v' if farm_size_0_1==1 | farm_size_1_2==1 
+		qui gen `v'04Ha=`v' if farm_size_0_1==1 | farm_size_1_2==1 | farm_size_2_4==1
+		qui gen `v'02Ha=`v' if farm_size_0_1==1 | farm_size_1_2==1 
 	}
 	
 	*Generating farm size variables by crop
@@ -1039,14 +1039,14 @@ foreach instrument of global list_instruments {
 	foreach i in 1ppp 2ppp loc {
 		foreach v of global final_indicator9 {
 			foreach x in $topcropname_area {
-				capture qui confirm variable  kgs_harv_wgt_`x'_`v'
+				capture qui confirm variable  kg_harv_wgt_`x'_`v'
 				if _rc {
-					qui gen kgs_harv_wgt_`x'_`v'=1
+					qui gen kg_harv_wgt_`x'_`v'=1
 				}
 				local missing_var ""
-				qui findname kgs_harv_wgt_`x'_`v' if (rural==1 & ag_hh==1),  all(@==.) local (missing_var)
+				qui findname kg_harv_wgt_`x'_`v' if (rural==1 & ag_hh==1),  all(@==.) local (missing_var)
 				if "`missing_var'"!="" { 
-					qui replace kgs_harv_wgt_`x'_`v'=1
+					qui replace kg_harv_wgt_`x'_`v'=1
 				}
 				capture qui confirm variable  w_`x'_exp_kg_`v'_`i'
 				if _rc {
@@ -1063,16 +1063,16 @@ foreach instrument of global list_instruments {
 					qui replace w_`x'_exp_kg_`v'_`i'=0
 				}
 				local missing_var ""	
-				qui recode kgs_harv_wgt_`x'_`v' (.=0)
-				qui findname kgs_harv_wgt_`x'_`v' if rural==1 & ag_hh==1,  all(@==. | @==0) local (missing_var)
+				qui recode kg_harv_wgt_`x'_`v' (.=0)
+				qui findname kg_harv_wgt_`x'_`v' if rural==1 & ag_hh==1,  all(@==. | @==0) local (missing_var)
 				if "`missing_var'"!="" { 
-					qui replace kgs_harv_wgt_`x'_`v'=1
+					qui replace kg_harv_wgt_`x'_`v'=1
 				}
 				*di "w_`x'_exp_kg_`v'_`i'"
-				qui tabstat w_`x'_exp_kg_`v'_`i' [aw=kgs_harv_wgt_`x'_`v'] if rural==1 & ag_hh==1, stat(mean sd p25 p50 p75  min max N) col(stat) save
+				qui tabstat w_`x'_exp_kg_`v'_`i' [aw=kg_harv_wgt_`x'_`v'] if rural==1 & ag_hh==1, stat(mean sd p25 p50 p75  min max N) col(stat) save
 				matrix temp9g=r(StatTotal)'
 	
-				qui svyset clusterid [pw=kgs_harv_wgt_`x'_`v'], strata(strataid) singleunit(centered) // get standard errors of the mean	
+				qui svyset clusterid [pw=kg_harv_wgt_`x'_`v'], strata(strataid) singleunit(centered) // get standard errors of the mean	
 				qui svy, subpop(if rural==1 & ag_hh==1): mean w_`x'_exp_kg_`v'_`i'
 				matrix temp9f=temp9f\(temp9g,el(r(table),2,1))
 			}
@@ -1441,7 +1441,7 @@ foreach instrument of global list_instruments {
 	}
 	*adding in other non-monetary variables by crop
 	foreach v in $topcropname_area {
-		global final_indicator11 $final_indicator11 w_kgs_harvest_`v' 
+		global final_indicator11 $final_indicator11 w_kg_harvest_`v' 
 	}
 	foreach v in $topcropname_area {
 		global final_indicator11 $final_indicator11 w_total_planted_area_`v' 
@@ -1473,7 +1473,7 @@ foreach instrument of global list_instruments {
 		qui lab var `v'_fhh "`l`v'' - FHH- using individual weight"
 		qui gen `v'_mhh=`v' if fhh==0	
 		qui lab var `v'_mhh "`l`v'' - MHH- using individual weight"
-		di "`v'_fhh"
+		//di "`v'_fhh"
 		global final_indicator11bis $final_indicator11bis `v'  `v'_fhh `v'_mhh
 	}
 

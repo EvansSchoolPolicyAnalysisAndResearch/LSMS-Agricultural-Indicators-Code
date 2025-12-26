@@ -1014,9 +1014,16 @@ drop qtyorgfert
 gen valorgfertimp = valorgfertexp/qtyorgfertexp*qtyorgfertimp 
 gen itemcodeorgfertimp=5 //Using a separate itemcode from fertilizers. 
 gen itemcodeorgfertexp=5
+keep hhid parcel_id plot_id season qty* val* unit* itemcode*
+unab vars : *exp //create a local macro called vars out of every variable that ends with exp
+local stubs : subinstr local vars "exp" "", all //create another local called stubs with exp at the end, with "exp" removed. This is for the reshape below
+reshape long `stubs', i(hhid parcel_id plot_id season) j(exp) string
+reshape long val qty unit itemcode, i(hhid parcel_id plot_id season exp) j(input) string
+tempfile fertilizers
+save `fertilizers'
 
 *************************    MACHINERY INPUTS   ********************************
-preserve //This section creates raw data on value of machinery/tools
+//This section creates raw data on value of machinery/tools
 use "${Uganda_NPS_W2_raw_data}/AGSEC10", clear 
 *drop if own_implement == 2 //2 = no farm implement owned, rented, or used (separated by implement)
 ren a10q1 qtymechimp //number of owned machinery/tools
@@ -1028,9 +1035,7 @@ tostring HHID, format(%18.0f) replace
 ren HHID hhid
 tempfile rawmechexpense
 save `rawmechexpense', replace
-restore
 
-preserve
 //Assume mechanical implements are used equally over the household area. 
 use "${Uganda_NPS_W2_created_data}/Uganda_NPS_W2_plot_areas.dta", clear
 bys hhid season : egen tot_ha_planted=sum(planted_area)
@@ -1047,17 +1052,10 @@ reshape long qtymech valmech, i(hhid parcel_id plot_id season itemcode dummy) j(
 replace dummy=_n
 reshape long qty val, i(hhid parcel_id plot_id season itemcode exp dummy) j(input) string
 drop dummy
-tempfile mechexpenses
-save `mechexpenses'
-restore 
 
 //Now to reshape long and get all the medians at once.
-keep hhid parcel_id plot_id season qty* val* unit* itemcode*
-unab vars : *exp //create a local macro called vars out of every variable that ends with exp
-local stubs : subinstr local vars "exp" "", all //create another local called stubs with exp at the end, with "exp" removed. This is for the reshape below
-reshape long `stubs', i(hhid parcel_id plot_id season) j(exp) string
-reshape long val qty unit, i(hhid parcel_id plot_id season exp) j(input) string
-append using `mechexpenses'
+
+append using `fertilizers'
 append using `seeds'
 append using `plotrents'
 merge m:1 hhid using "${Uganda_NPS_W2_created_data}/Uganda_NPS_W2_weights.dta", nogen keep(1 3)
@@ -1094,7 +1092,7 @@ else {
 recode obs_`i' (.=0)
 replace input_price = price_`i' if obs_`i' > 9
 }
-
+recode val (0=.)
 replace val = input_price*qty if val==. 
 drop if val==. & qty==. 
 
@@ -2596,10 +2594,10 @@ la def species 1 "Large ruminants (cows, buffalos)" 4 "Equines (donkeys, mules, 
 *A loop to create species variables
 foreach i in vac_animal {
 	gen `i'_lrum = `i' if species==1
-// 	gen `i'_srum = `i' if species==2
-// 	gen `i'_pigs = `i' if species==3
+ 	gen `i'_srum = `i' if species==2
+ 	gen `i'_pigs = `i' if species==3
 	gen `i'_equines = `i' if species==4
-// 	gen `i'_poultry = `i' if species==5
+ 	gen `i'_poultry = `i' if species==5
 	}
 * Finish the reshape by collapsing species to the household level
 *ren HHId hhid
@@ -2611,10 +2609,10 @@ lab var vac_animal "1= Household has an animal vaccinated"
 foreach i in vac_animal {
 	local l`i' : var lab `i'
 	lab var `i'_lrum "`l`i'' - large ruminants"
-// 	lab var `i'_srum "`l`i'' - small ruminants"
-// 	lab var `i'_pigs "`l`i'' - pigs"
+	lab var `i'_srum "`l`i'' - small ruminants"
+ 	lab var `i'_pigs "`l`i'' - pigs"
 	lab var `i'_equine "`l`i'' - equine"
-// 	lab var `i'_poultry "`l`i'' - poultry"
+ 	lab var `i'_poultry "`l`i'' - poultry"
 }
 
 * Save the Vaccine dummies to disk
@@ -2624,14 +2622,12 @@ save "${Uganda_NPS_W2_created_data}/Uganda_NPS_W2_vaccine.dta", replace
 use "${Uganda_NPS_W2_raw_data}/AGSEC6A", clear
 gen all_vac_animal=a6aq18<=2 
 rename a6aq3 livestock_code
-ren HHID hhid
-keep hhid all_vac_animal a6aq17a
-ren a6aq17a farmerid1
-ren a6aq17b farmerid2
-keep hhid all_vac_animal farmerid*
-reshape long farmerid, i(hhid all_vac_animal) j(obs)
+ren (HHID a6aq17a a6aq17b) (hhid farmerid1 farmerid2)
+collapse (max) all_vac_animal, by(hhid farmerid*)
+gen dummy=_n
+reshape long farmerid, i(hhid all_vac_animal dummy) j(obs)
 recode all_vac_animal (.=0)
-collapse (max) all_vac_animal , by(hhid farmerid)
+collapse (max) all_vac_animal, by(hhid farmerid)
 gen personid = farmerid
 drop if personid==. 
 merge 1:1 hhid personid using "${Uganda_NPS_W2_created_data}/Uganda_NPS_W2_person_ids.dta", nogen keep(1 3)
@@ -2837,11 +2833,11 @@ restore
 preserve
 	ren use_inorg_fert all_use_inorg_fert
 	lab var all_use_inorg_fert "1 = Individual farmer (plot manager) uses inorganic fertilizer"
-	tostring personid, format(%19.0f) replace
-	gen farm_manager=1 if personid!=""
+	//tostring personid, format(%19.0f) replace
+	gen farm_manager=1 if personid!=.
 	recode farm_manager (.=0)
 	lab var farm_manager "1=Indvidual is listed as a manager for at least one plot" 
-drop personid
+//drop personid
 	save "${Uganda_NPS_W2_created_data}/Uganda_NPS_W2_farmer_fert_use.dta", replace 
 restore
 
@@ -4923,12 +4919,12 @@ saveold "${Uganda_NPS_W2_final_data}/Uganda_NPS_W2_household_variables.dta", rep
 ********************************************************************************
 //AT to address: PID |> personid
 use "${Uganda_NPS_W2_created_data}/Uganda_NPS_W2_person_ids.dta", clear
-merge 1:1 hhid PID using "${Uganda_NPS_W2_created_data}/Uganda_NPS_W2_control_income.dta", nogen keep(1 3)
-merge 1:1 hhid PID using "${Uganda_NPS_W2_created_data}/Uganda_NPS_W2_ownasset.dta", nogen keep(1 3)
+merge 1:1 hhid personid using "${Uganda_NPS_W2_created_data}/Uganda_NPS_W2_control_income.dta", nogen keep(1 3)
+merge 1:1 hhid personid using "${Uganda_NPS_W2_created_data}/Uganda_NPS_W2_ownasset.dta", nogen keep(1 3)
 merge m:1 hhid using "${Uganda_NPS_W2_created_data}/Uganda_NPS_W2_hhsize.dta", nogen keep(1 3)
-merge 1:1 hhid PID using "${Uganda_NPS_W2_created_data}/Uganda_NPS_W2_farmer_fert_use.dta", nogen keep(1 3) 
-merge 1:1 hhid PID using "${Uganda_NPS_W2_created_data}/Uganda_NPS_W2_farmer_improved_seed_use.dta", nogen keep(1 3)
-merge 1:1 hhid PID using "${Uganda_NPS_W2_created_data}/Uganda_NPS_W2_farmer_vaccine.dta", nogen keep(1 3)
+merge 1:1 hhid personid using "${Uganda_NPS_W2_created_data}/Uganda_NPS_W2_farmer_fert_use.dta", nogen keep(1 3) 
+merge 1:1 hhid personid using "${Uganda_NPS_W2_created_data}/Uganda_NPS_W2_farmer_improved_seed_use.dta", nogen keep(1 3)
+merge 1:1 hhid personid using "${Uganda_NPS_W2_created_data}/Uganda_NPS_W2_farmer_vaccine.dta", nogen keep(1 3)
 merge m:1 hhid using "${Uganda_NPS_W2_created_data}/Uganda_NPS_W2_hhids.dta", nogen keep(1 3)
 
 *Land rights

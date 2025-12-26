@@ -149,7 +149,7 @@ global summary_stats "$directory\_Summary_statistics\EPAR_UW_335_SUMMARY_STATIST
 
 *Ensure that files downloaded from the microdata.worldbank.org link above are organized into the following sub-directories of \raw_data according to topic:
 *Agriculture, Community, Fisheries, Geovariables, Household
-stop 
+ 
 ********************************************************************************
 *RE-SCALING SURVEY WEIGHTS TO MATCH POPULATION ESTIMATES
 ********************************************************************************

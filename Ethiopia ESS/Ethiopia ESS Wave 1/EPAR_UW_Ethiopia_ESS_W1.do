@@ -964,7 +964,7 @@ land_size_total:	All land owned or used, including rented in/out parcels (househ
 preserve
 keep cultivated field_size hhid holder_id parcel_id plot_id //we should be at unique plots at this point, but if not. 
 keep if cultivated==1
-save "${Ethiopia_ESS_W1_created_data}/Ethiopia_ESS_W1_field_sizes.dta", replace
+save "${Ethiopia_ESS_W1_created_data}/Ethiopia_ESS_W1_plot_sizes.dta", replace
 lab var cultivated "1= plot was cultivated in this data set"
 collapse (sum) parcel_size = field_size, by(hhid holder_id parcel_id)
 lab var parcel_size "Parcel area measured in hectares with GPS, with missing replaced with farmer reported area"

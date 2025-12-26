@@ -3812,7 +3812,7 @@ drop crop_code
 unab vars : *_
 reshape wide `vars', i(hhid) j(crop_name) string
 //merge 1:1 hhid using "${Nigeria_GHS_W2_created_data}/Nigeria_GHS_W2_trees.dta"
-collapse (sum) harvest* area_harv* area_plan* total_planted_area* total_harv_area* kgs_harvest* value_harv* value_sold* (max) lost* no_harvest*, by(hhid)
+collapse (sum) harvest* area_harv* area_plan* total_planted_area* total_harv_area* kg_harvest* value_harv* value_sold* (max) lost* no_harvest*, by(hhid)
 recode harvest* area_harv* area_plan* kg_harvest* total_planted_area* total_harv_area* value_harv* value_sold* (0=.)
 egen kg_harvest = rowtotal(kg_harvest_*)
 la var kg_harvest "Quantity harvested of all crops (kgs) (household) (summed accross all seasons)" 

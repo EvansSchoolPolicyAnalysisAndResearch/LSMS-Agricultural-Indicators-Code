@@ -5056,14 +5056,14 @@ replace price_unit = price_unit_hhid if price_unit_hhid !=.
 replace price_unit = price_unit_country if price_unit==.
 gen val_fdcons=price_unit*qty
 
-save "${MWI_IHS_IHPS_W2_created_data}/MWI_IHS_IHPS_W2_food_consumption_items.dta", replace 
+save "${MWI_IHPS_W2_created_data}/MWI_IHPS_W2_food_consumption_items.dta", replace 
 gen val_alc=val_fdcons if inrange(itemcode, 911,916)
 replace val_fdcons=. if inrange(itemcode, 911,916)
 collapse (sum) val_fdcons val_alc, by (hhid) 
 gen int_mod = "g"
 gen annual_val_fdcons=(val_fdcons*52)
 gen annual_val_alc = val_alc*52
-save "${MWI_IHS_IHPS_W2_created_data}/MWI_IHS_IHPS_W2_food_consumption.dta", replace
+save "${MWI_IHPS_W2_created_data}/MWI_IHPS_W2_food_consumption.dta", replace
 
 merge m:1 hhid using "${MWI_IHPS_W2_created_data}\MWI_IHPS_W2_hhids.dta", nogen keep (1 3)
 merge m:1 hhid using "${MWI_IHPS_W2_appended_data}\hh_mod_a_filt_13.dta", nogen keep(1 3)	

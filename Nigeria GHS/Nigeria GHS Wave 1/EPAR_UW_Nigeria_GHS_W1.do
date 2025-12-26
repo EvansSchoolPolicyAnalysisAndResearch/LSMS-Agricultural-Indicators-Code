@@ -3404,7 +3404,7 @@ unab vars : *_
 reshape wide `vars', i(hhid) j(crop_name) string
 //merge 1:1 hhid using "${Nigeria_GHS_W1_created_data}/Nigeria_GHS_W1_trees.dta", nogen
 collapse (sum) harvest* area_harv* area_plan* total_planted_area* total_harv_area* kg_harvest* value_harv* value_sold* (max) lost* no_harvest*, by(hhid)
-recode harvest* area_harv* area_plan* kgs_harvest* total_planted_area* total_harv_area* value_harv* value_sold* (0=.)
+recode harvest* area_harv* area_plan* kg_harvest* total_planted_area* total_harv_area* value_harv* value_sold* (0=.)
 egen kg_harvest = rowtotal(kg_harvest_*)
 la var kg_harvest "Quantity harvested of all crops (kgs) (household) (summed accross all seasons)" 
 
@@ -4341,7 +4341,7 @@ collapse (sum) val days, by(hhid gender)
 gen rate = val/days
 gen hh_rate = rate
 gen obs=1
-merge m:1 hhid using "${Nigeria_GHS_W1_created_data}/Nigeria_GHS_W1_hhsize.dta", nogen keep(1 3) keepusing(weight_pop_rururb zone state lga ea)
+merge m:1 hhid using "${Nigeria_GHS_W1_created_data}/Nigeria_GHS_W1_weights.dta", nogen keep(1 3) keepusing(weight_pop_rururb zone state lga ea)
 
 foreach i in ea lga state zone {
 	preserve
@@ -4405,7 +4405,7 @@ keep zone state lga hhid hrs* hh_water_labor hh_water_purch hh_water_all
 la var hh_water_labor "Cost for collected water and value of self-produced bottled/sachet water"
 la var hh_water_purch "Cost of purchased sachet/bottled water and other water services"
 la var hh_water_all "Total hh cost of water"
-save "${Nigeria_GHS_W1_created_data}/Nigeria_GHS_W1_water_costs_hh.dta", clear
+save "${Nigeria_GHS_W1_created_data}/Nigeria_GHS_W1_water_costs_hh.dta", replace
 
 //no distinction between travel time for wet and dry season, so just taking the travel time written regardless of wet or dry season
 use "${Nigeria_GHS_W1_raw_data}/sect8_harvestw1.dta", clear
@@ -4413,9 +4413,9 @@ ren s8q34a travel_time
 replace travel_time = travel_time*60 if s8q34 == 2 //convert all time units to minutes
 
 //no filter or water insecurity quesitons in this questionaire
-
-replace s8q33a = s8q33b if s8q33a == 10
-replace s8q33c = s8q33d if s8q33c == 10
+//need to manually sort os
+//replace s8q33a = s8q33b if s8q33a == 10
+//replace s8q33c = s8q33d if s8q33c == 10
 replace s8q33a = s8q33c if missing(s8q33c)
 gen dep_water = travel_time > 30 | (!inlist(s8q33a, 1,3,4,8,9) | !inlist(s8q33c, 1, 3, 4, 8,9))
 gen daily_water_bill = s8q35/30
@@ -4424,8 +4424,8 @@ gen dep_fuel = inlist(s8q11,1,2,4,9)
 gen dep_elec = s8q17 == 2
 gen dep_sanit = s8q37 == 2 | inlist(s8q36a, 1, 7, 9, 5)
 
-keep hhid travel_* water_* has_* daily* dep*
-save "${Nigeria_GHS_W1_created_data}/Nigeria_GHS_W1_mpi_housing.dta"
+keep hhid travel_* *water* /*has_* */ daily* dep*
+save "${Nigeria_GHS_W1_created_data}/Nigeria_GHS_W1_mpi_housing.dta", replace
 
 
 
