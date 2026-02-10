@@ -629,14 +629,15 @@ recode crop_code  (741 742 744 = 740)
 label define cropID 740 "BANANAS", modify
 collapse (sum) quant_harv_kg quant_sold_kg quant_lost_kg value* (mean) price_unit (max) no_harvest, by(hhid parcel_id plot_id crop_code season)
 *Checking price_unit mean and sd for each type of crop ->  bys crop_code: sum price_unit
-save "${Uganda_NPS_W2_created_data}/Uganda_NPS_W2_crop_value.dta", replace 
+tempfile crop_value
+save `crop_value'
 
 **********************************
 ** Plot Variables **
 **********************************
 	use  "${Uganda_NPS_W2_created_data}/Uganda_NPS_W2_crop_areas.dta", clear
 	merge m:1 hhid parcel_id using "${Uganda_NPS_W2_created_data}/Uganda_NPS_W2_plot_decision_makers.dta", nogen keep(1 3)
-	merge 1:1 hhid parcel_id plot_id crop_code season using "${Uganda_NPS_W2_created_data}/Uganda_NPS_W2_crop_value.dta", nogen keep(1 3)
+	merge 1:1 hhid parcel_id plot_id crop_code season using `crop_value', nogen keep(1 3)
 	merge m:1 hhid using "${Uganda_NPS_W2_created_data}/Uganda_NPS_W2_weights.dta", nogen keep(1 3) keepusing(region ea district county subcounty parish rural)
 	gen ha_harvest=ha_planted if !no_harvest
 	save "${Uganda_NPS_W2_created_data}/Uganda_NPS_W2_all_plots.dta", replace
@@ -648,7 +649,7 @@ save "${Uganda_NPS_W2_created_data}/Uganda_NPS_W2_crop_value.dta", replace
 *                              GROSS CROP REVENUE                              *
 ********************************************************************************
 
-use "${Uganda_NPS_W2_created_data}/Uganda_NPS_W2_crop_value.dta", clear
+use `crop_value', clear
 collapse (sum) value_sales value_harvest, by (hhid crop_code)
 ren value_sales value_crop_sales 
 ren value_harvest value_crop_production
@@ -664,7 +665,7 @@ lab var proportion_cropvalue_sold "Proportion of crop value produced that has be
 save "${Uganda_NPS_W2_created_data}/Uganda_NPS_W2_hh_crop_production.dta", replace
 
 *Crops lost post-harvest //Legacy
-use "${Uganda_NPS_W2_created_data}/Uganda_NPS_W2_crop_value.dta", clear
+use `crop_value', clear
 collapse (sum) value_lost, by (hhid)
 rename value_lost crop_value_lost
 lab var crop_value_lost "Value of crop production that had been lost by the time of survey"

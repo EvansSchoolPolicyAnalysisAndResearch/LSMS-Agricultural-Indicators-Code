@@ -471,7 +471,8 @@ gen personid = s3aq03_3
 replace personid=s3bq03_3 if personid==""
 destring personid, replace
 merge m:1 hhid parcel_id using `parcelrights', nogen keep(1 3) 
-ren personid individ //to fix                                                        
+ren personid individ //to fix
+keep hhid parcel_id plot_id individ formal_land_rights season                                 
 merge m:1 hhid individ using "${Uganda_NPS_W7_created_data}/Uganda_NPS_W7_person_ids.dta", nogen keep(1 3) //Dropping unmatched from using
 preserve 
 keep if individ!=.
@@ -653,7 +654,8 @@ recode crop_code  (741 742 744 = 740)
 label define cropID 740 "BANANAS", modify
 collapse (sum) quant_harv_kg quant_sold_kg /*quant_lost_kg*/ value* (mean) price_unit (max) no_harvest, by(hhid parcel_id plot_id crop_code season)
 *Checking price_unit mean and sd for each type of crop ->  bys crop_code: sum price_unit
-save "${Uganda_NPS_W7_created_data}/Uganda_NPS_W7_crop_value.dta", replace
+tempfile crop_value
+save `crop_value'
 
 
 **********************************
@@ -676,7 +678,7 @@ save "${Uganda_NPS_W7_created_data}/Uganda_NPS_W7_crop_value.dta", replace
 	//ren hhid HHID
 	clonevar crop_code = cropID //we want to keep the original crop IDs intact while reducing the number of categories in the master version
 		merge m:1 hhid plot_id parcel_id crop_code season using "${Uganda_NPS_W7_created_data}/Uganda_NPS_W7_crop_areas.dta", nogen keep(1 3)
-	merge 1:1 hhid plot_id parcel_id crop_code season using  "${Uganda_NPS_W7_created_data}/Uganda_NPS_W7_crop_value.dta", nogen keep(1 3) //about 381 not matched from using and 2,026 missing from master; not clear what the source of the mismatch is. 
+	merge 1:1 hhid plot_id parcel_id crop_code season using  `crop_value', nogen keep(1 3) //about 381 not matched from using and 2,026 missing from master; not clear what the source of the mismatch is. 
 	//ren hhid hhid
 recode crop_code (811 812 = 810) (741 742 744 = 740) (224 = 223)
 label define cropID 740 "BANANAS" 220 "PEAS", modify //need to add new codes to the value label, cropID

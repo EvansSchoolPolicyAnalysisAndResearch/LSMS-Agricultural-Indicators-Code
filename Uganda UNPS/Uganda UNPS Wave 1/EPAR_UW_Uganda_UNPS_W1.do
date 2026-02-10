@@ -575,7 +575,8 @@ gen value_harvest=quant_harv_kg*price_unit
 gen value_lost=quant_lost_kg*price_unit
 collapse (sum) quant_harv_kg quant_sold_kg quant_lost_kg value_harvest value_lost (mean) price_unit, by(HHID parcel_id plot_id crop_code season)
 *Checking price_unit mean and sd for each type of crop ->  bys crop_code: sum price_unit
-save "${Uganda_NPS_W1_created_data}/Uganda_NPS_W1_crop_value.dta", replace 
+tempfile crop_value
+save `crop_value'
 
 **********************************
 ** Plot Variables **
@@ -599,9 +600,6 @@ gen use_imprv_seed = (A4aq13==2) if A4aq13!=.
 replace use_imprv_seed= (A4bq13==2) if use_imprv_seed==. & A4bq13!=.
 clonevar crop_code = crop_code_plant //we want to keep the original crop IDs intact while reducing the number of categories in the master version
 merge 1:1 HHID parcel_id plot_id crop_code season using "${Uganda_NPS_W1_created_data}/Uganda_NPS_W1_crop_areas.dta", nogen keep(1 3)	
-recode crop_code (741 742 744 = 740) (224 = 223) //740 is bananas, which is being reduced from different types to just bananas. Same for peas (220).
-label define cropID 740 "BANANAS", modify //need to add new codes to the value label, cropID
-label values crop_code cropID //apply crop labels to crop_code_master
 
 merge m:1 HHID parcel_id plot_id season using "${Uganda_NPS_W1_created_data}/Uganda_NPS_W1_plot_areas.dta", nogen keep(1 3)	
 	gen ha_planted=percent_planted*field_size
@@ -610,8 +608,11 @@ replace perm_tree = 0 if perm_tree == .
 
 	*plant_dates harv_dates plant_date_unique harv_date_unique permax
 	gen ha_harvest=ha_planted
-merge m:1 HHID parcel_id plot_id crop_code season using  "${Uganda_NPS_W1_created_data}/Uganda_NPS_W1_crop_value.dta", nogen keep(1 3)
+merge 1:1 HHID parcel_id plot_id crop_code season using  `crop_value', nogen keep(1 3)
 merge m:1 HHID using "${Uganda_NPS_W1_created_data}/Uganda_NPS_W1_hhids.dta", nogen keep(1 3)
+recode crop_code (741 742 744 = 740) (224 = 223) //740 is bananas, which is being reduced from different types to just bananas. Same for peas (220).
+label define cropID 740 "BANANAS", modify //need to add new codes to the value label, cropID
+label values crop_code cropID //apply crop labels to crop_code_master
 //To add: lost crops
 	collapse (sum) percent_field=percent_planted /*To fix*/ quant_harv_kg value_harvest ha_harvest ha_planted  /* plant_date months_grown s_quant_harv_kg s_value_harvest harv_date harv_end*/, by(region district county /*subcounty*/ parish ea HHID parcel_id plot_id season crop_code field_size perm_tree /*month_planted month_harvest*/)
 		gen purestand=1

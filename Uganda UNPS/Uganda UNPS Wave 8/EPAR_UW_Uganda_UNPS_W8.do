@@ -805,7 +805,8 @@ restore
 //Postharvest losses go here.
 collapse (sum) quant_harv_kg quant_sold_kg value*, by(hhid parcel_id plot_id crop_code season)
 gen no_harvest=quant_harv_kg==.
-save "${Uganda_NPS_W8_created_data}/Uganda_NPS_W8_crop_value.dta", replace
+tempfile crop_value
+save `crop_value'
 
 
 **********************************
@@ -819,7 +820,7 @@ replace season = 2 if season ==.
 rename pltid plot_id
 rename parcelID parcel_id
 rename cropID crop_code 
-merge 1:1 hhid parcel_id plot_id crop_code season using "${Uganda_NPS_W8_created_data}/Uganda_NPS_W8_crop_value.dta", nogen
+merge 1:1 hhid parcel_id plot_id crop_code season using `crop_value', nogen
 
 //tostring hhid, format(%18.0f) replace
 merge m:1 hhid parcel_id plot_id season using "${Uganda_NPS_W8_created_data}/Uganda_NPS_W8_plot_areas.dta", nogen keep(1 3)
@@ -872,7 +873,7 @@ gen months_grown = harv_date - plant_date if perm_tree==0
 	*/
 	
 	merge 1:1 hhid parcel_id plot_id season crop_code using "${Uganda_NPS_W8_created_data}/Uganda_NPS_W8_crop_areas.dta", nogen
-	merge 1:1 hhid parcel_id plot_id season crop_code using "${Uganda_NPS_W8_created_data}/Uganda_NPS_W8_crop_value.dta", nogen
+	merge 1:1 hhid parcel_id plot_id season crop_code using `crop_value', nogen
 	gen ha_harvest=ha_planted if !no_harvest
 	recode crop_code  (741 742 744 = 740) //740 is bananas, which is being reduced from different types to just bananas. 
 label define L_CROP_LIST 740 "Bananas", modify //need to add new codes to the value label, cropID

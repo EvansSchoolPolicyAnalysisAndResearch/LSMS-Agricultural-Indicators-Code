@@ -564,7 +564,6 @@ label var harv_end "Harvest end date"
 label var price_unit "Average sold value per kg of harvest sold"
 gen obs = price_unit!=.
 *Checking price_unit mean and sd for each type of crop ->  bys crop_code: sum price_unit
-save "${Uganda_NPS_W3_created_data}/Uganda_NPS_W3_crop_value.dta", replace 
 *We collapse to get to a unit of analysis at the HHID, parcel, plot, season level instead of ... plot, season, condition and unit of crop harvested*/
 
 **********************************
@@ -724,7 +723,7 @@ drop no_harvest
 	//Labor should be weighted by growing season length, though. 
 	merge m:1 HHID parcel_id plot_id season using "${Uganda_NPS_W3_created_data}/Uganda_NPS_W3_plot_decision_makers.dta", nogen  keep(1 3) keepusing(dm*)
 	save "${Uganda_NPS_W3_created_data}/Uganda_NPS_W3_all_plots.dta", replace
-
+	
 ********************************************************************************
 ** 								ALL PLOTS END								  **
 ********************************************************************************
@@ -1962,11 +1961,11 @@ replace value_sold=a6cq14b if value_sold==.
 gen income_live_sales = value_sold*number_sold //total sales value of all sold
 
 ren a6aq15 number_slaughtered
-replace number_slaughtered = 2*a6bq15 if number_slaughtered==. & a6bq15!=.
+replace number_slaughtered = a6bq15 if number_slaughtered==. & a6bq15!=. //DA reported as 12 months rather than 6 months
 replace number_slaughtered = 4*a6cq15 if number_slaughtered==. & a6cq15!=.
 
 ren a6aq13a number_livestock_purchases
-replace number_livestock_purchases = 2*a6bq13a if number_livestock_purchases==.
+replace number_livestock_purchases = a6bq13a if number_livestock_purchases==.
 replace number_livestock_purchases = 4*a6cq13a if number_livestock_purchases==.
 
 ren a6aq13b price_livestock
@@ -5419,7 +5418,7 @@ capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2
 */ 81 "Niger ECVMA Wave 1" 82 "Niger ECVMA Wave 2"
 label values instrument instrument	
 saveold "${Uganda_NPS_W3_final_data}/Uganda_NPS_W3_field_plot_variables.dta", replace 
- 
+
 ********************************************************************************
 *SUMMARY STATISTICS
 ******************************************************************************** 

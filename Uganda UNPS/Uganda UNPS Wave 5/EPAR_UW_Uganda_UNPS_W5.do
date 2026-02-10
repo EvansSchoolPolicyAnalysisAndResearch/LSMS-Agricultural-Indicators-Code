@@ -582,7 +582,8 @@ collapse (sum) quant_harv_kg quant_sold_kg quant_lost_kg value_harvest* value_lo
 lab var value_harvest "Estimated value of crops harvested based on area medians"
 lab var value_harvest_hh "Estimated value of crops harvested based on household price sold when available"
 *Checking price_unit mean and sd for each type of crop ->  bys crop_code: sum price_unit
-save "${Uganda_NPS_W5_created_data}/Uganda_NPS_W5_crop_value.dta", replace 
+tempfile crop_value
+save `crop_value' 
 *We collapse to get to a unit of analysis at the HHID, parcel, plot, season level instead of ... plot, season, condition and unit of crop harvested*/
 
 *********************************
@@ -638,7 +639,7 @@ merge m:1 hhid using  "${Uganda_NPS_W5_created_data}/Uganda_NPS_W5_hhids.dta"
 collapse (sum) ha_planted ha_harvest percent_field=percent_planted /*TO fix*/ (max) use_imprv_seed /*months_grown plant_date harv_date harv_end*/, by (region district county county_name parish ea hhid parcel_id plot_id season crop_code field_size)
 	bysort hhid parcel_id plot_id season: gen cropcount= _N
 	gen purestand=cropcount==1
-merge m:1 hhid parcel_id plot_id crop_code season using  "${Uganda_NPS_W5_created_data}/Uganda_NPS_W5_crop_value.dta", nogen keep(1 3)
+merge 1:1 hhid parcel_id plot_id crop_code season using  `crop_value', nogen keep(1 3)
 	bys hhid parcel_id plot_id season : egen percent_area = sum(percent_field)
 	bys hhid parcel_id plot_id season : gen percent_inputs = percent_field / percent_area
 	drop percent_area //Assumes that inputs are +/- distributed by the area planted. Probably not true for mixed tree/field crops, but reasonable for plots that are all field crops

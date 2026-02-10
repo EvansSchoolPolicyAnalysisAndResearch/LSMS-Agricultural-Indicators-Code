@@ -570,8 +570,6 @@ label var harv_end "Harvest end date"
 label var price_unit "Average sold value per kg of harvest sold"
 gen obs = price_unit!=.
 *Checking price_unit mean and sd for each type of crop ->  bys crop_code: sum price_unit
-	
-save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_crop_value.dta", replace
 *We collapse to get to a unit of analysis at the HHID, parcel, plot, season level instead of ... plot, season, condition and unit of crop harvested*/
 
 **********************************
@@ -1977,11 +1975,11 @@ replace value_sold=a6cq14b if value_sold==.
 gen income_live_sales = value_sold*number_sold //total sales value of all sold
 
 ren a6aq15 number_slaughtered
-replace number_slaughtered = 2*a6bq15 if number_slaughtered==. & a6bq15!=.
+replace number_slaughtered = a6bq15 if number_slaughtered==. & a6bq15!=. //DA asks for 12 months instead of 6 months
 replace number_slaughtered = 4*a6cq15 if number_slaughtered==. & a6cq15!=.
 
 ren a6aq13a number_livestock_purchases
-replace number_livestock_purchases = 2*a6bq13a if number_livestock_purchases==.
+replace number_livestock_purchases = a6bq13a if number_livestock_purchases==.
 replace number_livestock_purchases = 4*a6cq13a if number_livestock_purchases==.
 
 ren a6aq13b price_livestock
