@@ -549,20 +549,23 @@ gen personid3 = s3q15_2
 //gen personid4 = saq09 //holder
 //replace personid4 = subinstr(personid4, "0", "", 1) if substr(personid4, 1, 1) == "0" // if it starts with a 0, remove
 //destring personid4, replace
-reshape long personid, i(hhid holder_id parcel_id plot_id cultivated) j(personno)
+
+keep hhid parcel_id holder_id plot_id personid* 
+recode personid* (999=.) 
+drop if plot_id==""
+gen dummy = _n  
+reshape long personid, i(hhid holder_id parcel_id plot_id dummy) j(pidno)	 	 
 merge m:1 hhid personid using "${Ethiopia_ESS_W5_created_data}/Ethiopia_ESS_W5_person_ids.dta", nogen keep(1 3)	
 drop if personid==.
 preserve
 keep hhid plot_id personid female
 save "${Ethiopia_ESS_W5_created_data}/Ethiopia_ESS_W5_dm_ids.dta", replace
-restore
-gen dm_gender = 1+female
-replace dm_gender = 3 if !inlist(dm_gender, 1, 2, .)
-la def dm_gender 1 "Male only" 2 "Female only" 3 "Mixed gender"
-la val dm_gender dm_gender
-lab var dm_gender "Gender of decision-maker(s)"
-gen dm1_gender=female+1 if personno==1
+restore 
+
+drop dummy
+gen dm1_gender=female+1 if pidno==1
 collapse (mean) female (firstnm) dm1_gender, by(hhid holder_id parcel_id plot_id)
+drop if parcel_id == ""
 gen dm_gender = 3 if female!=1 & female!=0 & female!=.
 replace dm_gender = 1 if female == 0
 replace dm_gender = 2 if female == 1
@@ -3401,7 +3404,7 @@ preserve
 	gen farm_manager=1
 	recode farm_manager (.=0)
 	lab var farm_manager "1=Individual is listed as a manager for at least one plot" 
-	save "${Ethiopia_ESS_W5_created_data}/Ethiopia_ESS_W5_farmer_fert_use.dta", replace //This is currently used for AgQuery.
+	save "${Ethiopia_ESS_W5_created_data}/Ethiopia_ESS_W5_farmer_input_use.dta", replace //This is currently used for AgQuery.
 restore
 // MGM 6.12.2024: hhid 030206088800908012 parcel 011 field 0114 was not measured, otherwise observations numbers line up
 
@@ -6050,7 +6053,7 @@ use "${Ethiopia_ESS_W5_created_data}/Ethiopia_ESS_W5_person_ids.dta", clear
 merge 1:1 hhid personid using "${Ethiopia_ESS_W5_created_data}/Ethiopia_ESS_W5_control_income.dta", nogen keep(1 3) // 13 from using not matched
 merge 1:1 hhid personid using "${Ethiopia_ESS_W5_created_data}/Ethiopia_ESS_W5_make_ag_decision.dta", nogen keep(1 3) // 10 for using not matched
 merge 1:1 hhid personid using "${Ethiopia_ESS_W5_created_data}/Ethiopia_ESS_W5_ownasset.dta", nogen keep(1 3) // 20 for using not matched
-merge 1:1 hhid personid using "${Ethiopia_ESS_W5_created_data}/Ethiopia_ESS_W5_farmer_fert_use.dta", nogen  keep(1 3) // 9 for using not matched
+merge 1:1 hhid personid using "${Ethiopia_ESS_W5_created_data}/Ethiopia_ESS_W5_farmer_input_use.dta", nogen  keep(1 3) // 9 for using not matched
 merge 1:1 hhid personid using "${Ethiopia_ESS_W5_created_data}/Ethiopia_ESS_W5_farmer_improvedseed_use.dta", nogen  keep(1 3) // 19 for using not matched
 merge 1:1 hhid personid using "${Ethiopia_ESS_W5_created_data}/Ethiopia_ESS_W5_farmer_vaccine.dta", nogen  keep(1 3) // 12 for using not matched
 merge m:1 hhid using "${Ethiopia_ESS_W5_created_data}/Ethiopia_ESS_W5_weights.dta", nogen // contains hhsize

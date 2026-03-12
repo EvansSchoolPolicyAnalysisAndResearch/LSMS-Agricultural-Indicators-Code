@@ -642,7 +642,7 @@ gen area_meas_hectares = area_sqmeters_gps/10000
 recode area_meas_hectares (0=.)
 gen gps_meas=area_meas_hectares!=.
 gen field_size=area_meas_hectares 
-
+ 
 *For rest of units, we need to use the conversion factors
 merge m:1 region zone woreda local_unit using "$Ethiopia_ESS_W4_temp_data/ET_local_area_unit_conversion.dta", gen(conversion_merge) keep(1 3)
 replace field_size = area if local_unit==1 & field_size==.
@@ -817,17 +817,9 @@ capture confirm file "$Ethiopia_ESS_W4_temp_data/Crop_CF_Wave4.dta"
 		restore
 	}
 	
-	preserve
 		collapse (median) price_kg_country = price_kg (rawsum) obs_country_pkg=obs [aw=weight_pop_rururb], by(crop_code)
 		tempfile price_kg_country_median
-		save `price_kg_country_median'
-	restore
-	
-	collapse (sum) qty_harv qty_sold val_sold, by(hhid crop_code unit unit_harv)
-	la var qty_harv "Quantity Harvested" 
-	la var qty_sold "Quantity Sold" 
-	la var val_sold "Value of Quantity Sold"
-	save "${Ethiopia_ESS_W4_created_data}/Ethiopia_ESS_W4_crop_vals_hhids.dta" , replace 
+		save `price_kg_country_median' 
 	
 	***************************
 	*Plot Variables 
@@ -1155,8 +1147,8 @@ reshape long number days wage, i(hhid holder_id parcel_id plot_id gender season)
 	gen val = days*number*wage
 
 merge m:1 hhid using "${Ethiopia_ESS_W4_created_data}/Ethiopia_ESS_W4_weights.dta", nogen keep(1 3) keepusing(weight*)
-merge m:1 hhid holder_id parcel_id plot_id using "${Ethiopia_ESS_W4_created_data}/Ethiopia_ESS_W4_plot_area.dta", nogen keep(1 3) keepusing(area_meas_hectares)
-gen fieldweight = weight_pop_rururb*area_meas_hectares
+merge m:1 hhid holder_id parcel_id plot_id using "${Ethiopia_ESS_W4_created_data}/Ethiopia_ESS_W4_plot_area.dta", nogen keep(1 3) keepusing(field_size)
+gen fieldweight = weight_pop_rururb*field_size  
 recode wage (0=.)
 gen obs=wage!=.
 
@@ -1650,7 +1642,8 @@ use "$Ethiopia_ESS_W4_temp_data/sect4_pp_w4.dta", clear
 	save `all_field_inputs' 
 
 	keep if strmatch(exp,"exp") // & qty!=. //Now for geographic medians
-	gen fieldweight = weight_pop_rururb*area_meas_hectares // Joaquin 6.12.23: Q for Andrew: use weight or weight_pop_rururb?
+	ren area_meas_hectares field_size
+	gen fieldweight = weight_pop_rururb*field_size // Joaquin 6.12.23: Q for Andrew: use weight or weight_pop_rururb? 
 	//recode val (0=.) // JM 09.11.23: Most of our use variables are binary. doing the recode would erase most of them.  
 	//drop if unit==0 //Remove things with unknown units.
 	gen price = val/qty if val!=. & qty!=. & qty>0 
@@ -1763,10 +1756,10 @@ use "$Ethiopia_ESS_W4_temp_data/sect4_pp_w4.dta", clear
 		save `planted_area' 
 	restore 
 	
-	merge 1:1 hhid holder_id parcel_id plot_id using "${Ethiopia_ESS_W4_created_data}/Ethiopia_ESS_W4_plot_area.dta", nogen keep(1 3) keepusing(area_meas_hectares) //do per-ha expenses at the same time
+	merge 1:1 hhid holder_id parcel_id plot_id using "${Ethiopia_ESS_W4_created_data}/Ethiopia_ESS_W4_plot_area.dta", nogen keep(1 3) keepusing(field_size) //do per-ha expenses at the same time
 	merge 1:1 hhid holder_id parcel_id plot_id using `planted_area', nogen keep(1 3)
 	reshape wide val*, i(hhid holder_id parcel_id plot_id) j(dm_gender2) string
-	collapse (sum) val* area_meas_hectares ha_planted*, by(hhid)
+	collapse (sum) val* field_size ha_planted*, by(hhid)
 	//Renaming variables to plug into later steps
 	foreach i in male female mixed {
 	gen cost_expli_`i' = val_exp_`i'
@@ -2726,7 +2719,7 @@ preserve
 	gen farm_manager=1
 	recode farm_manager (.=0)
 	lab var farm_manager "1=Individual is listed as a manager for at least one plot" 
-	save "${Ethiopia_ESS_W4_created_data}/Ethiopia_ESS_W4_farmer_fert_use.dta", replace //This is currently used for AgQuery.
+	save "${Ethiopia_ESS_W4_created_data}/Ethiopia_ESS_W4_farmer_input_use.dta", replace //This is currently used for AgQuery.
 restore
 
 
@@ -2827,7 +2820,7 @@ lab var female_use_inorg_fert "1 = Individual female farmers (plot manager) uses
 *gen farm_manager=1 if personid!=.
 *recode farm_manager (.=0)
 *lab var farm_manager "1=Indvidual is listed as a manager for at least one plot" 
-save "${Ethiopia_ESS_W4_created_data}/Ethiopia_ESS_W4_farmer_fert_use.dta", replace
+save "${Ethiopia_ESS_W4_created_data}/Ethiopia_ESS_W4_farmer_input_use.dta", replace
 */
 /*
 ********************************************************************************
@@ -5611,7 +5604,7 @@ merge 1:1 hhid personid using "${Ethiopia_ESS_W4_created_data}/Ethiopia_ESS_W4_c
 merge 1:1 hhid personid using "${Ethiopia_ESS_W4_created_data}/Ethiopia_ESS_W4_make_ag_decision.dta", nogen keep(1 3)
 merge 1:1 hhid personid using "${Ethiopia_ESS_W4_created_data}/Ethiopia_ESS_W4_women_asset.dta", nogen keep(1 3) // 20 for using not matched //ALT: Referred to as "own_asset"
 // merge m:1 hhid using "${Ethiopia_ESS_W4_created_data}/Ethiopia_ESS_W4_hhsize.dta", nogen keep(1 3) // MGM 8.14.2024: redundant with weights.dta
-merge 1:1 hhid personid using "${Ethiopia_ESS_W4_created_data}/Ethiopia_ESS_W4_farmer_fert_use.dta", nogen  keep(1 3) // 9 for using not matched
+merge 1:1 hhid personid using "${Ethiopia_ESS_W4_created_data}/Ethiopia_ESS_W4_farmer_input_use.dta", nogen  keep(1 3) // 9 for using not matched
 merge 1:1 hhid personid using "${Ethiopia_ESS_W4_created_data}/Ethiopia_ESS_W4_farmer_improvedseed_use.dta", nogen  keep(1 3) // 19 for using not matched
 merge 1:1 hhid personid using "${Ethiopia_ESS_W4_created_data}/Ethiopia_ESS_W4_farmer_vaccine.dta", nogen  keep(1 3) // 12 for using not matched
 merge m:1 hhid using "${Ethiopia_ESS_W4_created_data}/Ethiopia_ESS_W4_weights.dta", nogen
@@ -5928,8 +5921,7 @@ capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2
 */ 81 "Niger ECVMA Wave 1" 82 "Niger ECVMA Wave 2"
 label values instrument instrument
 
-saveold "$Ethiopia_ESS_W4_final_data/Ethiopia_ESS_W4_field_plot_variables.dta", replace
-
+saveold "$Ethiopia_ESS_W4_final_data/Ethiopia_ESS_W4_field_plot_variables.dta", replace 
 ********************************************************************************
 *SUMMARY STATISTICS
 ******************************************************************************** 

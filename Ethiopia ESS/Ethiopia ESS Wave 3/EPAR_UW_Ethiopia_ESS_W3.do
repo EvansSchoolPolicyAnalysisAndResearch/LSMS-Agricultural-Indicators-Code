@@ -1065,18 +1065,12 @@ capture confirm file "$Ethiopia_ESS_W3_temp_data/Crop_CF_Wave3.dta"
 			save `price_kg_`i'_median'
 			restore
 	}
-	preserve
+	
 		bys crop_code : egen obs_country_pkg = sum(obs)
 		collapse (median) price_kg_country = price_kg [aw=weight_pop_rururb], by(crop_code obs_country_pkg)
 		tempfile price_kg_country_median
 		save `price_kg_country_median'
-	restore
-	
-	collapse (sum) /*qty_harv*/ qty_sold val_sold, by(hhid crop_code unit)
-	//la var qty_harv "Quantity Harvested" 
-	la var qty_sold "Quantity Sold" 
-	la var val_sold "Value of Quantity Sold"
-	save "${Ethiopia_ESS_W3_created_data}/Ethiopia_ESS_W3_crop_vals_hhids.dta" , replace 
+
 
 	***************************
 	*Plot variables
@@ -3025,7 +3019,7 @@ preserve
 	gen farm_manager=1
 	recode farm_manager (.=0)
 	lab var farm_manager "1=Indvidual is listed as a manager for at least one plot" 
-	save "${Ethiopia_ESS_W3_created_data}/Ethiopia_ESS_W3_farmer_fert_use.dta", replace //This is currently used for AgQuery.
+	save "${Ethiopia_ESS_W3_created_data}/Ethiopia_ESS_W3_farmer_input_use.dta", replace //This is currently used for AgQuery.
 restore
 
 ********************************************************************************
@@ -5738,7 +5732,7 @@ merge 1:1 hhid personid using "${Ethiopia_ESS_W3_created_data}/Ethiopia_ESS_W3_c
 merge 1:1 hhid personid using "${Ethiopia_ESS_W3_created_data}/Ethiopia_ESS_W3_make_ag_decision.dta", nogen keep(1 3)
 merge 1:1 hhid personid using "${Ethiopia_ESS_W3_created_data}/Ethiopia_ESS_W3_ownasset.dta", nogen keep(1 3)
 merge m:1 hhid using "${Ethiopia_ESS_W3_created_data}/Ethiopia_ESS_W3_hhsize.dta", nogen keep(1 3)
-merge 1:1 hhid personid using "${Ethiopia_ESS_W3_created_data}/Ethiopia_ESS_W3_farmer_fert_use.dta", nogen  keep(1 3) //SRK
+merge 1:1 hhid personid using "${Ethiopia_ESS_W3_created_data}/Ethiopia_ESS_W3_farmer_input_use.dta", nogen  keep(1 3) //SRK
 merge 1:1 hhid personid using "${Ethiopia_ESS_W3_created_data}/Ethiopia_ESS_W3_farmer_improvedseed_use.dta", nogen  keep(1 3) // SRK
 merge 1:1 hhid personid using "${Ethiopia_ESS_W3_created_data}/Ethiopia_ESS_W3_farmer_vaccine.dta", nogen  keep(1 3)
 merge m:1 hhid using "${Ethiopia_ESS_W3_created_data}/Ethiopia_ESS_W3_weights.dta", nogen
@@ -6070,9 +6064,7 @@ capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2
 */ 81 "Niger ECVMA Wave 1" 82 "Niger ECVMA Wave 2"
 label values instrument instrument
 
-saveold "$Ethiopia_ESS_W3_final_data/Ethiopia_ESS_W3_field_plot_variables.dta", replace
-
-
+saveold "$Ethiopia_ESS_W3_final_data/Ethiopia_ESS_W3_field_plot_variables.dta", replace  
 ********************************************************************************
 *SUMMARY STATISTICS
 ******************************************************************************** 

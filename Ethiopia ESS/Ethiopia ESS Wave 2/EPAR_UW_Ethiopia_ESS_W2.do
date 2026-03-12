@@ -1066,18 +1066,10 @@ foreach i in region zone woreda kebele ea hhid {
 		restore
 }
 
-preserve
 bys crop_code : egen obs_country_pkg = sum(obs)
 collapse (median) price_kg_country = price_kg [aw=weight_pop_rururb], by(crop_code obs_country_pkg)
 tempfile price_kg_country_median
 save `price_kg_country_median'
-restore
-
-collapse (sum) /*qty_harv*/ qty_sold val_sold, by(hhid crop_code unit)
-//la var qty_harv "Quantity Harvested" 
-la var qty_sold "Quantity Sold" 
-la var val_sold "Value of Quantity Sold"
-save "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_crop_vals_hhids.dta" , replace
 
 ***************************
 *Plot variables - JW 04.17.23 using w3 as model code
@@ -2822,7 +2814,7 @@ preserve
 	gen farm_manager=1
 	recode farm_manager (.=0)
 	lab var farm_manager "1=Individual is listed as a manager for at least one plot" 
-	save "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_farmer_fert_use.dta", replace //This is currently used for AgQuery.
+	save "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_farmer_input_use.dta", replace //This is currently used for AgQuery.
 restore
 
 ********************************************************************************
@@ -6278,7 +6270,7 @@ merge 1:1 hhid personid using "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_c
 merge 1:1 hhid personid using "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_make_ag_decision.dta", nogen keep(1 3) 
 merge 1:1 hhid personid using "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_ownasset.dta", nogen keep(1 3)
 // merge m:1 hhid using "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_hhsize.dta", nogen keep(1 3) // MGM 8.14.2024: redundant with weights.dta
-merge 1:1 hhid personid using "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_farmer_fert_use.dta", nogen  keep(1 3) 
+merge 1:1 hhid personid using "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_farmer_input_use.dta", nogen  keep(1 3) 
 merge 1:1 hhid personid using "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_farmer_improvedseed_use.dta", nogen  keep(1 3) 
 merge 1:1 hhid personid using "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_farmer_vaccine.dta", nogen  keep(1 3) 
 merge m:1 hhid using "${Ethiopia_ESS_W2_created_data}/Ethiopia_ESS_W2_weights.dta", nogen
@@ -6596,8 +6588,7 @@ capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2
 */ 81 "Niger ECVMA Wave 1" 82 "Niger ECVMA Wave 2"
 label values instrument instrument
 
-saveold "$Ethiopia_ESS_W2_final_data/Ethiopia_ESS_W2_field_plot_variables.dta", replace
-
+saveold "$Ethiopia_ESS_W2_final_data/Ethiopia_ESS_W2_field_plot_variables.dta", replace 
 ********************************************************************************
 *SUMMARY STATISTICS
 ******************************************************************************** 
