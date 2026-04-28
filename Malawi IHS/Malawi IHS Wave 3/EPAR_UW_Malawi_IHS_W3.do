@@ -745,14 +745,12 @@ save "${MWI_IHS_IHPS_W3_created_data}\MWI_IHS_IHPS_W3_hh_coords.dta", replace
 ********************************************************************************
 use "${MWI_IHS_IHPS_W3_appended_data}\ag_mod_p", clear
 gen season=2 //perm
-rename plotid plot_id 
-rename gardenid garden_id
 ren ag_p02a area
 ren ag_p02b unit
 duplicates drop //zero duplicate entry
-drop if garden_id=="" // 61 observations deleted 
-drop if plot_id=="" //69 observations deleted //Note from ALT 8.14.2023: So if you check the data at this point, a large number of obs have no plot_id (and are also zeroes) there's no reason to hold on to these observations since they cannot be matched with any other module and don't appear to contain meaningful information.
-keep if strpos(plot_id, "T") & plot_id!="" //SS 10.04.2023: 0 obs deleted 
+drop if gardenid=="" // 61 observations deleted 
+drop if plotid=="" //69 observations deleted //Note from ALT 8.14.2023: So if you check the data at this point, a large number of obs have no plot_id (and are also zeroes) there's no reason to hold on to these observations since they cannot be matched with any other module and don't appear to contain meaningful information.
+keep if strpos(plotid, "T") & plotid!="" //SS 10.04.2023: 0 obs deleted
 replace crop_code = 13 if strpos(ag_p0_crops, "CUSTADE APPLE") | strpos(ag_p0_crops, "POZA") | strpos(ag_p0_crops, "Poza") | strpos(ag_p0_crops, "MIPOZA") | strpos(ag_p0_crops, "MPOZA") | strpos(ag_p0_crops, "Mpoza") | strpos(ag_p0_crops, "mpoza") | strpos(ag_p0_crops, "MIPOZA")  | strpos(ag_p0_crops, "mapoza")  | strpos(ag_p0_crops, "Mapoza") 
 replace crop_code = 100 if strpos(ag_p0_crops, "CASASAVA") 
 replace crop_code = 9 if strpos(ag_p0_crops, "guarva") | strpos(ag_p0_crops, "GWUAVA") 
@@ -760,15 +758,15 @@ replace crop_code = 4 if strpos(ag_p0_crops, "mamgo") | strpos(ag_p0_crops, "MAN
 replace crop_code = 14 if strpos(ag_p0_crops, "mexan apple") | strpos(ag_p0_crops, "Mexcan apple") 
 replace crop_code = 14 if strpos(ag_p0_crops, "Payaya") | strpos(ag_p0_crops, "payaya") | strpos(ag_p0_crops, "POWPOW")
 replace crop_code = 1900 if strpos(ag_p0_crops, "MSANGU") | strpos(ag_p0_crops, "Musekese") | strpos(ag_p0_crops, "MUSEKESE") | strpos(ag_p0_crops, "MUSEKESE TREES") | strpos(ag_p0_crops, "ACCACIA")
-collapse (max) area, by(hhid garden_id plot_id crop_code season unit)
-collapse (sum) area, by(hhid garden_id plot_id season unit)
+collapse (max) area, by(hhid plotid gardenid crop_code season unit)
+collapse (sum) area, by(hhid plotid gardenid season unit)
 replace area=. if area==0 //the collapse (sum)function turns blank observations in 0s - as the raw data for ag_mod_p have no observations equal to 0, we can do a mass replace of 0s with blank observations so that we are not reporting 0s where 0s were not reported.
 drop if area==. & unit==.
 
 gen area_acres_est = area if unit==1 											//Permanent crops in acres
 replace area_acres_est = (area*2.47105) if area == 2 & area_acres_est ==.		//Permanent crops in hectares
 replace area_acres_est = (area*0.000247105) if area == 3 & area_acres_est ==.	//Permanent crops in square meters
-keep hhid plot_id garden_id season area_acres_est
+keep hhid plotid gardenid season area_acres_est
 tempfile ag_perm
 save `ag_perm'
 
@@ -777,9 +775,7 @@ gen season=0 //rainy
 append using "${MWI_IHS_IHPS_W3_appended_data}\ag_mod_j", gen(dry)
 replace season=1 if season==. //dry
 append using  "${MWI_IHS_IHPS_W3_appended_data}\ag_mod_o2" //APPENDed MODULE O_2 HERE IN ORDER TO INCORPORATE TREE/PERM CROP DATA
-replace season=2 if season==. 
-ren plotid plot_id
-ren gardenid garden_id
+replace season=2 if season==.
 
 * Counting acreage
 gen area_acres_est = ag_c04a if ag_c04b == 1 										//Self-report in acres - rainy season 
@@ -806,7 +802,12 @@ label values season season
 gen field_size= (area_acres_est* (1/2.47105))
 replace field_size = (area_acres_meas* (1/2.47105))  if field_size==. & area_acres_meas!=. 
 
-keep hhid garden_id plot_id season area_acres_est area_acres_meas field_size 			
+egen plot_id = concat(plotid gardenid), punct("-")
+lab var plot_id "concatenated plot and garden id: 'plot_id' - 'garden_id'"
+keep hhid plot_id season area_acres_est area_acres_meas field_size 
+
+// drop if garden_id=="" //3 obs without gardenid 	
+drop if plot_id == "" | regexm(plot_id, "^-") | regexm(plot_id, "-$")
 gen gps_meas = area_acres_meas!=. 
 lab var gps_meas "Plot was measured with GPS, 1=Yes" 
 
@@ -817,9 +818,8 @@ gen area_meas_hectares= area_acres_meas* (1/2.47105)
 lab var area_meas_hectares "Plot are in hectares (GPSd)"
 lab var area_est_hectares "Plot area in hectares (estimated)"
 
-drop if garden_id=="" //3 obs without gardenid 
-recast str50 hhid, force 
-duplicates drop hhid plot_id garden_id season, force
+recast str50 hhid, force
+duplicates drop hhid plot_id season, force
 save "${MWI_IHS_IHPS_W3_created_data}\MWI_IHS_IHPS_W3_plot_areas.dta", replace
 
 ********************************************************************************
@@ -831,9 +831,8 @@ tempfile pids
 save `pids'
 
 use "${MWI_IHS_IHPS_W3_appended_data}/ag_mod_p.dta", clear 	//5315 unique obs
-ren gardenid garden_id
-ren plotid plot_id
-drop if plot_id=="" | garden_id=="" // 130 obs dropped 
+drop if plotid=="" | gardenid=="" // 130 obs dropped
+egen plot_id = concat(plotid gardenid), punct("-")
 //keep if strpos(plot_id, "T") //R and D plots have been reported in previous modules
 //Magic number of permanent-only plots is 6772
 gen season=2
@@ -846,11 +845,11 @@ replace crop_code_perm = ag_p0c if crop_code_perm == .
 lab var crop_code_perm "TREE/PERMANENT CROP CODE"
 drop if crop_code_perm ==. //248 deleted 
 //duplicates drop hhid crop_code_perm garden_id plot_id, force //hhid appears to uniquely identify all households here 
-keep hhid garden_id plot_id crop_code_perm season
-duplicates tag hhid garden_id plot_id, gen(dups) //4,937
+keep hhid plot_id crop_code_perm season
+duplicates tag hhid plot_id, gen(dups) //4,937
 preserve
 keep if dups > 0 //3196 deleted
-keep hhid garden_id plot_id season
+keep hhid plot_id season
 duplicates drop
 tempfile dm_p_hoh
 save `dm_p_hoh' //reserve the multiple instances of similar crops for use in another recipe
@@ -869,8 +868,8 @@ ren crop_code crop_code_perm
 duplicates drop hhid crop_code_perm indiv1 indiv2, force
 merge 1:m hhid crop_code_perm  using `one_plot_per_crop', keep(2 3)
 //The 2's will eventually get the same treatment as "dm_p_hoh"
-keep hhid garden_id plot_id indiv* 
-reshape long indiv, i(hhid  garden_id plot_id) j(id_no)
+keep hhid plot_id indiv* 
+reshape long indiv, i(hhid  plot_id) j(id_no)
 gen season=2
 recode indiv (.a=.)
 tempfile dm_p
@@ -879,9 +878,8 @@ save `dm_p'
 use "${MWI_IHS_IHPS_W3_appended_data}/ag_mod_d.dta", clear //No point in attempting to understand ownership because it isn't included in the instrument and all plots have at least one manager listed.
 merge m:1 hhid gardenid using "${MWI_IHS_IHPS_W3_appended_data}/ag_mod_b2.dta", nogen keep(1 3)
 //drop if ag_d20a==. //If no crops were cultivated on plot
-rename plotid plot_id
-rename gardenid garden_id
-drop if plot_id=="" | garden_id=="" //0 observations deleted
+drop if plotid=="" | gardenid=="" //0 observations deleted
+egen plot_id = concat(plotid gardenid), punct("-")
 gen season=0
 ren ag_d01 indiv1 //manager
 ren ag_d01_2a indiv2 //manager
@@ -891,7 +889,7 @@ replace indiv1= ag_b204_2__0 if  no_manager==1 // owners, if no managers //does 
 replace indiv2 = ag_b204_2__1 if no_manager==1
 replace indiv3 = ag_b204_2__2 if no_manager==1
 recode indiv* (0=.)
-keep hhid plot_id garden_id indiv* season
+keep hhid plot_id indiv* season
 duplicates drop //0 duplicates
 tempfile dm_r
 save `dm_r'
@@ -899,9 +897,8 @@ save `dm_r'
 use "${MWI_IHS_IHPS_W3_appended_data}/ag_mod_k.dta", clear
 merge m:1 hhid gardenid using "${MWI_IHS_IHPS_W3_appended_data}/ag_mod_i2.dta", nogen keep(1 3)
 //drop if ag_k21a==. //Uncultivated
-ren plotid plot_id
-ren gardenid garden_id
-drop if plot_id==""
+drop if plotid==""
+egen plot_id = concat(plotid gardenid), punct("-")
 gen season=1
 gen indiv1=ag_k02 //manager
 gen indiv2=ag_k02_2a //manager
@@ -911,14 +908,14 @@ replace indiv1= ag_i204a_1 if  no_manager==1 // owners, if no managers
 replace indiv2 = ag_i204a_2 if no_manager==1 
 replace indiv3 = ag_i204a_3 if no_manager==1 
 recode indiv* (0=.)
-keep hhid  plot_id garden_id indiv* season 
+keep hhid plot_id indiv* season 
 //collapse (firstnm) indiv*, by(hhid plot_id garden_id season)
 append using `dm_r'
-reshape long indiv, i(hhid plot_id garden_id season) j(id_no)
+reshape long indiv, i(hhid plot_id season) j(id_no)
 append using `dm_p'
 
 preserve
-bys hhid garden_id plot_id season : egen mindiv = min(indiv)
+bys hhid plot_id season : egen mindiv = min(indiv)
 keep if mindiv==. 
 duplicates drop
 append using `dm_p_hoh' //670 obs
@@ -935,8 +932,9 @@ merge m:1 hhid indiv using "${MWI_IHS_IHPS_W3_created_data}\MWI_IHS_IHPS_W3_pers
 append using `hoh_plots'
 gen dm1_gender=female+1 if id_no==1
 gen dm1_id=indiv if id_no==1
+lab var plot_id "concatenated plot and garden id: 'plot_id' - 'garden_id'"
 save "${MWI_IHS_IHPS_W3_created_data}\MWI_IHS_IHPS_W3_dm_ids.dta", replace //for individual manager input use 
-collapse (mean) female (firstnm) dm1_gender dm1_id, by(hhid garden_id plot_id season)
+collapse (mean) female (firstnm) dm1_gender dm1_id, by(hhid plot_id season)
 gen dm_gender =3 if female !=.
 replace dm_gender = 1 if female==0
 replace dm_gender = 2 if female==1
@@ -945,6 +943,7 @@ la def dm_gender 1 "Male" 2 "Female" 3 "Mixed"
 la val dm_gender dm_gender 
 la val dm1_gender dm1_gender
 drop female
+lab var plot_id "concatenated plot and garden id: 'plot_id' - 'garden_id'"
 save  "${MWI_IHS_IHPS_W3_created_data}\MWI_IHS_IHPS_W3_plot_decision_makers.dta", replace
 
 ********************************************************************************
@@ -1198,8 +1197,8 @@ save "${MWI_IHS_IHPS_W3_created_data}\MWI_IHS_IHPS_W3_cf.dta", replace*/
 	label define season 0 "rainy" 1 "dry" 2 "tree or permanent crop"
 	label values season season
 
-	ren plotid plot_id
-	ren gardenid garden_id
+	egen plot_id = concat(plotid gardenid), punct("-")
+	lab var plot_id "concatenated plot and garden id: 'plot_id' - 'garden_id'"
 	ren ag_p03 number_trees_planted // number of trees owned on plot
 	gen use_imprv_seed = 1 if crop_code_long == 2 | crop_code_long == 12 | crop_code_long == 18 | crop_code_long == 21 | crop_code_long == 23 | crop_code_long == 25 // MAIZE COMPOSITE/OPV | GROUNDNUT CG7 | RISE FAYA | RISE IET4094 (SENGA) | RISE KILOMBERO | RISE MTUPATUPA
 recode use_imprv_seed .=0
@@ -1228,7 +1227,7 @@ label define relabel /*these exist already*/ 1 "MAIZE LOCAL" 2 "MAIZE COMPOSITE/
 	replace crop_area_share=.875 if crop_area_share==5
 	replace crop_area_share=1 if ag_g02==1 | ag_m02==1 //FN: ag_g02/ag_m02 = was the plot planted in the entire area of the plot 
  	//recast str50 hhid, force	
-	merge m:1 hhid garden_id plot_id using "${MWI_IHS_IHPS_W3_created_data}\MWI_IHS_IHPS_W3_plot_areas.dta", keep (1 3) nogen // 36,624 matched, 877 not matched CG 9.4.2024
+	merge m:1 hhid plot_id using "${MWI_IHS_IHPS_W3_created_data}\MWI_IHS_IHPS_W3_plot_areas.dta", keep (1 3) nogen // 36,624 matched, 877 not matched CG 9.4.2024
 
 	gen lost_drought = inlist(ag_g11a, 1) | inlist(ag_g11b, 1) if ag_g10!=.
 	replace lost_drought = inlist(ag_m10a,1) | inlist(ag_m10b,1) if ag_m09!=.
@@ -1273,18 +1272,18 @@ label define relabel /*these exist already*/ 1 "MAIZE LOCAL" 2 "MAIZE COMPOSITE/
 	//Plot workdays
 	preserve
 	gen days_grown = months_grown*30 
-	collapse (max) days_grown, by(hhid garden_id plot_id season)
+	collapse (max) days_grown, by(hhid plot_id season)
 	save "${MWI_IHS_IHPS_W3_created_data}\MWI_IHS_IHPS_W3_plot_season_length.dta", replace
 	restore
 	
-	bys hhid garden_id plot_id season : egen tot_percent=sum(crop_area_share)
+	bys hhid plot_id season : egen tot_percent=sum(crop_area_share)
 	gen percent_plot = crop_area_share/tot_percent 
 	gen miss_pct = percent_plot==.
-	bys hhid garden_id plot_id season : egen tot_miss = sum(miss_pct)
-	bys hhid garden_id plot_id : egen tot_trees = sum(number_trees_planted)
+	bys hhid plot_id season : egen tot_miss = sum(miss_pct)
+	bys hhid plot_id : egen tot_trees = sum(number_trees_planted)
 	gen pct_trees = number_trees_planted/tot_trees 
 	gen miss_permcrop = miss_pct & number_trees_planted!=0 & number_trees_planted!=. 
-	bys hhid garden_id plot_id : egen tot_miss_permcrop=sum(miss_permcrop)
+	bys hhid plot_id : egen tot_miss_permcrop=sum(miss_permcrop)
 	gen percent_field=crop_area_share
 	replace percent_field = percent_plot if tot_percent > 1 & tot_percent!=. //17,999 changes
 	replace percent_field = pct_trees if crop_area_share==. & tot_percent==. & miss_permcrop==tot_miss //No changes
@@ -1503,13 +1502,13 @@ use `longcrops', clear
 	replace percent_field = percent_field/tot_pct_planted if tot_pct_planted > 1
     replace percent_field = 1/tot_miss if tot_miss==n_crops & percent_field==.
 	*/
-	collapse (sum) kg_harvest ha_planted ha_harvest value_harvest* number_trees_planted percent_field (max) months_grown no_harvest use*, by(region district ea ta hhid plot_id garden_id crop_code field_size season) //area_meas_hectares should get replaced with field_size for consistency.
+	collapse (sum) kg_harvest ha_planted ha_harvest value_harvest* number_trees_planted percent_field (max) months_grown no_harvest use*, by(region district ea ta hhid plot_id crop_code field_size season) //area_meas_hectares should get replaced with field_size for consistency.
 	recode ha_planted (0=.)
  	replace ha_harvest=. if (ha_harvest==0 & no_harvest==1) | (ha_harvest==0 & kg_harvest>0 & kg_harvest!=.)
  	replace kg_harvest = . if kg_harvest==0 & no_harvest==1
 	replace value_harvest=. if value_harvest==0 & (no_harvest==1 | kg_harvest!=0)
-	bys hhid plot_id garden_id: egen percent_area = sum(percent_field)
-	bys hhid plot_id garden_id : gen percent_inputs = percent_field/percent_area
+	bys hhid plot_id : egen percent_area = sum(percent_field)
+	bys hhid plot_id : gen percent_inputs = percent_field/percent_area
 	drop percent_area 
 	gen ha_harv_yld = ha_harvest if ha_planted >=0.05
 	gen ha_plan_yld = ha_planted if ha_planted >=0.05
@@ -1527,11 +1526,11 @@ use `longcrops', clear
 	gen purestand = n_crops==1
 	replace ha_planted=field_size if purestand & ha_planted==. 
 	drop rainy_seas_crops dry_seas_crops tree_crops tot_rainy tot_dry tot_tree max_crops
-	merge m:1 hhid plot_id garden_id using "${MWI_IHS_IHPS_W3_created_data}\MWI_IHS_IHPS_W3_plot_decision_makers.dta", keep(1 3) keepusing(dm*) nogen //16 unmatched, mostly tree/perm crops
+	merge m:1 hhid plot_id using "${MWI_IHS_IHPS_W3_created_data}\MWI_IHS_IHPS_W3_plot_decision_makers.dta", keep(1 3) keepusing(dm*) nogen //16 unmatched, mostly tree/perm crops
 	order region district ea hhid
-	drop if plot_id == "" | crop_code==. | garden_id =="" //18 obs dropped
+	drop if plot_id == "" | crop_code==. | regexm(plot_id, "^-") | regexm(plot_id, "-$") //18 obs dropped
 	save "${MWI_IHS_IHPS_W3_created_data}/MWI_IHS_IHPS_W3_all_plots.dta",replace	 
-	collapse (sum) ha_planted, by(hhid plot_id garden_id season) //Use planted area for hh-level expenses 
+	collapse (sum) ha_planted, by(hhid plot_id season) //Use planted area for hh-level expenses 
 	save "${MWI_IHS_IHPS_W3_created_data}/MWI_IHS_IHPS_W3_planted_area.dta", replace
 	
 ********************************************************************************
@@ -1757,26 +1756,24 @@ collapse rather than rowtotal and can easily be converted back into our standard
 	*Hired rainy
 	*Crop payments rainy
 use "${MWI_IHS_IHPS_W3_appended_data}\ag_mod_d.dta", clear 
-	ren plotid plot_id
-	ren gardenid garden_id 
+	egen plot_id = concat(plotid gardenid), punct("-")
 	ren ag_d46f crop_code_long 
 	ren ag_d46c qty
 	ren ag_d46d unit
 	ren ag_d46e condition
-	keep hhid plot_id garden_id crop_code qty unit condition 
+	keep hhid plot_id crop_code qty unit condition 
 	gen season=0 //"rainy"
 tempfile rainy_crop_payments
 save `rainy_crop_payments'
 	
 	*Crop payments dry
 use "${MWI_IHS_IHPS_W3_appended_data}\ag_mod_k.dta", clear 
-	ren plotid plot_id
-	ren gardenid garden_id 
+	egen plot_id = concat(plotid gardenid), punct("-")
 	ren ag_k46c crop_code_long
 	ren ag_k46d qty
 	ren ag_k46e unit
 	ren ag_k46f condition
-	keep hhid plot_id garden_id crop_code qty unit condition 
+	keep hhid plot_id crop_code qty unit condition 
 	gen season= 1 //"dry"
 tempfile dry_crop_payments
 save `dry_crop_payments'
@@ -1789,9 +1786,9 @@ lab var season "season: 0=rainy, 1=dry, 2=tree crop"
 merge m:1 hhid  crop_code_long using "${MWI_IHS_IHPS_W3_created_data}/MWI_IHS_IHPS_W3_hh_crop_prices_for_wages.dta", nogen keep (1 3) //SS 11.1.2023: only 46 0bs matched // CG 8.21.24: only 38 matched	// 108 matched CG 11.6.24
 	recode qty hh_price_mean (.=0)
 	gen val = qty*hh_price_mean
-	keep hhid val plot_id garden_id season 
+	keep hhid val plot_id season 
 	gen exp = "exp"
-	merge m:1 hhid plot_id garden_id using "${MWI_IHS_IHPS_W3_created_data}\MWI_IHS_IHPS_W3_plot_decision_makers.dta", nogen keep (1 3) keepusing(dm_gender)
+	merge m:1 hhid plot_id using "${MWI_IHS_IHPS_W3_created_data}\MWI_IHS_IHPS_W3_plot_decision_makers.dta", nogen keep (1 3) keepusing(dm_gender)
 	tempfile inkind_payments
 	save `inkind_payments'
 
@@ -1812,7 +1809,8 @@ merge m:1 hhid  crop_code_long using "${MWI_IHS_IHPS_W3_created_data}/MWI_IHS_IH
 	egen wagehiredmale = rowmean(ag_d46b1 ag_d47b1 ag_d48b1)
 	egen wagehiredfemale = rowmean(ag_d46b2 ag_d47b2 ag_d48b2)
 	egen wagehiredchild = rowmean(ag_d46b3 ag_d47b3 ag_d48b3)
-	keep hhid gardenid plotid wagehired*
+	egen plot_id = concat(plotid gardenid), punct("-")
+	keep hhid plot_id wagehired*
 	gen season=0
 	tempfile rainy_hired_all
 	save `rainy_hired_all'
@@ -1823,18 +1821,17 @@ use "${MWI_IHS_IHPS_W3_appended_data}\ag_mod_k.dta", clear
 	ren ag_k46b2 wagehiredfemale
 	ren ag_k46b3 wagehiredchild
 	recode wagehired* (0=.)
-	keep hhid gardenid plotid wagehired*
+	egen plot_id = concat(plotid gardenid), punct("-")
+	lab var plot_id "concatenated plot and garden id: 'plot_id' - 'garden_id'"
+	keep hhid plot_id wagehired*
 	gen season=1
 	append using `rainy_hired_all'
-	drop if plotid==""
+	drop if plot_id==""
 	lab var season "season: 0=rainy, 1=dry, 2=tree crop"
 	label define season 0 "rainy" 1 "dry" 2 "tree or permanent crop"
 	label values season season 
 	
-	ren gardenid garden_id 
-	ren plotid plot_id
-	
-	reshape long wagehired, i(hhid plot_id garden_id season) j(gender) string
+	reshape long wagehired, i(hhid plot_id season) j(gender) string
 	drop if wagehired==.
 	ren wagehired wagehired_plot
 	tempfile plot_wages 
@@ -1937,8 +1934,7 @@ save `members', replace
 
 
 use "${MWI_IHS_IHPS_W3_appended_data}\ag_mod_d.dta", clear
-ren gardenid garden_id 
-ren plotid plot_id
+egen plot_id = concat(plotid gardenid), punct("-")
 ren ag_d42a* indivplanting*
 ren ag_d43a* indivnonharvest*
 ren ag_d44a* indivharvest*
@@ -1948,22 +1944,21 @@ ren ag_d44b* weeksharvest*
 ren ag_d42c* daysplanting*
 ren ag_d43c* daysnonharvest*
 ren ag_d44c* daysharvest*
-keep hhid garden_id plot_id indiv* weeks* days*
+keep hhid plot_id indiv* weeks* days*
 unab vars : *7
 local varlist : subinstr local vars "7" "", all
 di "`varlist'"
-reshape long `varlist', i(hhid garden_id plot_id) j(entry_no)
-reshape long indiv days weeks, i(hhid garden_id plot_id entry_no) j(labor_type) string //component of season, not used
+reshape long `varlist', i(hhid plot_id) j(entry_no)
+reshape long indiv days weeks, i(hhid plot_id entry_no) j(labor_type) string //component of season, not used
 drop if indiv==. | days==. | weeks==.
 replace days=days*weeks 
-collapse (sum) days, by(hhid garden_id plot_id indiv)
+collapse (sum) days, by(hhid plot_id indiv)
 gen season=0
 tempfile labor_dry
 save `labor_dry'
 
 use "${MWI_IHS_IHPS_W3_appended_data}\ag_mod_k.dta", clear
-ren gardenid garden_id 
-ren plotid plot_id
+egen plot_id = concat(plotid gardenid), punct("-")
 ren ag_k43a* indivplanting*
 ren ag_k44a* indivnonharvest*
 ren ag_k45a* indivharvest*
@@ -1973,15 +1968,15 @@ ren ag_k45b* weeksharvest*
 ren ag_k43c* daysplanting*
 ren ag_k44c* daysnonharvest*
 ren ag_k45c* daysharvest*
-keep hhid garden_id plot_id indiv* weeks* days*
+keep hhid plot_id indiv* weeks* days*
 unab vars : *7
 local varlist : subinstr local vars "7" "", all
 di "`varlist'"
-reshape long `varlist', i(hhid garden_id plot_id) j(entry_no)
-reshape long indiv days weeks, i(hhid garden_id plot_id entry_no) j(labor_type) string //component of season, not used
+reshape long `varlist', i(hhid plot_id) j(entry_no)
+reshape long indiv days weeks, i(hhid plot_id entry_no) j(labor_type) string //component of season, not used
 drop if indiv==. | days==. | weeks==.
 replace days=days*weeks 
-collapse (sum) days, by(hhid garden_id plot_id indiv)
+collapse (sum) days, by(hhid plot_id indiv)
 gen season=1
 append using `labor_dry'
 lab var season "season: 0=rainy, 1=dry, 2=tree crop"
@@ -2001,11 +1996,11 @@ merge m:1 hhid indiv using `members', nogen keep (1 3)
 	replace gender="female" if strmatch(gender,"") & female==1
 	//gen labor_type="family"
 	merge m:1 hhid using "${MWI_IHS_IHPS_W3_created_data}\MWI_IHS_IHPS_W3_weights.dta", nogen keep(1 3) //merges in household info
-	collapse (sum) days, by(country region district ta ea hhid garden_id plot_id season gender)
+	collapse (sum) days, by(country region district ta ea hhid plot_id season gender)
 
 	//append using `all_exchange' //this is where the missing garden/plot_ids come from 
 
-	merge 1:1 hhid garden_id plot_id season gender using `plot_wages', nogen keep(1 3)
+	merge 1:1 hhid plot_id season gender using `plot_wages', nogen keep(1 3)
 	gen wage = wagehired_plot
 	foreach i in ea ta district region country {		
 		merge m:1 `i' season gender using `wages_`i'', nogen keep(1 3)
@@ -2013,19 +2008,20 @@ merge m:1 hhid indiv using `members', nogen keep (1 3)
 	}
 	gen val=wage*days
 
-		collapse (sum) val days, by(hhid garden_id plot_id season gender) 
-merge m:1 plot_id hhid garden_id season using "${MWI_IHS_IHPS_W3_created_data}\MWI_IHS_IHPS_W3_plot_decision_makers.dta", nogen keep(1 3) keepusing(dm_gender) 
+		collapse (sum) val days, by(hhid plot_id season gender) 
+merge m:1 plot_id hhid season using "${MWI_IHS_IHPS_W3_created_data}\MWI_IHS_IHPS_W3_plot_decision_makers.dta", nogen keep(1 3) keepusing(dm_gender) 
 	la var gender "Gender of worker"
 	la var dm_gender "Plot manager gender"
 	//la var labor_type "Hired, exchange, or family labor"
 	la var days "Number of person-days per plot"
 	la var val "Total value of hired labor (MWK)"
+	lab var plot_id "concatenated plot and garden id: 'plot_id' - 'garden_id'"
 	save "${MWI_IHS_IHPS_W3_created_data}/MWI_IHS_IHPS_W3_plot_labor_long.dta",replace
-	
+
 preserve
-gen labor_family_female=days if gender=="female"
+	gen labor_family_female=days if gender=="female"
 	gen labor_family_male=days if gender=="male"
-	collapse (sum) labor_family_male labor_family_female labor_family=days, by (hhid garden_id plot_id season)
+	collapse (sum) labor_family_male labor_family_female labor_family=days, by (hhid plot_id season)
 	recode labor* (0=.)
 	gen labor_nonhired=.
 	gen labor_hired=.
@@ -2047,9 +2043,9 @@ preserve
 	//replace exp="imp" if strmatch(exp,"")
 	gen exp="imp" //All family labor is implicit
 	//append using `inkind_payments' //To check //Few observations, may be influenced by pay rates and so potentially biased.
-	collapse (sum) val, by(hhid plot_id exp dm_gender season)
+	collapse (sum) val, by(hhid plot_id exp dm_gender season) //DA adding in obs, I believe because garden id was missing, and now it is added back in.
 	gen input="labor"
-	drop if plot_id == "" | val == 0
+	drop if plot_id == "" | val == 0 | regexm(plot_id, "^-") | regexm(plot_id, "-$")
 	save "${MWI_IHS_IHPS_W3_created_data}/MWI_IHS_IHPS_W3_plot_labor.dta", replace //this gets used below.
 restore	
 
@@ -2070,7 +2066,6 @@ restore
 	reshape wide val*, i(hhid plot_id) j(dm_gender2) string
 	collapse (sum) val*, by(hhid)
 	save "${MWI_IHS_IHPS_W3_created_data}/MWI_IHS_IHPS_W3_hh_cost_labor.dta", replace
-
 **************************
 *    LAND/PLOT RENT     *
 ************************** 
@@ -2079,7 +2074,7 @@ then convert annual to seasonal.
 */
 
 use "${MWI_IHS_IHPS_W3_created_data}/MWI_IHS_IHPS_W3_all_plots.dta",clear
-collapse (sum) ha_planted, by(hhid garden_id plot_id)
+collapse (sum) ha_planted, by(hhid plot_id)
 tempfile planted_area
 save `planted_area' 
 
@@ -2087,7 +2082,6 @@ save `planted_area'
 	use "${MWI_IHS_IHPS_W3_appended_data}/ag_mod_k.dta", clear
 	recode ag_k01 (2 .=0)
 	collapse (max) ag_k01, by(gardenid hhid)
-	ren gardenid garden_id
 	ren ag_k01 double_cultivated
 	tempfile double_cultivated
 	recast str50 hhid, force 
@@ -2106,7 +2100,6 @@ save `garden_areas'*/
 	gen cultivate = 0
 	replace cultivate = 1 if ag_b214 == 1
 	replace cultivate = 1 if ag_i214 == 1 
-	ren gardenid garden_id
 	gen payment_period=ag_b212
 	replace payment_period=ag_i212 if payment_period==. 
 	
@@ -2129,8 +2122,8 @@ save `garden_areas'*/
 	drop if crop_code_paid==. & crop_code_owed==. //21,175 observations deleted
 	drop if (unit_paid==. & crop_code_paid!=.) | (unit_owed==. & crop_code_owed!=.)  //210 observations deleted
 
-	keep hhid garden_id cultivate season crop_code* qty* unit* condition* payment_period
-	reshape long crop_code qty unit condition, i (hhid season garden_id payment_period cultivate) j(payment_status) string
+	keep hhid gardenid cultivate season crop_code* qty* unit* condition* payment_period
+	reshape long crop_code qty unit condition, i (hhid season gardenid payment_period cultivate) j(payment_status) string
 	ren crop_code crop_code_long
 	drop if crop_code_long==. //59 observations deleted, cannot estimate crop values for payments we do not have crop types for
 	drop if qty==. //0 observations deleted, cannot estimate crop values for payments we do not have qty for
@@ -2144,13 +2137,13 @@ save `garden_areas'*/
 	destring unit*, replace force
 	duplicates drop hhid, force 
 	merge m:1 hhid crop_code using "${MWI_IHS_IHPS_W3_created_data}/MWI_IHS_IHPS_W3_hh_crop_prices_for_wages.dta", nogen keep (1 3) //27 matched, 37 unmatched
-replace season = 1 if strpos(garden_id, "D") // 4 obs with missing season information.
+replace season = 1 if strpos(gardenid, "D") // 4 obs with missing season information.
 
 gen val=qty*hh_price_mean 
 drop qty unit crop_code condition hh_price_mean payment_status
 keep if val!=. //22 obs deleted
-collapse (sum) val, by(hhid garden_id season payment_period) 
-merge 1:1 hhid garden_id using `double_cultivated', nogen keep(1 3)
+collapse (sum) val, by(hhid gardenid season payment_period) 
+merge 1:1 hhid gardenid using `double_cultivated', nogen keep(1 3)
 replace val = val * 0.5 if payment_period==3 & double_cultivated!=1 
 tempfile plotrentbycrops
 save `plotrentbycrops'
@@ -2166,7 +2159,6 @@ save `plotrentbycrops'
 	replace cultivate = 1 if ag_b214 == 1
 	replace cultivate = 1 if ag_i214 == 1
 	drop if cultivate==0 | ag_b212 != .  //quick test for plots rented out; 380 obs
-	ren gardenid garden_id
 	
 	ren ag_b209a cash_rents_total
 	ren ag_b209b inkind_rents_total
@@ -2191,10 +2183,10 @@ save `plotrentbycrops'
 	
 	 replace val = cash_rents_total + inkind_rents_total if val==.
 	 recast str50 hhid, force 
-	merge 1:1 hhid garden_id using `double_cultivated', nogen keep(1 3)
+	merge 1:1 hhid gardenid using `double_cultivated', nogen keep(1 3)
 	replace val = val * 0.5 if payment_period == 3 & double_cultivated!=1 //Scaling annual rent to apply to the season for which the rent was paid. Calculating annual rent expenditures if desired would require multipling the non-3 obs by 2
 append using `plotrentbycrops'
-collapse (sum) val, by(hhid garden_id season double_cultivated) //Season is not strictly necessary here but best practice is to keep it in to keep the merges generic (and because an error with a merge on season can be a useful signal later)
+collapse (sum) val, by(hhid gardenid season double_cultivated) //Season is not strictly necessary here but best practice is to keep it in to keep the merges generic (and because an error with a merge on season can be a useful signal later)
 lab var season "season: 0=rainy, 1=dry, 2=tree crop"
 label define season 0 "rainy" 1 "dry" 2 "tree or permanent crop"
 label values season season
@@ -2203,21 +2195,26 @@ gen exp="exp" //all rents are explicit
 replace exp="imp" if val==0
 recode val (0=.)
 recast str50 hhid, force 
-merge 1:m hhid garden_id using "${MWI_IHS_IHPS_W3_created_data}\MWI_IHS_IHPS_W3_plot_areas.dta", nogen keep(1 3)
+ren gardenid garden_id
+preserve
+	use "${MWI_IHS_IHPS_W3_created_data}\MWI_IHS_IHPS_W3_plot_areas.dta", clear
+	split plot_id, parse("-")
+	ren plot_id2 garden_id
+	tempfile plotarea
+	save `plotarea'
+restore
+merge 1:m hhid garden_id using `plotarea', nogen keep(1 3)
 
+drop if missing(plot_id)
 * Calculate quantity of plot rents etc. 
 gen qty = field_size
-merge 1:1 hhid garden_id plot_id using `planted_area' , nogen keep(1 3)
+merge 1:1 hhid plot_id using `planted_area' , nogen keep(1 3)
 replace qty = ha_planted if qty==. 
 bys hhid garden_id : egen garden_ha = sum(qty)
 gen price = val/garden_ha //Regularize to plots //Might need to winsorize given some extreme values //only affects 603 obs
 replace val = price*qty
-keep hhid garden_id plot_id season input exp val qty
+keep hhid plot_id season input exp val qty
 save "${MWI_IHS_IHPS_W3_created_data}\MWI_IHS_IHPS_W3_plot_rents.dta", replace
-//tempfile plotrents
-//save `plotrents'	
-
-
 
 	******************************************************
 	* CHEMICALS, FERTILIZER, LAND, ANIMALS, AND MACHINES *
@@ -2253,16 +2250,15 @@ save `asset_rental'
 	gen season=0
 	append using   "${MWI_IHS_IHPS_W3_appended_data}\ag_mod_k.dta"
 	merge m:1 hhid using "${MWI_IHS_IHPS_W3_created_data}\MWI_IHS_IHPS_W3_weights.dta"
-	ren plotid plot_id
-	ren gardenid garden_id 
-	//replace plot_id = ag_k0a if plot_id==""
-	drop if plot_id=="" //4 dropped
+	drop if plotid==""
+	egen plot_id = concat(plotid gardenid), punct("-")
+	lab var plot_id "concatenated plot and garden id: 'plot_id' - 'garden_id'"
 	replace season=1 if season==.
 	preserve
 	gen plot_irr=1 if ag_d28a !=7 //7 is no irrigation
 	replace plot_irr=1 if plot_irr==0 & ag_k29a != 7
 	recode plot_irr (.=0)
-	keep hhid plot_irr plot_id garden_id season ea ta district  
+	keep hhid plot_irr plot_id season ea ta district  
 	save "${MWI_IHS_IHPS_W3_created_data}\MWI_IHS_IHPS_W3_plot_irrigation.dta", replace	
 	restore
 	
@@ -2312,12 +2308,12 @@ save `asset_rental'
 	replace qtyorgfert2=qtyorgfert2*70 if strpos(ag_k38b_oth, "90") //90 kg bag	
 	replace unitorgfert2=2 if strpos(ag_d37b_oth, "50") | strpos(ag_k38b_oth, "90") //changing unit to kilograms 
 	
-	keep hhid ea plot_id garden_id qty* unit* itemcode* season
-	collapse (firstnm) item* qty* unit*, by(hhid  ea plot_id garden_id season) 
+	keep hhid ea plot_id qty* unit* itemcode* season
+	collapse (firstnm) item* qty* unit*, by(hhid  ea plot_id season) 
 	unab vars : *1
 	local stubs : subinstr local vars "1" "", all
-	reshape long `stubs', i(hhid ea plot_id garden_id season) j(obs)
-	reshape long qty unit itemcode, i(hhid ea plot_id garden_id season obs) j(input) string
+	reshape long `stubs', i(hhid ea plot_id season) j(obs)
+	reshape long qty unit itemcode, i(hhid ea plot_id season obs) j(input) string
 	drop obs
 	replace itemcode = 0 if input=="orgfert"
 	replace input="herb" if input=="herbpest" & itemcode==8
@@ -2393,7 +2389,7 @@ save `asset_rental'
 	la var k_kg "Kg of potassium applied to plot from inorganic fertilizer"
 	la var n_org_kg "Kg of nitrogen from manure and organic fertilizer applied to plot"
 	la var org_fert_kg "Kg of organic fertilizer applied to plot"
-	collapse (sum) *kg, by(ea season hhid plot_id garden_id)
+	collapse (sum) *kg, by(ea season hhid plot_id)
 	egen inorg_fert_kg=rowtotal(nps_kg dap_kg can_kg urea_kg npk_kg)
 	save "${MWI_IHS_IHPS_W3_created_data}/MWI_IHS_IHPS_W3_fertilizer_kg_application_plot.dta", replace
 	collapse (sum) *kg, by(ea season hhid)
@@ -2703,15 +2699,15 @@ replace unit = 1 if inlist(unit, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)
 	merge m:1 hhid itemcode season using `phys_inputs', keepusing(exp_ratio) keep(1 3)
 	drop if hhid == "" | exp_ratio == .
 	duplicates drop // 0 duplicates dropped
-	collapse (sum) qty val (mean) exp_ratio obs_* price_kg_* missing_*, by(hhid  garden_id plot_id season input unit itemcode ea district ta region)
+	collapse (sum) qty val (mean) exp_ratio obs_* price_kg_* missing_*, by(hhid plot_id season input unit itemcode ea district ta region)
 	gen ratioimp = 1-exp_ratio
 	ren exp_ratio ratioexp
 	duplicates tag hhid plot_id season itemcode ea, gen (dup)
 	drop if dup ==1 //2 dups dropped
-	reshape long ratio, i(hhid garden_id plot_id season itemcode) j(exp) string
+	reshape long ratio, i(hhid plot_id season itemcode) j(exp) string
 	replace val = val * ratio
 	drop ratio
-	drop if plot_id == "" | val == 0 // removes null values
+	drop if plot_id == "" | val == 0 | regexm(plot_id, "^-") | regexm(plot_id, "-$") // removes null values
 	tempfile phys_inputs_plot
 	save `phys_inputs_plot'
 
@@ -2995,11 +2991,10 @@ use "${MWI_IHS_IHPS_W3_created_data}\MWI_IHS_IHPS_W3_plot_rents.dta", clear
 save "${MWI_IHS_IHPS_W3_created_data}\MWI_IHS_IHPS_W3_cost_per_plot.dta", replace
 merge m:1 hhid using "${MWI_IHS_IHPS_W3_created_data}/MWI_IHS_IHPS_W3_weights.dta",gen(weights) keep(1 3) keepusing(weight region district ea ta) // added geo vars here to avoid having to merge in later using a diff file
 * 08.24.23
-merge m:1 hhid garden_id plot_id season using "${MWI_IHS_IHPS_W3_created_data}/MWI_IHS_IHPS_W3_plot_areas.dta", gen(plotareas) keep(1 3) keepusing(field_size) //124 obs with missing plot_id 
-drop if plot_id == ""
-merge m:1 hhid garden_id plot_id season using "${MWI_IHS_IHPS_W3_created_data}/MWI_IHS_IHPS_W3_plot_decision_makers.dta", gen(dms) keep(1 3) keepusing(dm_gender) 
+merge m:1 hhid plot_id season using "${MWI_IHS_IHPS_W3_created_data}/MWI_IHS_IHPS_W3_plot_areas.dta", gen(plotareas) keep(1 3) keepusing(field_size) //124 obs with missing plot_id 
+drop if plot_id == "" | regexm(plot_id, "^-") | regexm(plot_id, "-$")
+merge m:1 hhid plot_id season using "${MWI_IHS_IHPS_W3_created_data}/MWI_IHS_IHPS_W3_plot_decision_makers.dta", gen(dms) keep(1 3) keepusing(dm_gender) 
 //merge m:m hhid ea using "${MWI_IHS_IHPS_W3_created_data}\MWI_IHS_IHPS_W3_hhids.dta"
-
 gen plotweight = weight*field_size 
 tempfile all_plot_inputs
 save `all_plot_inputs', replace
@@ -3048,21 +3043,20 @@ recode val qty (.=0)
 drop if val==0 & qty==0 
 replace val=qty*price if val==0
 
-
 * For PLOT LEVEL data, add in plot_labor data
 append using "${MWI_IHS_IHPS_W3_created_data}/MWI_IHS_IHPS_W3_plot_labor.dta" // hks 08.25.23: many empty garden, plot, dm_genders (where val == 0)
-drop if plot_id == "" //1,768 obs dropped
+drop if plot_id == "" | regexm(plot_id, "^-") | regexm(plot_id, "-$") //1,768 obs dropped
 //drop if garden_id == "" & plot_id == "" // HKS: as per discussion with ALT on 08.31.23; 2 obs dropped //0 dropped 11.4.24
-collapse (sum) val, by (hhid plot_id garden_id exp input dm_gender season) 
+collapse (sum) val, by (hhid plot_id exp input dm_gender season)
+
 append using `phys_inputs_plot' //ALT: This should get cleaned up.
 
 * Save PLOT-LEVEL Crop Expenses (long)
 	save "${MWI_IHS_IHPS_W3_created_data}/MWI_IHS_IHPS_W3_plot_cost_inputs_long.dta",replace 
-
 * Save PLOT-Level Crop Expenses (wide, does not currently get used in MWI W3 code)
 preserve
-	collapse (sum) val_=val, by(hhid plot_id garden_id exp dm_gender season)
-	reshape wide val_, i(hhid plot_id garden_id dm_gender season) j(exp) string 
+	collapse (sum) val_=val, by(hhid plot_id exp dm_gender season)
+	reshape wide val_, i(hhid plot_id dm_gender season) j(exp) string 
 	duplicates drop hhid, force 
 	save "${MWI_IHS_IHPS_W3_created_data}/MWI_IHS_IHPS_W3_plot_cost_inputs.dta", replace // HKS 08.21.23 (mwi W3): This used to get used below in CROP EXPENSES - currently commented out, we'll see if it gets revived
 restore
@@ -3160,21 +3154,21 @@ save "${MWI_IHS_IHPS_W3_created_data}/MWI_IHS_IHPS_W3_hh_cost_inputs_long.dta", 
 
 	
 use "${MWI_IHS_IHPS_W3_created_data}/MWI_IHS_IHPS_W3_plot_cost_inputs_long.dta", clear
-collapse (sum) val, by(hhid garden_id plot_id  exp season)
+collapse (sum) val, by(hhid plot_id  exp season)
 //duplicates drop hhid , force 
-merge m:1 hhid garden_id plot_id season using "${MWI_IHS_IHPS_W3_created_data}/MWI_IHS_IHPS_W3_plot_decision_makers.dta", nogen keep(1 3) //missing dm_gender was not in original PDM dataset 
+merge m:1 hhid plot_id season using "${MWI_IHS_IHPS_W3_created_data}/MWI_IHS_IHPS_W3_plot_decision_makers.dta", nogen keep(1 3) //missing dm_gender was not in original PDM dataset 
 gen dm_gender2 = "male" if dm_gender==1
 replace dm_gender2 = "female" if dm_gender==2
 replace dm_gender2 = "mixed" if dm_gender==3
 drop if dm_gender2 == "" //all obs match, can I drop the 2,283 obs that are missing dm_gender bc they are not included in the PDM set
 drop dm_gender
 ren val* val*_
-reshape wide val*, i(hhid garden_id plot_id dm_gender2 season) j(exp) string
+reshape wide val*, i(hhid plot_id dm_gender2 season) j(exp) string
 ren val* val*_
-merge 1:1 hhid garden_id plot_id season using "${MWI_IHS_IHPS_W3_created_data}\MWI_IHS_IHPS_W3_plot_areas.dta", nogen keep(1 3) keepusing(field_size) //do per-ha expenses at the same time
-merge m:1 hhid garden_id plot_id using `planted_area', nogen keep(1 3)
-reshape wide val*, i(hhid garden_id plot_id) j(dm_gender2) string
-collapse (sum) val* field_size* ha_planted*, by( hhid)
+merge 1:1 hhid plot_id season using "${MWI_IHS_IHPS_W3_created_data}\MWI_IHS_IHPS_W3_plot_areas.dta", nogen keep(1 3) keepusing(field_size) //do per-ha expenses at the same time
+merge m:1 hhid plot_id using `planted_area', nogen keep(1 3)
+reshape wide val*, i(hhid plot_id) j(dm_gender2) string
+collapse (sum) val* field_size* ha_planted*, by(hhid)
 //Renaming variables to plug into later steps
 foreach i in male female mixed {
 gen cost_expli_`i' = val_exp_`i'
@@ -3190,11 +3184,11 @@ save  "${MWI_IHS_IHPS_W3_created_data}\MWI_IHS_IHPS_W3_hh_cost_inputs.dta", repl
 ********************************************************************************
 use "${MWI_IHS_IHPS_W3_created_data}/MWI_IHS_IHPS_W3_all_plots.dta",clear
 	keep if purestand == 1
-	merge m:1  hhid garden_id plot_id using  "${MWI_IHS_IHPS_W3_created_data}\MWI_IHS_IHPS_W3_plot_decision_makers.dta", nogen keep(1 3) keepusing(dm_gender)
+	merge m:1  hhid plot_id using  "${MWI_IHS_IHPS_W3_created_data}\MWI_IHS_IHPS_W3_plot_decision_makers.dta", nogen keep(1 3) keepusing(dm_gender)
 	ren ha_planted monocrop_ha
 	ren kg_harvest kg_harv_mono
 	ren value_harvest val_harv_mono
-	collapse (sum) *mono*, by(hhid garden_id plot_id crop_code dm_gender)
+	collapse (sum) *mono*, by(hhid plot_id crop_code dm_gender)
 	
 	
 forvalues k=1(1)$nb_topcrops  {		
@@ -3244,11 +3238,11 @@ restore
 }	
 
 use "${MWI_IHS_IHPS_W3_created_data}\MWI_IHS_IHPS_W3_plot_cost_inputs_long.dta", clear 
-merge m:1 hhid garden_id plot_id using "${MWI_IHS_IHPS_W3_created_data}\MWI_IHS_IHPS_W3_plot_decision_makers.dta", nogen keep(1 3) keepusing(dm_gender)
-collapse (sum) val, by(hhid garden_id plot_id dm_gender input)
+merge m:1 hhid plot_id using "${MWI_IHS_IHPS_W3_created_data}\MWI_IHS_IHPS_W3_plot_decision_makers.dta", nogen keep(1 3) keepusing(dm_gender)
+collapse (sum) val, by(hhid plot_id dm_gender input)
 levelsof input, clean l(input_names)
 	ren val val_
-	reshape wide val_, i(hhid garden_id plot_id dm_gender) j(input) string
+	reshape wide val_, i(hhid plot_id dm_gender) j(input) string
 	gen dm_gender2 = "male" if dm_gender==1
 	replace dm_gender2 = "female" if dm_gender==2
 	replace dm_gender2 = "mixed" if dm_gender==3 
@@ -3259,8 +3253,8 @@ levelsof input, clean l(input_names)
 preserve
 
 	ren val* val*_`cn'_
-	reshape wide val*, i(hhid garden_id plot_id) j(dm_gender2) string
-	merge 1:1 hhid garden_id plot_id using "${MWI_IHS_IHPS_W3_created_data}\MWI_IHS_IHPS_W3_`cn'_monocrop.dta", nogen keep(3)
+	reshape wide val*, i(hhid plot_id) j(dm_gender2) string
+	merge 1:1 hhid plot_id using "${MWI_IHS_IHPS_W3_created_data}\MWI_IHS_IHPS_W3_`cn'_monocrop.dta", nogen keep(3)
 	collapse (sum) val*, by(hhid)
 	foreach i in `input_names' {
 		egen val_`i'_`cn'_hh = rowtotal(val_`i'_`cn'_*)
@@ -4133,8 +4127,8 @@ save "${MWI_IHS_IHPS_W3_created_data}\MWI_IHS_IHPS_W3_off_farm_hours.dta", repla
 *FARM SIZE / LAND SIZE - Efficiency update 11/25
 ********************************************************************************
 use "${MWI_IHS_IHPS_W3_created_data}/MWI_IHS_IHPS_W3_all_plots.dta", clear
-collapse (sum) ha_planted, by(hhid garden_id plot_id season) 
-collapse (max) ha_planted, by(hhid garden_id plot_id)
+collapse (sum) ha_planted, by(hhid plot_id season) 
+collapse (max) ha_planted, by(hhid plot_id)
 collapse (sum) cultivated_area=ha_planted, by(hhid)
 lab var cultivated_area "Total area"
 tempfile cultivated_area
@@ -4146,13 +4140,12 @@ append using "${MWI_IHS_IHPS_W3_appended_data}/ag_mod_k.dta"
 replace season=1 if season==.
 append using "${MWI_IHS_IHPS_W3_appended_data}/ag_mod_p.dta"
 replace season=2 if season==.
-ren plotid plot_id
-ren gardenid garden_id
+egen plot_id = concat(plotid gardenid), punct("-")
 
 gen rented_out = (ag_d14==2 | ag_d14==3)
 gen agland = (ag_d14==1 | ag_d14==4 ) | season!=0 //responses for dry season are missing.
-collapse (max) rented_out (min) agland, by(hhid plot_id garden_id)
-merge 1:1 hhid plot_id garden_id using "${MWI_IHS_IHPS_W3_created_data}\MWI_IHS_IHPS_W3_plot_areas.dta", nogen
+collapse (max) rented_out (min) agland, by(hhid plot_id)
+merge 1:1 hhid plot_id using "${MWI_IHS_IHPS_W3_created_data}\MWI_IHS_IHPS_W3_plot_areas.dta", nogen
 gen farm_area = field_size if agland
 recode farm_area field_size (.=0)
 collapse (max) farm_area field_size, by (hhid plot_id)
@@ -4309,10 +4302,10 @@ save "${MWI_IHS_IHPS_W3_created_data}\MWI_IHS_IHPS_W3_livestock_diseases.dta", r
 //Doing improved seed and agrochemicals at the same time.
 
 use "${MWI_IHS_IHPS_W3_created_data}\MWI_IHS_IHPS_W3_all_plots.dta", clear
-collapse (max) use_imprv_seed use_hybrid_seed, by(hhid plot_id garden_id crop_code season)
+collapse (max) use_imprv_seed use_hybrid_seed, by(hhid plot_id crop_code season)
 ren use_imprv_seed all_imprv_seed_
 ren use_hybrid_seed all_hybrid_seed_
-merge m:m hhid plot_id garden_id season using "${MWI_IHS_IHPS_W3_created_data}\MWI_IHS_IHPS_W3_dm_ids.dta", nogen
+merge m:m hhid plot_id season using "${MWI_IHS_IHPS_W3_created_data}\MWI_IHS_IHPS_W3_dm_ids.dta", nogen
 preserve
 collapse (max) all*, by(hhid indiv female) 
 ren all_imprv_seed use_imprv_seed 
@@ -4327,11 +4320,11 @@ gen farmer_ = 1
 reshape wide all_imprv_seed_ all_hybrid_seed_ farmer_, i(hhid indiv female) j(crop_name) string
 recode farmer_* (.=0)
 ren farmer_* *_farmer
-save "${MWI_IHS_IHPS_W3_created_data}\MWI_IHS_IHPS_W3_farmer_improved_hybrid_seed_use.dta", replace
+save "${MWI_IHS_IHPS_W3_created_data}\MWI_IHS_IHPS_W3_farmer_improvedseed_use.dta", replace
 collapse (max) all_hybrid_seed_* all_imprv_seed_*, by(hhid)
 ren all_hybrid_seed_* hybrid_seed_*
 ren all_imprv_seed_* imprv_seed_*
-save "${MWI_IHS_IHPS_W3_created_data}\MWI_IHS_IHPS_W3_improved_hybrid_seed_use.dta", replace
+save "${MWI_IHS_IHPS_W3_created_data}\MWI_IHS_IHPS_W3_improvedseed_use.dta", replace
 
 use "${MWI_IHS_IHPS_W3_created_data}\MWI_IHS_IHPS_W3_plot_cost_inputs_long.dta", clear
 keep if inlist(input, "inorg", "orgfert", "pest", "herb")
@@ -4339,8 +4332,8 @@ gen use_org_fert = input == "orgfert"
 gen use_inorg_fert = input == "inorg"
 gen use_herb = input=="herb"
 gen use_pest = input=="pest"
-collapse (max) use_*, by(hhid plot_id garden_id season) 
-merge m:m hhid garden_id plot_id season using "${MWI_IHS_IHPS_W3_created_data}\MWI_IHS_IHPS_W3_dm_ids.dta", nogen keep(1 3)
+collapse (max) use_*, by(hhid plot_id season) 
+merge m:m hhid plot_id season using "${MWI_IHS_IHPS_W3_created_data}\MWI_IHS_IHPS_W3_dm_ids.dta", nogen keep(1 3)
 collapse (max) use*, by(hhid indiv female)
 merge 1:1 hhid indiv female using `fmr_imprv_seed', nogen
 
@@ -4531,19 +4524,19 @@ save "${MWI_IHS_IHPS_W3_created_data}\MWI_IHS_IHPS_W3_eggs_animals.dta", replace
 * CROP PRODUCTION COSTS PER HECTARE- SS Checked and Updated, CG Updated 5.12.25
 ********************************************************************************
 use "${MWI_IHS_IHPS_W3_created_data}/MWI_IHS_IHPS_W3_all_plots.dta", clear
-collapse (sum) ha_planted ha_harvest, by(hhid plot_id garden_id purestand field_size season)
-reshape long ha_, i(hhid plot_id garden_id purestand field_size season) j(area_type) string
+collapse (sum) ha_planted ha_harvest, by(hhid plot_id purestand field_size season)
+reshape long ha_, i(hhid plot_id purestand field_size season) j(area_type) string
 tempfile plot_areas
 save `plot_areas'
 
 use "${MWI_IHS_IHPS_W3_created_data}/MWI_IHS_IHPS_W3_plot_cost_inputs_long.dta", clear
-collapse (sum) cost_=val, by(hhid plot_id garden_id exp season) 
-reshape wide cost_, i(hhid plot_id garden_id season) j(exp) string
-merge 1:1 hhid plot_id garden_id season using "${MWI_IHS_IHPS_W3_created_data}\MWI_IHS_IHPS_W3_plot_decision_makers.dta", nogen keep(1 3)
+collapse (sum) cost_=val, by(hhid plot_id exp season) 
+reshape wide cost_, i(hhid plot_id season) j(exp) string
+merge 1:1 hhid plot_id season using "${MWI_IHS_IHPS_W3_created_data}\MWI_IHS_IHPS_W3_plot_decision_makers.dta", nogen keep(1 3)
 recode cost_exp cost_imp (.=0)
 gen cost_total=cost_imp+cost_exp
 drop cost_imp
-merge 1:m hhid plot_id garden_id season using `plot_areas', nogen keep(3)
+merge 1:m hhid plot_id season using `plot_areas', nogen keep(3)
 gen cost_exp_ha_ = cost_exp/ha_ 
 gen cost_total_ha_ = cost_total/ha_
 collapse (mean) cost*ha_ [aw=field_size], by(hhid dm_gender area_type)
@@ -4578,9 +4571,9 @@ save "${MWI_IHS_IHPS_W3_created_data}/MWI_IHS_IHPS_W3_cropcosts.dta", replace
 * RATE OF FERTILIZER APPLICATION * -SS Checked and Updated 02-26-24, CG Updated 5.12.25
 ********************************************************************************
 use "${MWI_IHS_IHPS_W3_created_data}/MWI_IHS_IHPS_W3_planted_area.dta", clear
-merge 1:1 hhid plot_id garden_id season using "${MWI_IHS_IHPS_W3_created_data}/MWI_IHS_IHPS_W3_fertilizer_kg_application_plot.dta", nogen keep(1 3)
-merge 1:1 hhid plot_id garden_id season using "${MWI_IHS_IHPS_W3_created_data}/MWI_IHS_IHPS_W3_plot_decision_makers.dta", nogen keep(1 3)
-merge 1:1 hhid plot_id garden_id season using "${MWI_IHS_IHPS_W3_created_data}/MWI_IHS_IHPS_W3_plot_irrigation.dta", nogen keep(1 3) 
+merge 1:1 hhid plot_id season using "${MWI_IHS_IHPS_W3_created_data}/MWI_IHS_IHPS_W3_fertilizer_kg_application_plot.dta", nogen keep(1 3)
+merge 1:1 hhid plot_id season using "${MWI_IHS_IHPS_W3_created_data}/MWI_IHS_IHPS_W3_plot_decision_makers.dta", nogen keep(1 3)
+merge 1:1 hhid plot_id season using "${MWI_IHS_IHPS_W3_created_data}/MWI_IHS_IHPS_W3_plot_irrigation.dta", nogen keep(1 3) 
 drop if ha_planted==0
 recode plot_irr (.=0)
 gen ha_irr = plot_irr * ha_planted
@@ -4595,7 +4588,7 @@ drop dm_gender
 ren *kg *kg_
 ren ha_planted ha_planted_
 ren ha_irr ha_irr_
-reshape wide *_, i(hhid plot_id garden_id season) j(dm_gender2) string
+reshape wide *_, i(hhid plot_id season) j(dm_gender2) string
 //merge in weights merge m:1 hhid using "${MWI_IHS_IHPS_W3_created_data}/Malawi_IHS_IHPS_W3_weights.dta", nogen // keep(1 3) 
 collapse (sum) ha_planted_* *kg* ha_irr_*, by(hhid)
 foreach i in `vars' {
@@ -6187,7 +6180,7 @@ merge 1:1 hhid using "${MWI_IHS_IHPS_W3_created_data}/MWI_IHS_IHPS_W3_weights.dt
 merge 1:1 hhid using "${MWI_IHS_IHPS_W3_created_data}/MWI_IHS_IHPS_W3_vaccine.dta", nogen
 merge 1:1 hhid using "${MWI_IHS_IHPS_W3_created_data}/MWI_IHS_IHPS_W3_input_use.dta", nogen 
 //merge 1:1 hhid  using  "${MWI_IHS_IHPS_W3_created_data}\MWI_IHS_IHPS_W3_fert_use.dta", nogen //Now in inputs
-merge 1:1 hhid  using "${MWI_IHS_IHPS_W3_created_data}/MWI_IHS_IHPS_W3_improved_hybrid_seed_use.dta", nogen
+merge 1:1 hhid  using "${MWI_IHS_IHPS_W3_created_data}/MWI_IHS_IHPS_W3_improvedseed_use.dta", nogen
 merge 1:1 hhid  using "${MWI_IHS_IHPS_W3_created_data}/MWI_IHS_IHPS_W3_any_ext.dta", nogen
 merge 1:1 hhid using "${MWI_IHS_IHPS_W3_created_data}/MWI_IHS_IHPS_W3_fin_serv.dta", nogen
 drop if hhid == ""
@@ -6988,7 +6981,7 @@ merge 1:1 hhid  indiv using "${MWI_IHS_IHPS_W3_created_data}\MWI_IHS_IHPS_W3_mak
 merge 1:1 hhid  indiv using "${MWI_IHS_IHPS_W3_created_data}\MWI_IHS_IHPS_W3_ownasset.dta", nogen  keep(1 3)
 merge m:1 hhid  using "${MWI_IHS_IHPS_W3_created_data}\MWI_IHS_IHPS_W3_weights.dta", nogen keep (1 3) 
 merge 1:1 hhid  indiv using "${MWI_IHS_IHPS_W3_created_data}\MWI_IHS_IHPS_W3_farmer_input_use.dta", nogen  keep(1 3)
-merge 1:1 hhid  indiv using "${MWI_IHS_IHPS_W3_created_data}\MWI_IHS_IHPS_W3_farmer_improved_hybrid_seed_use.dta", nogen  keep(1 3)
+merge 1:1 hhid  indiv using "${MWI_IHS_IHPS_W3_created_data}\MWI_IHS_IHPS_W3_farmer_improvedseed_use.dta", nogen  keep(1 3)
 merge 1:1 hhid  indiv using "${MWI_IHS_IHPS_W3_created_data}\MWI_IHS_IHPS_W3_farmer_vaccine.dta", nogen  keep(1 3)
 
 *Land rights
@@ -7080,15 +7073,15 @@ save "${MWI_IHS_IHPS_W3_final_data}\MWI_IHS_IHPS_W3_individual_variables.dta", r
 ********************************************************************************
 *GENDER PRODUCTIVITY GAP
 use "${MWI_IHS_IHPS_W3_created_data}\MWI_IHS_IHPS_W3_all_plots.dta", clear
-collapse (sum) plot_value_harvest = value_harvest, by(hhid plot_id garden_id season)
+collapse (sum) plot_value_harvest = value_harvest, by(hhid plot_id season)
 tempfile crop_values 
 save `crop_values'
 
 use "${MWI_IHS_IHPS_W3_created_data}\MWI_IHS_IHPS_W3_plot_areas.dta", clear
 merge m:1 hhid using "${MWI_IHS_IHPS_W3_created_data}\MWI_IHS_IHPS_W3_weights.dta", keep(1 3) nogen
-merge 1:m hhid plot_id garden_id using `crop_values', nogen keep(1 3)
-merge 1:1 hhid plot_id garden_id using "${MWI_IHS_IHPS_W3_created_data}\MWI_IHS_IHPS_W3_plot_decision_makers.dta", keep (1 3) nogen
-merge 1:1 hhid plot_id garden_id using "${MWI_IHS_IHPS_W3_created_data}\MWI_IHS_IHPS_W3_plot_family_hired_labor.dta", keep (1 3) nogen
+merge 1:m hhid plot_id using `crop_values', nogen keep(1 3)
+merge 1:1 hhid plot_id using "${MWI_IHS_IHPS_W3_created_data}\MWI_IHS_IHPS_W3_plot_decision_makers.dta", keep (1 3) nogen
+merge 1:1 hhid plot_id using "${MWI_IHS_IHPS_W3_created_data}\MWI_IHS_IHPS_W3_plot_family_hired_labor.dta", keep (1 3) nogen
 //merge 1:1 hhid plot_id garden_id season using "${MWI_IHS_IHPS_W3_created_data}\MWI_IHS_IHPS_W3_plot_labor_days.dta", keep(1 3) nogen
 //merge m:1 hhid plot_id using "${MWI_IHS_IHPS_W3_created_data}\MWI_IHS_IHPS_W3_plots_cultivate.dta", nogen keep(1 3) // plot_areas does not include "cultivate"
 
