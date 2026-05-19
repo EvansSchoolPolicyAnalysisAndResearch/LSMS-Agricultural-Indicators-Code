@@ -4969,12 +4969,50 @@ save "${MWI_IHPS_W2_created_data}\MWI_IHPS_W2_shannon_diversity_index.dta", repl
 *CONSUMPTION
 ******************************************************************************** 
 use "${MWI_IHPS_W2_appended_data}/ConsAggW2.dta", clear
+drop panel 
+count 
 merge m:1 hhid using "${MWI_IHPS_W2_created_data}\MWI_IHPS_W2_weights.dta", nogen keep (3)
+gen weight2=weight 
+replace weight2=hhweight if weight2==.
+count if weight2==.
+
+preserve
 describe
 //We aren't renaming intmonth and intyear in W1 and W2 as they already exist
-collapse (mean) price_index_region=price_indexL [aw=weight], by(region intmonth)
+collapse (mean) price_index_region=price_indexL [aw=weight2], by(region intmonth)
+isid region intmonth 
 save "${MWI_IHPS_W2_created_data}/MWI_IHPS_W2_price_index_lookup_region.dta", replace
+restore 
 
+preserve
+keep district region
+duplicates drop 
+tempfile district_region 
+save `district_region'
+restore 
+
+collapse (mean) price_index_district=price_indexL [aw=weight2], by(district region intmonth)
+fillin district intmonth
+drop region 
+merge m:1 district using `district_region', nogen keep (1 3)
+merge m:1 region intmonth using "${MWI_IHPS_W2_created_data}/MWI_IHPS_W2_price_index_lookup_region.dta", nogen keep(1 3)
+gen price_index = price_index_district
+replace price_index = price_index_region if price_index==.
+
+egen price_index_country = mean(price_index_district), by(intmonth)
+replace price_index = price_index_country if price_index==.
+egen price_index_overall = mean(price_index_district)
+replace price_index = price_index_overall if price_index==.
+
+keep district intmonth price_index
+
+isid district intmonth 
+count 
+count if price_index==.
+tab intmonth 
+save "${MWI_IHPS_W2_created_data}/MWI_IHPS_W2_price_index_lookup.dta", replace
+
+/*
 use "${MWI_IHPS_W2_appended_data}/ConsAggW2.dta", clear
 merge m:1 hhid using "${MWI_IHPS_W2_created_data}\MWI_IHPS_W2_weights.dta", nogen keep (3)
 collapse (mean) price_index_district=price_indexL [aw=weight], by(district region intmonth intyear)
@@ -4986,6 +5024,7 @@ gen price_index=price_index_district
 replace price_index=price_index_region if price_index ==.
 keep district intmonth price_index
 save "${MWI_IHPS_W2_created_data}/MWI_IHPS_W2_price_index_lookup.dta", replace
+*/
 
 use "${MWI_IHPS_W2_appended_data}\hh_mod_g1_13.dta", clear
 preserve 
@@ -5022,6 +5061,11 @@ ren ea_id ea
 keep hhid weight price_unit unit* qty* itemcode region district ta ea
 gen country = "MWI" 
 save "${MWI_IHPS_W2_created_data}/MWI_IHPS_W2_cons_value.dta", replace
+
+use "${MWI_IHPS_W2_created_data}/MWI_IHPS_W2_cons_value.dta", clear
+count
+codebook hhid 
+count if price_unit==. | price_unit==0
 
 use "${MWI_IHPS_W2_created_data}/MWI_IHPS_W2_cons_value.dta", clear
 drop if price_unit==0 | price_unit==. 
@@ -5065,6 +5109,12 @@ gen annual_val_fdcons=(val_fdcons*52)
 gen annual_val_alc = val_alc*52
 save "${MWI_IHPS_W2_created_data}/MWI_IHPS_W2_food_consumption.dta", replace
 
+use "${MWI_IHPS_W2_created_data}/MWI_IHPS_W2_food_consumption.dta", clear
+count
+count if val_fdcons==. | val_fdcons==0
+sum val_fdcons, detail 
+
+use "${MWI_IHPS_W2_created_data}/MWI_IHPS_W2_food_consumption.dta", clear
 merge m:1 hhid using "${MWI_IHPS_W2_created_data}\MWI_IHPS_W2_hhids.dta", nogen keep (1 3)
 merge m:1 hhid using "${MWI_IHPS_W2_appended_data}\hh_mod_a_filt_13.dta", nogen keep(1 3)	
 gen intmonth=.
@@ -5072,26 +5122,53 @@ replace intmonth = hh_a23a_2 if qx_type == 1
 replace intmonth = hh_a23b_2 if qx_type == 1 & intmonth ==.
 replace intmonth = hh_a23c_2 if qx_type == 1 & intmonth ==.
 replace intmonth = hh_a37a_2 if qx_type == 2 
+
+count if intmonth==.
+tab qx_type intmonth, missing 
+
 ren ea_id ea
 keep intmonth hhid val_fdcons district region ea
-merge m:m district intmonth using "${MWI_IHPS_W2_created_data}/MWI_IHPS_W2_price_index_lookup.dta", nogen keep(1 3) 
+merge m:1 district intmonth using "${MWI_IHPS_W2_created_data}/MWI_IHPS_W2_price_index_lookup.dta", keep(1 3) 
+tab _merge 
+tab intmonth if _merge==1
+tab district if _merge==1
+drop _merge 
+
 gen missing_p_index = price_index ==.
 gen intmonth_orig=intmonth
+
 replace intmonth=intmonth-1 if missing_p_index == 1
 replace intmonth=2 if intmonth==0
 rename price_index price_index1
-merge m:m district intmonth using "${MWI_IHPS_W2_created_data}/MWI_IHPS_W2_price_index_lookup.dta", nogen keep(1 3) //2,087 matched, 2 not matched
+merge m:1 district intmonth using "${MWI_IHPS_W2_created_data}/MWI_IHPS_W2_price_index_lookup.dta", nogen keep(1 3) //2,087 matched, 2 not matched
 replace price_index1=price_index if price_index1==.
 drop price_index
 rename price_index1 price_index
+
+egen price_index_national = mean(price_index), by(intmonth)
+replace price_index = price_index_national if price_index==.
+drop price_index_national
+count if price_index==.
+tab intmonth_orig if price_index==.
+
 gen imputed=missing_p_index & price_index !=.
 gen price_fdcons = (price_index/100)*val_fdcons 
 keep hhid val_fdcons district region district intmonth price_index price_fdcons ea
 save "${MWI_IHPS_W2_created_data}/MWI_IHPS_W2_food_consumption.dta", replace
+
+use "${MWI_IHPS_W2_created_data}/MWI_IHPS_W2_food_consumption.dta", clear
+count 
+count if price_fdcons==. 
+count if val_fdcons==. 
+sum price_fdcons val_fdcons, detail 
+
+use "${MWI_IHPS_W2_created_data}/MWI_IHPS_W2_food_consumption.dta", clear
 ren ea ea_id
 merge m:1 ea_id hhid using "${MWI_IHPS_W2_appended_data}/ConsAggW2.dta", nogen keep(3)
+count 
 gen annual_val_fdcons=(val_fdcons*52)
-save "${MWI_IHPS_W2_created_data}/MWI_IHPS_W2_agg_consumption.dta", replace 
+sum annual_val_fdcons rexp_cat011, detail 
+save "${MWI_IHPS_W2_created_data}/MWI_IHPS_W2_agg_consumption.dta", replace
 
 use "${MWI_IHPS_W2_appended_data}\hh_mod_i1_13.dta", clear
 append using "${MWI_IHPS_W2_appended_data}\hh_mod_i2_13.dta"
@@ -5105,6 +5182,7 @@ append using "${MWI_IHPS_W2_appended_data}\hh_mod_g2_13.dta"
 append using "${MWI_IHPS_W2_appended_data}\hh_mod_g3_13.dta"
 replace int_mod="g" if int_mod==""
 append using "${MWI_IHPS_W2_created_data}/MWI_IHPS_W2_food_consumption.dta"
+gen rexp_catnew_food=price_fdcons*52 
 append using `othfoods'
 
 //Alc/Tobacco (April 2013 price) annual consumption. Tobacco and alcohol for the past week is calculated for the whole year (52 weeks). Therefore, measures are multiplied by 52. 
@@ -5115,8 +5193,8 @@ replace rexp_cat02=hh_g05*52 if inlist(hh_g02, 908, 911, 913, 914, 915) //For ch
 gen rexp_cat03=hh_j03*4 if inrange(hh_j02, 301, 327) //For infant clothing, baby nappies/diapers, boy's trousers, boy's shirts, boy's jackets, boy's undergarments, boy's other clothing, men's trousers, men's shirts, men's jackets, men's undergarments, men's other clothing, girl's blouse/shirt, girl's dress/skirt, girl's undergarments, girl's other clothing, lady's blouse/shirt, chitenje cloth, lady's dress/skirt, lady's undergarments, lady's other clothing, boy's shoes, men's shoes, girl's shoes, lady's shoes, cloth/thread/other sewing material, and laundry, dry cleaning and tailoring fees.
 
 //Communication (April 2013 price) annual consumption. Communication is calcualted weekly and monthly. Therefore, measures are multiplied by 52 and 12. 
-gen rexp_cat08=hh_i03*12 if inlist(hh_i02, 210, 221) //For postage stamps, recharging batteries and cellphones
-replace rexp_cat08=hh_i06*12 if inlist(hh_i05, 106) //For newspapers or magazines
+gen rexp_cat08 = hh_i03*52 if inlist(hh_i02, 106) //For newspapers or magazines
+replace rexp_cat08 = hh_i06*12 if inlist(hh_i05, 210, 221) //For postage stamps, recharging batteries and cellphones
 
 //Health (April 2013 price) annual consumption. Health is calculated monthly. Therefore, measures are multiplied by 12. 
 gen rexp_cat06=hh_i06*12 if inlist(hh_i05, 202, 204, 205, 206, 207) //For bar soap, toothpaste/toothbrush, toilet paper, glycerine/vaseline/skin creams, and other personal products
@@ -5152,11 +5230,19 @@ ren rexp* rexp*new
 merge 1:1 hhid using "${MWI_IHPS_W2_created_data}/MWI_IHPS_W2_weights.dta", nogen keep (1 3)
 
 recode rexp* (.=0)
-ren rexp* rexp*new
 egen expagg_new=rowtotal(rexp*new)
 merge m:1 hhid using "${MWI_IHPS_W2_appended_data}/ConsAggW2.dta", nogen keep (3)
 *Our method produces differnces from the World Bank consumption method. This code allows you to compare both panel and cross section. 
 save "${MWI_IHPS_W2_created_data}/MWI_IHPS_W2_aggregate_consumption.dta", replace 
+
+use "${MWI_IHPS_W2_created_data}/MWI_IHPS_W2_aggregate_consumption.dta", clear
+count
+sum expagg_new rexpagg, detail
+corr expagg_new rexpagg
+foreach cat in 02 03 04 06 07 08 09 11 12 {
+    count if rexp_cat`cat'new > 0 & rexp_cat`cat'new != .
+    di "HHs with non-zero rexp_cat`cat': `r(N)'"
+}
 
 *first get adult equivalent
 use "${MWI_IHPS_W2_appended_data}/ConsAggW2.dta", clear
@@ -5176,6 +5262,9 @@ lab var percapita_cons "Consumption per capita"
 lab var daily_peraeq_cons "Daily consumption per adult equivalent"
 lab var daily_percap_cons "Daily consumption per capita" 
 keep hhid total_cons peraeq_cons percapita_cons daily_peraeq_cons daily_percap_cons adulteq
+count 
+count if total_cons==. | total_cons==0
+sum total_cons peraeq_cons percapita_cons, detail
 save "${MWI_IHPS_W2_created_data}/MWI_IHPS_W2_consumption.dta", replace
 
 ********************************************************************************

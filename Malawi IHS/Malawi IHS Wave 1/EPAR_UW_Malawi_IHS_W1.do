@@ -5479,22 +5479,37 @@ save "${MWI_IHS_W1_created_data}\MWI_IHS_W1_shannon_diversity_index.dta", replac
 
 use "${MWI_IHS_W1_appended_data}\Round 1 (2010) Consumption Aggregate.dta", clear 
 drop panel
+drop if price_indexL == .
 merge m:1 hhid using "${MWI_IHS_W1_created_data}\MWI_IHS_W1_weights.dta", nogen keep (3)
+//all 3,246 records merged
 preserve
 collapse (mean) price_index_region=price_indexL [aw=weight], by(region intmonth)
 save "${MWI_IHS_W1_created_data}/MWI_IHS_W1_price_index_lookup_region.dta", replace
 restore
 
+preserve 
+keep district region 
+duplicates drop
+tempfile district_region
+save `district_region'
+restore
+
 collapse (mean) price_index_district=price_indexL [aw=weight], by(district region intmonth)
-fillin region district intmonth
-merge m:1 region intmonth using "${MWI_IHS_W1_created_data}/MWI_IHS_W1_price_index_lookup_region.dta", nogen keep (3)
+fillin district intmonth
+drop region
+merge m:1 district using `district_region', nogen keep (1 3)
+merge m:1 region intmonth using "${MWI_IHS_W1_created_data}/MWI_IHS_W1_price_index_lookup_region.dta", nogen keep (1 3)
 gen price_index=price_index_district
 replace price_index=price_index_region if price_index ==.
+egen price_index_country = mean(price_index_district), by(intmonth)
+replace price_index=price_index_country if price_index==.
 keep district intmonth price_index
+count if price_index==.
+tab intmonth if price_index==.
+tab district if price_index==.
 save "${MWI_IHS_W1_created_data}/MWI_IHS_W1_price_index_lookup.dta", replace
 
 use "${MWI_IHS_W1_appended_data}\Household\hh_mod_g1.dta", clear
-
 preserve 
 gen rexp_cat11=hh_g05 if inrange(hh_g02, 819, 838)
 collapse (sum) rexp_cat11, by(hhid) //restaurants, meals outl
@@ -5516,7 +5531,7 @@ gen unit_own=hh_g06b
 ren hh_g02 itemcode
 recode qty* (.=0)
 drop if qty_purchase==0 & qty_own==0 & qty_gift==0
-merge m:1 hhid using "${MWI_IHS_W1_created_data}\MWI_IHS_W1_weights.dta", nogen	
+merge m:1 hhid using "${MWI_IHS_W1_created_data}\MWI_IHS_W1_weights.dta", nogen
 drop ea_id weight_pop_tot //weight_pop_rururb
 keep hhid weight price_unit unit* qty* itemcode region district ta ea
 gen country = "MWI" 
@@ -5547,8 +5562,8 @@ foreach i in country region district ta ea hhid {
 replace price_unit = price_unit_hhid if price_unit_hhid !=. 
 replace price_unit = price_unit_country if price_unit==.
 gen val_fdcons=price_unit*qty
-/*
-save "${MWI_IHS_W1_created_data}/MWI_IHS_W1_food_consumption_items.dta", replace 
+
+//save "${MWI_IHS_W1_created_data}/MWI_IHS_W1_food_consumption_items.dta", replace - large file, uncomment if you need it.
 gen val_alc=val_fdcons if inrange(itemcode, 911,916)
 replace val_fdcons=. if inrange(itemcode, 911,916)
 collapse (sum) val_fdcons val_alc, by(hhid)
@@ -5556,31 +5571,61 @@ gen int_mod = "g"
 gen annual_val_fdcons=(val_fdcons*52)
 gen annual_val_alc = val_alc*52
 save "${MWI_IHS_W1_created_data}/MWI_IHS_W1_food_consumption.dta", replace
-*/
 
-// cross sectional: visit 1, Panel A vist 1 & visit 2, Panel B visit 1 & visit 2 (hh_a23b_2)
-merge m:1 hhid using "${MWI_IHS_W1_created_data}\MWI_IHS_W1_hhids.dta", nogen keep (1 3)
-merge m:1 hhid using "${MWI_IHS_W1_appended_data}\Household\hh_mod_a_filt.dta", nogen keep(1 3)	
+merge 1:1 hhid using "${MWI_IHS_W1_created_data}\MWI_IHS_W1_hhids.dta", nogen keep (1 3)
+merge 1:1 hhid using "${MWI_IHS_W1_appended_data}\Household\hh_mod_a_filt.dta", nogen keep(1 3)
 gen intmonth=.
 replace intmonth = hh_a23b_1 if qx_type == "Panel A" | qx_type == "Cross-Section"
 replace intmonth = hh_a23b_2 if qx_type == "Panel B" 
-keep intmonth hhid val_fdcons district region ea
-merge m:m district intmonth using "${MWI_IHS_W1_created_data}/MWI_IHS_W1_price_index_lookup.dta", nogen keep(1 3) 
-gen missing_p_index = price_index ==.
+keep district intmonth hhid val_fdcons region ea
+merge m:1 district intmonth using "${MWI_IHS_W1_created_data}/MWI_IHS_W1_price_index_lookup.dta", nogen keep(1 3)
+gen missing_p_index=price_index==.
 gen intmonth_orig=intmonth
+
+/*
 replace intmonth=intmonth-1 if missing_p_index == 1
 replace intmonth=2 if intmonth==0
 rename price_index price_index1
-merge m:m district intmonth using "${MWI_IHS_W1_created_data}/MWI_IHS_W1_price_index_lookup.dta", nogen keep(1 3) //9,790 matched, 2,477 not matched
+gen price_imputed_floor = (intmonth_orig < 3 & price_index!=.)
+lab var price_imputed_floor "Price index imputed from month 3 floor (interview in month 1 and 2)"
+merge m:1 district intmonth using "${MWI_IHS_W1_created_data}/MWI_IHS_W1_price_index_lookup.dta", nogen keep(1 3) //9,790 matched, 2,477 not matched
 replace price_index1=price_index if price_index1==.
 drop price_index
 rename price_index1 price_index
+*/
+
+replace intmonth=intmonth-1 if missing_p_index == 1
+replace intmonth=2 if intmonth==0
+rename price_index price_index1
+merge m:1 district intmonth using "${MWI_IHS_W1_created_data}/MWI_IHS_W1_price_index_lookup.dta", nogen keep(1 3)
+replace price_index1=price_index if price_index1==.
+drop price_index
+rename price_index1 price_index
+gen intmonth_floor=intmonth_orig
+replace intmonth_floor=3 if inlist(intmonth_orig, 1, 2) & price_index==.
+rename price_index price_index1
+rename intmonth intmonth_temp
+rename intmonth_floor intmonth
+merge m:1 district intmonth using "${MWI_IHS_W1_created_data}/MWI_IHS_W1_price_index_lookup.dta", nogen keep(1 3)
+replace price_index1=price_index if price_index1==.
+drop price_index
+rename price_index1 price_index
+rename intmonth intmonth_floor
+rename intmonth_temp intmonth
+egen price_index_national = mean(price_index), by(intmonth)
+replace price_index = price_index_national if price_index == .
+drop price_index_national
+gen price_imputed = missing_p_index & price_index != .
+lab var price_imputed "Price index imputed (HH interviewed in month not covered by consumption aggregate)"
+count if price_index==.
+tab intmonth_orig if price_index==.
 gen imputed=missing_p_index & price_index !=.
 gen price_fdcons = (price_index/100)*val_fdcons 
-keep hhid val_fdcons district region district intmonth price_index price_fdcons ea
+keep hhid val_fdcons district region intmonth price_index price_fdcons ea
 save "${MWI_IHS_W1_created_data}/MWI_IHS_W1_food_consumption.dta", replace
+
 ren ea ea_id
-merge m:1 ea_id hhid using "${MWI_IHS_W1_appended_data}\Round 1 (2010) Consumption Aggregate.dta", nogen keep(3)
+merge 1:1 hhid using "${MWI_IHS_W1_appended_data}\Round 1 (2010) Consumption Aggregate.dta", nogen keep(3)
 gen annual_val_fdcons=(val_fdcons*52)
 sum annual_val_fdcons
 sum rexp_cat011
@@ -5598,6 +5643,7 @@ append using "${MWI_IHS_W1_appended_data}\Household\hh_mod_g2.dta"
 append using "${MWI_IHS_W1_appended_data}\Household\hh_mod_g3.dta"
 replace int_mod="g" if int_mod==""
 append using "${MWI_IHS_W1_created_data}/MWI_IHS_W1_food_consumption.dta"
+gen rexp_cat01new_food=price_fdcons*52 //Annualizing deflated weekly food consumption
 append using `othfoods'
 
 //Alc/Tobacco (April 2013 price) annual consumption. Tobacco and alcohol for the past week is calculated for the whole year (52 weeks). Therefore, measures are multiplied by 52. 
@@ -5608,8 +5654,8 @@ replace rexp_cat02=hh_g05*52 if inlist(hh_g02, 908, 911, 913, 914, 915) //For ch
 gen rexp_cat03=hh_j03*4 if inrange(hh_j02, 301, 327) //For infant clothing, baby nappies/diapers, boy's trousers, boy's shirts, boy's jackets, boy's undergarments, boy's other clothing, men's trousers, men's shirts, men's jackets, men's undergarments, men's other clothing, girl's blouse/shirt, girl's dress/skirt, girl's undergarments, girl's other clothing, lady's blouse/shirt, chitenje cloth, lady's dress/skirt, lady's undergarments, lady's other clothing, boy's shoes, men's shoes, girl's shoes, lady's shoes, cloth/thread/other sewing material, and laundry, dry cleaning and tailoring fees.
 
 //Communication (April 2013 price) annual consumption. Communication is calcualted weekly and monthly. Therefore, measures are multiplied by 52 and 12. 
-gen rexp_cat08=hh_i03*12 if inlist(hh_i02, 210, 221) //For postage stamps, recharging batteries and cellphones
-replace rexp_cat08=hh_i06*12 if inlist(hh_i05, 106) //For newspapers or magazines
+gen rexp_cat08=hh_i03*52 if inlist(hh_i02, 106) // Newspapers 
+replace rexp_cat08=hh_i06*12 if inlist(hh_i05, 210, 221) // Postage/recharging 
 
 //Health (April 2013 price) annual consumption. Health is calculated monthly. Therefore, measures are multiplied by 12. 
 gen rexp_cat06=hh_i06*12 if inlist(hh_i05, 202, 204, 205, 206, 207) //For bar soap, toothpaste/toothbrush, toilet paper, glycerine/vaseline/skin creams, and other personal products
@@ -5619,7 +5665,7 @@ replace rexp_cat11=hh_j03*4 if inlist(hh_j02, 339) //Lodging in a rest house or 
 
 //Housing/Utilities (April 2013 price) annual consumption. Housing is calculated weekly, monthly, quarterly and yearly. Therefore, measures are multiplied by 52, 12, 4, and 1. 
 gen rexp_cat04=hh_i06*12 if inlist(hh_i05, 215, 216, 217, 218, 219) //For wages paid to servants, mortgage, repairs and maintenance to dwelling, repairs to household and personal items, and expenditure on pets
-replace rexp_cat04=hh_i03*12 if inlist(hh_i02, 101, 102) //For charcoal, paraffin or kerosene
+replace rexp_cat04=hh_i03*52 if inlist(hh_i02, 101, 102) //For charcoal, paraffin or kerosene
 replace rexp_cat04=hh_j03*4 if inlist(hh_j02, 328, 329, 330, 331, 333, 338) //For bowls/glassware/plates/silverware, cooking utensils, cleaning utensils, torch/flashlight, paraffin lamp, house decorations
 replace rexp_cat04=hh_k03 if inrange(hh_k02, 401, 410) //For carpet/rugs/drapes/curtains, linen, mats, mosquito net, mattress, cement, bricks, and construction timber
 replace rexp_cat04=hh_k03 if inlist(hh_k02, 419, 420) //For woodpoles/bamboo, and grass for thatching roof or other use
@@ -5638,13 +5684,13 @@ replace rexp_cat09=hh_k03*1 if inlist(hh_k02, 406, 407) //For sports and hobby e
 gen rexp_cat07=hh_i03*52 if inlist(hh_i02, 107, 108, 109) //For bicycle taxi, bus/minibus, and other transport
 replace rexp_cat07=hh_i06*12 if inlist(hh_i05, 212, 213, 214) //For petrol/diesel, motor vehicle service/repair/parts, bicycle service/repair/parts
 //keep hhid rexp* visit ea_id
+
 collapse (sum) rexp*, by(hhid)
 recode rexp* (0=.)
 ren rexp* rexp*new
 merge 1:1 hhid using "${MWI_IHS_W1_created_data}/MWI_IHS_W1_weights.dta", nogen keep (1 3)
 
-recode rexp* (.=0)
-ren rexp* rexp*new
+recode rexp*new (.=0)
 egen expagg_new=rowtotal(rexp*new)
 merge m:1 hhid using "${MWI_IHS_W1_appended_data}\Round 1 (2010) Consumption Aggregate.dta", nogen keep (3)
 *Our method produces differnces from the World Bank consumption method. This code allows you to compare both panel and cross section. 
@@ -5696,8 +5742,6 @@ replace hhid = case_id if hhid == ""
 drop case_id
 ren rexpagg total_cons
 ren pcrexpagg percapita_cons
-replace total_cons = total_cons * $MWI_IHS_W1_2013_10_infl_adj // convert to 2010 LCU
-replace percapita_cons = percapita_cons * $MWI_IHS_W1_2013_10_infl_adj // convert to 2010 LCU
 gen peraeq_cons = total_cons/adulteq
 gen daily_cons = total_cons/365
 gen daily_percap_cons = percapita_cons/365
@@ -5780,6 +5824,7 @@ save "${MWI_IHS_W1_created_data}/MWI_IHS_W1_food_insecurity.dta", replace
 ********************************************************************************
 *FOOD SECURITY*
 ********************************************************************************
+//Still needed?
 use "${MWI_IHS_W1_raw_data}\Round 1 (2010) Consumption Aggregate.dta", clear
 preserve
 use "${directory}\Malawi IHS\mwi_panel_ids.dta", clear
