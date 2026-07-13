@@ -4,7 +4,7 @@
 *Title/Purpose 	: Agricultural Development Indicators for the LSMS-ISA, Tanzania National Panel Survey (TNPS) LSMS-ISA Wave 5 (2019-20).
 *Author(s)		: Didier Alia & C. Leigh Anderson; uw.eparx@uw.edu
 
-*Date			: March 31st, 2025
+*Date			: July 13th, 2026
 *Dataset Version: TZA_2020_NPS-R5_v02_M
 ----------------------------------------------------------------------------------------------------------------------------------------------------*/
 
@@ -115,7 +115,7 @@ capture ssc install findname  // need this user-written ado file for some comman
 
 //set directories: These paths correspond to the folders where the raw data files are located and where the created data and final data will be stored.
 
-global directory			    "../.." 
+global directory			    "../.."
 global Tanzania_NPS_W5_raw_data 			"$directory/Tanzania NPS/Tanzania NPS Wave 5/Raw DTA Files/"
 global Tanzania_NPS_W5_created_data 		"$directory/Tanzania NPS/Tanzania NPS Wave 5/Final DTA Files/created_data"
 global Tanzania_NPS_W5_final_data  			"$directory/Tanzania NPS/Tanzania NPS Wave 5/Final DTA Files/final_data"
@@ -134,6 +134,7 @@ global Tanzania_NPS_W5_poverty_190 (1.9 * 588.8 * (200.7/112.7)) //$1.90 was the
 global Tanzania_NPS_W5_poverty_npl (1621 * (200.7/181.2)) //Similarly, line is set based on national poverty line was stated as 49,320 which when calculated for a year, ((49,320*12)/365) TSH/adult/month in 2018, from https://www.nbs.go.tz/nbs/takwimu/hbs/Tanzania_Mainland_Poverty_Assessment_Report.pdf. We assume the poverty line follows inflation; remove the adjustment factor to assume that it hasn't changed.  
 global Tanzania_NPS_W5_poverty_215 (2.15*777.6*(200.7/175)) //$2.15 was the poverty line in 2017. 777.6 was the PPP in 2017 so we inflate based on CPI (2021)/CPI (2017) since that is the year we're adjusting for. 
 global Tanzania_NPS_W5_poverty_300 (3.00 * $Tanzania_NPS_W5_infl_adj * $Tanzania_NPS_W5_cons_ppp_dollar ) //$3.00 is the new poverty line in international PPP dollars which has been updated to 2021. 
+global Tanzania_NPS_W5_poverty_420 (4.20 * $Tanzania_NPS_W5_infl_adj * $Tanzania_NPS_W5_cons_pp_dollar) //Higher poverty line.
 
 ********************************************************************************
 *THRESHOLDS FOR WINSORIZATION
@@ -173,6 +174,26 @@ drop rnum
 save "${Tanzania_NPS_W5_created_data}/Tanzania_NPS_W5_cropname_table.dta", replace
 
 ********************************************************************************
+*GEOVARIABLES
+********************************************************************************
+use "${Tanzania_NPS_W5_raw_data}/cm_sec_a.dta", clear 
+ren id_01 region 
+ren id_02 district
+ren id_03 ward 
+ren id_04 village 
+ren id_05 ea 
+tostring ea, g(ea2) format(%12.0f)
+
+ren cm_gps__Latitude latitude
+ren cm_gps__Longitude longitude
+merge 1:m interview__key using "${Tanzania_NPS_W5_raw_data}/cm_sec_b.dta", nogen 
+
+gen dist_market = cm_b03 if service_id==11 | service_id==12 //daily/weekly market
+collapse (min) dist_market, by(region district ward village ea latitude longitude)
+save "${Tanzania_NPS_W5_created_data}/Tanzania_NPS_W5_geovars.dta", replace
+
+
+********************************************************************************
 *HOUSEHOLD IDS 
 ********************************************************************************
 use "${Tanzania_NPS_W5_raw_data}/HH_SEC_A.dta", clear
@@ -183,6 +204,18 @@ ren hh_a03_2 ward_name
 ren hh_a03_3a village 
 ren hh_a03_3b village_name
 ren hh_a04_1 ea
+tostring clusterid, format(%12.0f) g(clusterid2)
+gen ea2 = substr(clusterid2, -8, 8) 
+gen village2 = substr(clusterid2, -8, 5)
+gen ward2 = substr(clusterid2, -8, 3)
+//drop ward village ea 
+destring ea2, replace
+destring village2, replace 
+destring ward2, replace
+replace ea=ea2 if ea2!=.
+replace ward=ward2 if ward2!=.
+replace village=village2 if village2!=.
+drop ea2 ward2 village2
 ren y5_crossweight weight //sdd = y5
 ren y5_hhid hhid 
 gen rural = (y5_rural==1) // was clustertype in w4
@@ -3631,6 +3664,51 @@ collapse (sum) value_assets=value_today, by(hhid)
 la var value_assets "Value of household assets"
 save "${Tanzania_NPS_W5_created_data}/Tanzania_NPS_W5_hh_assets.dta", replace 
 
+
+********************************************************************************
+*POVERTY INDICES
+********************************************************************************
+//Adapted from Nigeria W5 (see that wave for full suite)
+	********************************
+	*INDIVIDUAL ACCESS TO EDUCATION* 
+	********************************
+//ALT: Alkire & Ul Haq identify individual deprivation of education as being eligible up to the 8th year of education but not in school. For south Asia, this is typically age 6-14. In Nigeria, the primary schooling duration is 9 years, typically starting at age 5. Ergo, the age range should be extended to 5-14.
+
+//They also introduce the concept of a pioneer child, which is one that has had at least 6 years of schooling but lives in a household where the parents do not.
+use "${Tanzania_NPS_W5_raw_data}/hh_sec_c.dta", clear
+ren y5_hhid hhid 
+ren indidy5 indiv 
+
+drop if hh_c03_1==1 //Remove from dataset if the respondent is too young to attend school.
+merge 1:1 hhid indiv using "${Tanzania_NPS_W5_created_data}/Tanzania_NPS_W5_person_ids.dta", nogen keep(1 3)
+gen years_school = hh_c07
+/* Notes:
+Sources suggest there are 7 years of primary education, but instrument has 8. 
+After year 7/8, you can do F1-4 (secondary) and F5-6 (vocational) or U1-4 (undergrad). Forms 5 and 6 are considered advanced vocational.
+34: "Diploma" likely refers to teaching certification and is 2-3 years (assuming 2 here)
+20: OSC is an extra transitional year between primary and secondary - counting this as 8 years.
+*/
+recode years_school (12=1) (13=2) (14=3) (15=4) (16=5) (17=6) (18=7) (19 20=8) (21=9) (22=10) (23=11) (24 25=12) (31 41=13) (32 33 34 42=14) (43=15) (44 45=16)
+preserve 
+keep if hh_head==1
+save "${Tanzania_NPS_W5_created_data}/Tanzania_NPS_W5_hh_head_education.dta", replace
+restore
+gen in_school = age>=5 & age<=14 & hh_c05==1
+gen school_eligible = age>=5 & age<=14
+gen adult_ed = years_school*(age>=15)
+gen child_ed = years_school*(age<15)
+gen missing_data = adult_ed==. | child_ed==.
+gen hh_mmbrs = 1
+collapse (sum) tot_missing=missing_data hh_mmbrs in_school school_eligible (max) adult_ed child_ed, by(hhid)
+gen prop_missing = tot_missing/hh_mmbrs 
+gen pioneer_child = adult_ed < 6 & child_ed >= 6
+gen dep_att = in_school < school_eligible //Households that have no children are considered not deprived in attendance. 
+gen dep_edyr = adult_ed < 6 & child_ed < 6
+replace dep_edyr = . if tot_missing > 0.33 //No missing values.
+save "${Tanzania_NPS_W5_created_data}/Tanzania_NPS_W5_mpi_edu.dta", replace
+//Cannot construct the death of a child indicator.
+
+
 ********************************************************************************
 *DISTANCE TO AGRO DEALERS* - AM UPDATED 07.06.21 
 ********************************************************************************
@@ -3643,6 +3721,8 @@ save "${Tanzania_NPS_W5_created_data}/Tanzania_NPS_W5_hh_assets.dta", replace
 ********************************************************************************
 global empty_vars ""
 use "${Tanzania_NPS_W5_created_data}/Tanzania_NPS_W5_weights.dta", clear
+*Geovariables
+merge m:1 region district ward village ea using  "${Tanzania_NPS_W5_created_data}/Tanzania_NPS_W5_geovars.dta", nogen keep(1 3)
 
 *Gross crop income 
 merge 1:1 hhid using "${Tanzania_NPS_W5_created_data}/Tanzania_NPS_W5_hh_crop_production.dta", nogen
@@ -4520,7 +4600,7 @@ else {
 
 ********Currency Conversion Factors*********
 gen ccf_loc = (1/$Tanzania_NPS_W5_infl_adj) 
-lab var ccf_loc "currency conversion factor - 2021 $NGN"
+lab var ccf_loc "currency conversion factor - 2021 $TSH"
 gen ccf_usd = ccf_loc/$Tanzania_NPS_W5_exchange_rate 
 lab var ccf_usd "currency conversion factor - 2021 $USD"
 gen ccf_1ppp = ccf_loc/$Tanzania_NPS_W5_cons_ppp_dollar
@@ -4570,7 +4650,7 @@ keep hhid fhh clusterid strataid *weight* *wgt* region region_name district dist
 */ *_exp* poverty* *value_crop_production* *value_harv* *value_crop_sales* *value_sold* *kg_harvest* *total_planted_area* *total_harv_area* /*
 */ *all_area_* grew_* agactivities_hh ag_hh crop_hh livestock_hh fishing_hh *_milk_produced* *eggs_total_year *value_eggs_produced* /*
 */ *value_livestock_products* *value_livestock_sales* total_cons nb_cattle_today nb_poultry_today bottom_40_percap bottom_40_peraeq /*
-*/ ccf_loc ccf_usd ccf_1ppp ccf_2ppp *sales_livestock_products *value_pro* *value_sal*  /*DYA 10.6.2020*/ *value_livestock_sales*  *w_value_farm_production* *value_slaughtered* *value_lvstck_sold* *value_crop_sales* *sales_livestock_products* *value_livestock_sales* nb*
+*/ ccf_loc ccf_usd ccf_1ppp ccf_2ppp *sales_livestock_products *value_pro* *value_sal*  /*DYA 10.6.2020*/ *value_livestock_sales*  *w_value_farm_production* *value_slaughtered* *value_lvstck_sold* *value_crop_sales* *sales_livestock_products* *value_livestock_sales* nb* dist* latitude longitude //nb that lat and lon are marked confidential and there is no useful information there.
 
 ren weight weight_sample
 ren weight_pop_rururb weight

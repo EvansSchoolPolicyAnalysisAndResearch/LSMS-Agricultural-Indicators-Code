@@ -4,7 +4,7 @@
 
 *Author(s)		: Didier Alia & C. Leigh Anderson; uw.eparx@uw.edu
 				  
-*Date			: September 5th, 2025
+*Date			: July 13th, 2026
 
 *Dataset version: ETH_2021_ESPS-W5_v01_M
 ----------------------------------------------------------------------------------------------------------------------------------------------------*/
@@ -97,6 +97,7 @@ global Ethiopia_ESS_W5_poverty_npl (7184*659.2/221.028/365) //see calculation an
 global Ethiopia_ESS_W5_poverty_215 (2.15* 659.22/244.65 * 8.21)  //See calculation above, ~47 birr
 * WB's new (PPP) poverty threshold of $2.15 multiplied by globals
 global Ethiopia_ESS_W5_poverty_300 (3.00* $Ethiopia_ESS_W5_inflation * $Ethiopia_ESS_W5_cons_ppp_dollar)  
+global Ethiopia_ESS_W5_poverty_420 (4.20* $Ethiopia_ESS_W5_inflation * $Ethiopia_ESS_W5_cons_ppp_dollar) //Additional higher poverty line.
 
 
 ********************************************************************************
@@ -353,6 +354,18 @@ save "${Ethiopia_ESS_W5_created_data}/Crop_CF_Wave5_adj.dta", replace
 */
 
 ********************************************************************************
+*GEOVARIABLES
+********************************************************************************
+
+use "${Ethiopia_ESS_W5_temp_data}/eth_householdgeovariables_y5.dta", clear
+ren household_id hhid
+ren ssa_aez09 aez
+ren lat_dd_mod latitude
+ren lon_dd_mod longitude
+keep hhid dist* aez latitude longitude 
+save "${Ethiopia_ESS_W5_created_data}/Ethiopia_ESS_W5_geovars.dta", replace
+
+********************************************************************************
 *HOUSEHOLD IDS
 ********************************************************************************
 use "${Ethiopia_ESS_W5_temp_data}/sect_cover_hh_w5.dta", clear
@@ -493,17 +506,13 @@ save "${Ethiopia_ESS_W5_created_data}/Ethiopia_ESS_W5_weights.dta", replace
 ******************************************************************************
 use "$Ethiopia_ESS_W5_temp_data/sect1_hh_w5.dta", clear
 ren household_id hhid
-keep hhid s1q02 s1q03a individual_id
 //codebook s1q03
 gen female = s1q02 == 2
-replace female = . if s1q02 > 2
-replace female = . if s1q02 == .
-replace female = . if s1q02 == 0
 lab var female "1 = individual is female"
 rename individual_id personid
+gen hh_head=s1q01==1
 rename s1q03a age // Note that gender and age are swapped in the file after
-rename s1q02 sex
-duplicates drop hhid personid, force
+keep hhid personid hh_head age female
 tempfile indiv_roster
 save `indiv_roster'
 
@@ -511,16 +520,13 @@ save `indiv_roster'
 use "$Ethiopia_ESS_W5_temp_data/sect1_pp_w5.dta", clear
 merge m:1 household_id using "${Ethiopia_ESS_W5_temp_data}/sect_cover_hh_w5.dta", keepusing(household_id) keep(1) // only interested in the hh that are in PP data but not in the main household roster
 ren household_id hhid
-keep hhid s1q00 s1q02 s1q03
+gen hh_head = 0 //no question about relationship to household head, assuming these new members are not heads.
+keep hhid s1q00 s1q02 s1q03 hh_head
 codebook s1q03
 gen female = s1q03 == 2
-replace female = . if s1q03 > 2 // Note that gender and age are swapped in this file from the one before
-replace female = . if s1q03 == .
-replace female = . if s1q03 == 0
 lab var female "1 = individual is female"
 rename s1q00 personid
 rename s1q02 age
-rename s1q03 sex
 duplicates drop hhid personid, force // 4 duplicates
 
 append using `indiv_roster'
@@ -3647,12 +3653,6 @@ reshape wide cost*_, i(hhid dm_gender2) j(area_type) string
 ren cost* cost*_
 reshape wide cost*, i(hhid) j(dm_gender2) string
 
-foreach i in male female mixed {
-	foreach j in planted harvested {
-		la var cost_exp_ha_`j'_`i' "Explicit cost per hectare by area `j', `i'-managed plots"
-		la var cost_total_ha_`j'_`i' "Total cost per hectare by area `j', `i'-managed plots"
-	}
-}
 save "${Ethiopia_ESS_W5_created_data}/Ethiopia_ESS_W5_cropcosts.dta", replace
 
 
@@ -5015,6 +5015,53 @@ des
 ********************************************************************************
 *Cannot calculate in this instrument - questionnaire doesn't ask value of HH assets
 
+********************************************************************************
+*POVERTY INDICES
+********************************************************************************
+//Adapted from Nigeria W5 (see that wave for full suite)
+	********************************
+	*INDIVIDUAL ACCESS TO EDUCATION* 
+	********************************
+//ALT: Alkire & Ul Haq identify individual deprivation of education as being eligible up to the 8th year of education but not in school. For south Asia, this is typically age 6-14. In Nigeria, the primary schooling duration is 9 years, typically starting at age 5. Ergo, the age range should be extended to 5-14.
+
+//They also introduce the concept of a pioneer child, which is one that has had at least 6 years of schooling but lives in a household where the parents do not.
+use "${Ethiopia_ESS_W5_raw_data}/sect2_hh_w5.dta", clear
+ren household_id hhid 
+ren individual_id personid //
+drop if s2q05==1 | s2q00!=1 //Remove from dataset if the respondent is too young to attend school.
+merge 1:1 hhid personid using "${Ethiopia_ESS_W5_created_data}/Ethiopia_ESS_W5_person_ids.dta", nogen keep(1 3)
+gen years_school = s2q06 
+replace years_school=0 if s2q04==2
+/* Notes:
+Assuming a standard high school education is 13 years (kindergarten + grades 1-12)
+13: Certificate is vocational training, has multiple levels, starts in grade 10 (see 25-29)
+14: Teacher training - takes 1-2 (but more recently 3) years to complete starting grade 10, so I'm assuming this is equivalent to completing high school
+17: Diploma is like an associate's degree
+20: Grad school is all lumped together, calling it 16 years (2 above bachelor's)
+Adult education/non-regular education are 2-year programs, but resources say it covers material through grade 4
+*/
+recode years_school (0=1) (1=2) (2=3) (3=4) (4=5) (5=6) (6=7) (7=8) (8=9) (9 21=10) (10 22=11) (11 23 25 26 28=12) (12 24 27 29=13) (13=13) (14=13) (15 30 31=14) (16 32=15) (17 33=15) (18 34=16) (19=16) (20 35=18) (94 96=5) (93 95 98 = 0) (99=.) 
+preserve 
+keep if hh_head==1
+keep hhid years_school 
+la var years_school "Level of education of household head"
+save "${Ethiopia_ESS_W5_created_data}/Ethiopia_ESS_W5_hh_head_education.dta", replace
+restore
+gen in_school = age>=5 & age<=14 & s2q11==1
+gen school_eligible = age>=5 & age<=14
+gen adult_ed = years_school*(age>=15)
+gen child_ed = years_school*(age<15)
+gen missing_data = adult_ed==. | child_ed==.
+gen hh_mmbrs = 1
+collapse (sum) tot_missing=missing_data hh_mmbrs in_school school_eligible (max) adult_ed child_ed, by(hhid)
+gen prop_missing = tot_missing/hh_mmbrs 
+gen pioneer_child = adult_ed < 6 & child_ed >= 6
+gen dep_att = in_school < school_eligible //Households that have no children are considered not deprived in attendance. 
+gen dep_edyr = adult_ed < 6 & child_ed < 6
+replace dep_edyr = . if tot_missing > 0.33 //No missing values.
+save "${Ethiopia_ESS_W5_created_data}/Ethiopia_ESS_W5_mpi_edu.dta", replace
+//Cannot construct the death of a child indicator.
+
 
 ********************************************************************************
 *DISTANCE TO AGRO DEALERS*
@@ -5052,8 +5099,11 @@ save "${Ethiopia_ESS_W5_created_data}/Ethiopia_ESS_W5_household_crop_rotation.dt
 ********************************************************************************
 global empty_vars ""
 use "${Ethiopia_ESS_W5_created_data}/Ethiopia_ESS_W5_weights.dta", clear	
+merge 1:1 hhid using "${Ethiopia_ESS_W5_created_data}/Ethiopia_ESS_W5_geovars.dta", nogen
+
+
 //drop pw_W5	
-merge 1:1 hhid using "${Ethiopia_ESS_W5_created_data}/Ethiopia_ESS_W5_hhids.dta", nogen // all matched
+//merge 1:1 hhid using "${Ethiopia_ESS_W5_created_data}/Ethiopia_ESS_W5_hhids.dta", nogen // all matched
 //merge 1:1 hhid using "${Ethiopia_ESS_W5_created_data}/Ethiopia_ESS_hh_adulteq.dta", nogen keep(1 3)
 
 *Gross crop income
@@ -5987,6 +6037,8 @@ gen poverty_under_215 = daily_percap_cons < $Ethiopia_ESS_W5_poverty_215
 la var poverty_under_215 "Household per-capita consumption is below $2.15 in 2017 $ PPP"
 gen poverty_under_300 = daily_percap_cons < $Ethiopia_ESS_W5_poverty_300
 la var poverty_under_300 "Household per-capita consumption is below $3.00 in 2021 $ PPP"
+gen poverty_under_420 = daily_percap_cons < $Ethiopia_ESS_W5_poverty_420
+la var poverty_under_420 "Household per-capita consumption is below $4.20 in 2021 $ PPP"
 gen poverty_under_npl = daily_percap_cons < $Ethiopia_ESS_W5_poverty_npl
 
 *Cleaning up output to get below 5,000 variables
@@ -6302,7 +6354,8 @@ tab dm_gender if rural_ssp==0, generate(manager_gender_lsp)
 
 	rename manager_gender_lsp1 manager_male_lsp
 	rename manager_gender_lsp2 manager_female_lsp
-	rename manager_gender_lsp3 manager_mixed_lsp
+	gen manager_mixed_lsp = . //no households in category.
+	//rename manager_gender_lsp3 manager_mixed_lsp
 
 	label variable manager_male_lsp "Male only decision-maker - lsp"
 	label variable  manager_female_lsp "Female only decision-maker - lsp"

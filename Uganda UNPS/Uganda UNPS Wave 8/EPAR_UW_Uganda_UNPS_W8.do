@@ -2,7 +2,7 @@
 /*-----------------------------------------------------------------------------------------------------------------------------------------------------
 *Title:                              : Agricultural Development Indicators for the LSMS-ISA, Uganda National Panel Sample Wave 8, 2019-2020
 *Author(s)/Correspondence			 : Didier Alia & C. Leigh Anderson; uw.eparx@uw.edu
-*Updated			          	     : September 5th, 2025
+*Updated			          	     : July 13th, 2026
 *Dataset Version            	     : UGA_2019_UNPS_v03_M 
 ----------------------------------------------------------------------------------------------------------------------------------------------------*/
 
@@ -187,6 +187,7 @@ global Uganda_NPS_W8_poverty_190 (1.90*944.255*(181.882451/116.6)) // $1.90 was 
 global Uganda_NPS_W8_poverty_npl (361*(183.9/267.5)) 
 global Uganda_NPS_W8_poverty_215 (2.15 * 1219.19 * (181.9/166.8)) //$2.15 was the poverty line in 2017. 1219.19 was the PPP in 2017 so we inflate based on CPI (2020)/CPI (2017) since that is the year we're adjusting for. 
 global Uganda_NPS_W8_poverty_300 (3.00 * $Uganda_NPS_W8_inflation * $Uganda_NPS_W8_cons_ppp_dollar ) 
+global Uganda_NPS_W8_poverty_420 (4.20 * $Uganda_NPS_W8_inflation * $Uganda_NPS_W8_cons_ppp_dollar )
 //Updated 11.15.23 - Re-scaling survey weights to match population estimates
 *https://databank.worldbank.org/source/world-development-indicators#
 *Using 2020 numbers
@@ -318,7 +319,8 @@ save "${Uganda_NPS_W8_created_data}/Uganda_NPS_W8_weights.dta", replace
 ********************************************************************************
 ** GEOVARIABLES ** 
 ********************************************************************************
-//could not find a raw data file with geovariable information. Coming back to assess later.
+//Geovariables were only released with wave 1, but because this is a panel survey you should be able to merge them in.
+//Some might be out of date, though.
 
 ****************************************************************
 *PARCEL AREAS  
@@ -3230,6 +3232,46 @@ collapse (sum) value_assets, by(hhid) //ALT 12.01.23: Bug fix
 lab var value_assets "Value of household assets"
 save "${Uganda_NPS_W8_created_data}/Uganda_NPS_W8_hh_assets.dta", replace 
 
+
+	
+********************************************************************************
+*POVERTY INDICES
+********************************************************************************
+//Adapted from Nigeria W5 (see that wave for full suite)
+	********************************
+	*INDIVIDUAL ACCESS TO EDUCATION* 
+	********************************
+//ALT: Alkire & Ul Haq identify individual deprivation of education as being eligible up to the 8th year of education but not in school. For south Asia, this is typically age 6-14. In Nigeria, the primary schooling duration is 9 years, typically starting at age 5. Ergo, the age range should be extended to 5-14.
+
+//They also introduce the concept of a pioneer child, which is one that has had at least 6 years of schooling but lives in a household where the parents do not.
+use "${Uganda_NPS_W8_raw_data}/HH/gsec4.dta", clear
+recast str32 hhid
+drop if s4q06==10 //Remove from dataset if the respondent is too young to attend school.
+ren pid personid
+merge 1:1 hhid personid using "${Uganda_NPS_W8_created_data}/Uganda_NPS_W8_person_ids.dta", nogen keep(1 3)
+gen years_school = s4q07-10 if s4q07<=17 //Takes care of the primary schooling 
+replace years_school = s4q07 if years_school==.
+//assuming j1-j3 are the same as s1-s3. 
+recode years_school (21 31=8) (22 32=9) (23 33=10) (34=11) (35=12) (36=13)
+preserve 
+keep if hh_head==1
+save "${Uganda_NPS_W8_created_data}/Uganda_NPS_W8_hh_head_education.dta", replace
+restore
+gen in_school = age>=5 & age<=14 & s4q05==3
+gen school_eligible = age>=5 & age<=14
+gen adult_ed = years_school*(age>=15)
+gen child_ed = years_school*(age<15)
+gen missing_data = adult_ed==. | child_ed==.
+gen hh_mmbrs = 1
+collapse (sum) tot_missing=missing_data hh_mmbrs in_school school_eligible (max) adult_ed child_ed, by(hhid)
+gen prop_missing = tot_missing/hh_mmbrs 
+gen pioneer_child = adult_ed < 6 & child_ed >= 6
+gen dep_att = in_school < school_eligible //Households that have no children are considered not deprived in attendance. 
+gen dep_edyr = adult_ed < 6 & child_ed < 6
+replace dep_edyr = . if tot_missing > 0.33 //No missing values.
+save "${Uganda_NPS_W8_created_data}/Uganda_NPS_W8_mpi_edu.dta", replace
+//Cannot construct the death of a child indicator.
+
 ********************************************************************************
 *                      USE OF FORMAL FINANCIAL SERVICES                        * 
 ********************************************************************************
@@ -5398,7 +5440,8 @@ gen poverty_under_npl = (daily_percap_cons < $Uganda_NPS_W8_poverty_npl)
 la var poverty_under_npl "Household daily per-capita consumption is below the national poverty line"
 gen poverty_under_300 = (daily_percap_cons < $Uganda_NPS_W8_poverty_300)
 la var poverty_under_300 "Household per-capita consumption is below $3.00 in 2021 $ PPP"
-
+gen poverty_under_420 = (daily_percap_cons < $Uganda_NPS_W8_poverty_420)
+la var poverty_under_420 "Household per-capita consumption is below $4.20 in 2021 $ PPP"
 
 gen clusterid=subcounty_code
 

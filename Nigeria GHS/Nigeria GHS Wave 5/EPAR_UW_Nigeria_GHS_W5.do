@@ -4,7 +4,7 @@
 
 *Author(s)		: Didier Alia & C. Leigh Anderson; uw.eparx@uw.edu
 
-*Date			: This  Version - March 31st, 2025
+*Date			: This  Version - July 13th, 2026
 
 *Dataset Version: NGA_2023_GHSP-W5_v01_M
 ----------------------------------------------------------------------------------------------------------------------------------------------------*/
@@ -132,7 +132,7 @@ global Nigeria_GHS_W5_raw_data			"${directory}/Nigeria GHS/Nigeria GHS Wave 5/Ra
 global Nigeria_GHS_W5_created_data 		"${directory}/Nigeria GHS/Nigeria GHS Wave 5/Final DTA Files/created_data"
 global Nigeria_GHS_W5_final_data  		"${directory}/Nigeria GHS/Nigeria GHS Wave 5/Final DTA Files/final_data"
 
-global summary_stats "$directory/_Summary_statistics\EPAR_UW_335_SUMMARY_STATISTICS.do" //Calculates summary statistics for all EPAR indicators (takes about 10-15 minutes to run). Skip line at end of file if not needed.
+global summary_stats "$directory/_Summary_statistics/EPAR_UW_335_SUMMARY_STATISTICS.do" //Calculates summary statistics for all EPAR indicators (takes about 10-15 minutes to run). Skip line at end of file if not needed.
 //WHO iGrowUp file path - see ReadMe. 
 global dofilefold "${directory}/WHO Child Malnutrition Macro/igrowup_update-master" //To calculate child anthropometry Z-scores, from https://github.com/unicef-drp/igrowup_update
 
@@ -163,6 +163,7 @@ global Nigeria_GHS_W5_poverty_190 (1.90*79.531*(524.9/110.84)) //~715 N
 global Nigeria_GHS_W5_poverty_npl (376.52*524.9/267.5) //ALT 06.18.2020: Nigeria's NBS defines poverty as living below 376 N/day in 2019. Included for comparison purposes; adjusted for inflation although it is not clear if that happens internally.
 global Nigeria_GHS_W5_poverty_215 (2.15* (524.9/214.2) * 114.82)  //New 2023 WB poverty threshold, works out to ~600 N
 global Nigeria_GHS_W5_poverty_300 (3.00*$Nigeria_GHS_W5_infl_adj * $Nigeria_GHS_W5_cons_ppp_dollar ) //New 2025 WB poverty threshold, ~690 N
+global Nigeria_GHS_W5_poverty_420 (4.20*$Nigeria_GHS_W5_infl_adj * $Nigeria_GHS_W5_cons_ppp_dollar ) //Higher 2025 poverty threshold
 
 //These values from Bai, Y., et al. (2021) Cost and affordability of nutritious diets at retail prices: Evidence from 177 countries. Food Policy 99. doi:https://doi.org/10.1016/j.foodpol.2020.101983
 //CoCA is cost of a calorically adequate diet in PPP$ (minimum number of calories needed for survival); CoNA is cost of a nutritionally adequate diet, i.e., the minimum expenditure required to get RDIs of macro and micronutrients. 
@@ -215,7 +216,6 @@ save  "${Nigeria_GHS_W5_created_data}/Nigeria_GHS_W5_weights.dta", replace
 */
 
 
-
 ********************************************************************************
 * HOUSEHOLD IDS *
 ********************************************************************************
@@ -245,7 +245,8 @@ gen member = s1q4
 replace member = 1 if s1q3 != . 
 drop if member!=1
 gen female= s1q2==2
-gen fhh = s1q3==1 & female
+gen hh_head = s1q3==1
+gen fhh = hh_head & female
 recode fhh (.=0)
 preserve 
 collapse (max) fhh, by(hhid)
@@ -255,14 +256,17 @@ restore
 la var female "1= individual is female"
 ren s1q6 age
 la var age "Individual age"
-keep hhid indiv female age season
+keep hhid indiv female age hh_head season
 ren female female_
 ren age age_ 
-reshape wide female_ age_, i(hhid indiv) j(season) string
+ren hh_head hh_head_
+reshape wide female_ age_ hh_head_, i(hhid indiv) j(season) string
 gen age = age_plan 
 replace age=age_harv if age==.
 gen female=female_plan 
 replace female=female_harv if female==.
+gen hh_head = hh_head_plan 
+replace hh_head = hh_head_harv if hh_head==.
 drop *harv *plan
 merge m:1 hhid using `fhh'
 merge m:1 hhid using  "${Nigeria_GHS_W5_created_data}/Nigeria_GHS_W5_hhids.dta", keep(2 3) nogen  // keeping hh surveyed
@@ -308,19 +312,24 @@ save "${Nigeria_GHS_W5_created_data}/Nigeria_GHS_W5_weights.dta", replace
 
 
 ********************************************************************************
-*GPS COORDINATES *
+*GPS COORDINATES/GEOVARIABLES *
 ********************************************************************************
-/*
+/* Still not released as of 7/2026
 use "${Nigeria_GHS_W5_raw_data}/nga_householdgeovars_y5.dta", clear
 merge 1:1 hhid using "${Nigeria_GHS_W5_created_data}/Nigeria_GHS_W5_hhids.dta", nogen keep(3) 
+preserve
 ren lat_dd_mod latitude
 ren lon_dd_mod longitude
 keep lga ea latitude longitude
-duplicates drop lga ea latitude longitude, force //ea+lga necessary to uniquely identify ea
+duplicates drop lga ea latitude longitude, force //ea+lga necessary to uniquely identify ea due to moved households
 gen GPS_level = "ea"
-save "${Nigeria_GHS_W5_created_data}/Nigeria_GHS_W5_ea_coords.dta", replace
-*/
+tempfile latlon
+save `latlon'
+restore
 
+save "${Nigeria_GHS_W5_created_data}/Nigeria_GHS_W5_geovars.dta", replace
+
+*/
 
 ********************************************************************************
 * PLOT AREAS *
@@ -5520,10 +5529,12 @@ merge 1:1 hhid indiv using "${Nigeria_GHS_W5_created_data}/Nigeria_GHS_W5_person
 gen years_school = 1*(s2q9==11)+2*(s2q9==12)+3*(s2q9==13)+4*(s2q9==14)+5*(s2q9==15)+6*(s2q9==16 | s2q9==27) + 7*(s2q9==21) + 8*(s2q9==22) + 9 * inlist(s2q9,23,411,412) + 10*(s2q9==24)+11*(s2q9==25)+12*inlist(s2q9, 26, 28, 31, 33, 34, 35, 41, 43, 321, 322, 421, 422, 423, 424) //It appears OND/HND are roughly equivalent to the GED. Modern school is a high school. Non-university nursing school appears to be roughly equivalent to a Bachelors in terms of years of education.
 //Quranic education is controversial in Nigeria - traditional quranic schools do not provide instruction in typical academic subjects like math, science, etc. (something the Nigerian government has deemed unacceptable), so I consider this to be equivalent to no school.
 //replace years_school = . if s2aq9==. & s2aq6!=2 //No one has reported attending school but not provided info
-
+preserve 
+keep if hh_head==1
+save "${Nigeria_GHS_W5_created_data}/Nigeria_GHs_W5_hh_head_education.dta", replace
+restore
 gen in_school = age>=5 & age<=14 & s2q11==1
 gen school_eligible = age>=5 & age<=14
-
 gen adult_ed = years_school*(age>=15)
 gen child_ed = years_school*(age<15)
 gen missing_data = adult_ed==. | child_ed==.
@@ -5688,8 +5699,12 @@ if !_rc {
 	gen reflib = "$dofilefold"
 	gen datalib = "$Nigeria_GHS_W5_created_data"
 	gen str30 datalab = "Nigeria_GHS_W5_anthro"
-	adopath + "\\\netid.washington.edu\wfs\EvansEPAR\Project\EPAR\Working Files\00 - LSMS for MPACT\LSMS_dev_sandbox/WHO Child Malnutrition Macro/igrowup_update-master"
-	igrowup_restricted reflib datalib datalab sex agedays ageunit weight lenhei measure oedema sw
+	adopath + "$dofilefold"
+	capture igrowup_restricted reflib datalib datalab sex agedays ageunit weight lenhei measure oedema sw
+	if _rc {
+		di as error "igrowup command not found; check the do file path"
+	}
+	else {
 	use "${Nigeria_GHS_W5_created_data}/Nigeria_GHS_W5_anthro_z_rc.dta", clear //Update to corect file name
 	replace _zwei = . if _fwei==1
 	gen low_weight = _zwei < -2 & _zwei!=.
@@ -5702,11 +5717,11 @@ if !_rc {
 	la var under_5 "1 = household is eligible for anthropometry measurements"
 	gen dep_nutr = low_weight == 1
 	save "${Nigeria_GHS_W5_created_data}/Nigeria_GHS_W5_mpi_nutr.dta", replace
+	}
 }
 
 use "${Nigeria_GHS_W5_created_data}/Nigeria_GHS_W5_weights.dta", clear
 merge 1:1 hhid using "${Nigeria_GHS_W5_created_data}/Nigeria_GHS_W5_food_dep.dta", nogen keep(3)
-
 merge 1:1 hhid using "${Nigeria_GHS_W5_created_data}/Nigeria_GHS_W5_mpi_edu.dta", nogen keep(3)
 merge 1:1 hhid using "${Nigeria_GHS_W5_created_data}/Nigeria_GHS_W5_mpi_assets.dta", nogen keep(3)
 merge 1:1 hhid using "${Nigeria_GHS_W5_created_data}/Nigeria_GHS_W5_mpi_housing.dta", nogen keep(3)
@@ -6765,6 +6780,8 @@ gen poverty_under_npl = daily_percap_cons < $Nigeria_GHS_W5_poverty_npl
 la var poverty_under_npl "Household per-capita consumption is below the national poverty line"
 gen poverty_under_300 = daily_percap_cons < $Nigeria_GHS_W5_poverty_300
 la var poverty_under_300 "Household per-capita consumption is below $3.00 in 2021 $ PPP"
+gen poverty_under_420 = daily_percap_cons < $Nigeria_GHS_W5_poverty_420
+la var poverty_under_420 "Household per-capita consumption is below $4.20 in 2021 $ PPP"
 //ALT Update END
 *average consumption expenditure of the bottom 40% of the rural consumption expenditure distribution
 *First, generating variable that reports the individuals in the bottom 40% of rural consumption expenditures

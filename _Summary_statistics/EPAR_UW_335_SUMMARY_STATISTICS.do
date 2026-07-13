@@ -1186,10 +1186,15 @@ foreach instrument of global list_instruments {
 	if _rc {
 		qui gen poverty_under_300=.
 	}
+	
+	capture confirm var poverty_under_420
+	if _rc {
+		qui gen poverty_under_420=.
+	}
 	/* DMC - not sure about this - we want them to be missing if it's not there, right?
 	i DYA - I think we need these because in the code below, the condition 'if bottom_40_peraeq==1" is used
 	in the spreadhseet we will remove all rows with 0 for for all summary stats*/
-	qui findname poverty_under_190 poverty_under_215 poverty_under_300 poverty_under_npl,  all(@==.) local (missing_var)
+	qui findname poverty_under_190 poverty_under_215 poverty_under_300 poverty_under_420 poverty_under_npl,  all(@==.) local (missing_var)
 	if "`missing_var'"!="" { 
 		foreach var in `missing_var' {
 			qui replace `var'=0
@@ -1208,7 +1213,7 @@ foreach instrument of global list_instruments {
 		qui replace bottom_40_percap=1
 	}		
 	
-	foreach v in poverty_under_190 /*ALT 03.21.23*/ poverty_under_npl poverty_under_215 poverty_under_300 {
+	foreach v in poverty_under_190 /*ALT 03.21.23*/ poverty_under_npl poverty_under_215 poverty_under_300 poverty_under_420 {
 	
 		local l`v' : var lab `v' 
 		qui gen `v'_fhh=`v' if fhh==1	
@@ -1362,7 +1367,8 @@ foreach instrument of global list_instruments {
 	gen poverty_under_215_all = poverty_under_215
 	gen poverty_under_npl_all = poverty_under_npl
 	gen poverty_under_300_all = poverty_under_300
-	foreach v in poverty_under_190_all poverty_under_215_all poverty_under_npl_all poverty_under_300_all {	
+	gen poverty_under_420_all = poverty_under_420
+	foreach v in poverty_under_190_all poverty_under_215_all poverty_under_npl_all poverty_under_300_all poverty_under_420_all {	
 		local l`v' : var lab `v' 
 		qui gen `v'_fhh=`v' if fhh==1	
 		qui lab var `v'_fhh "`l`v'' -ds FHH"

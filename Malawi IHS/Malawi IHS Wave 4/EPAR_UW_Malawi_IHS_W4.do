@@ -5,7 +5,7 @@
 				  
 *Author(s)        : Didier Alia & C. Leigh Anderson; uw.eparx@uw.edu
 
-*Date             : September 5th, 2025
+*Date             : July 13th, 2026
 
 *Dataset Version  : IHS: MWI_2019_IHS-V_v06_M_Stata
 				  : IHPS: MWI_2010-2019_IHPS_v06_M_Stata
@@ -162,7 +162,7 @@ set maxvar 8000
 capture ssc install findname      //need this user-written ado file for some commands to work_TH
 
 *****************************
-***** SET DIRECTOREIS *******
+***** SET DIRECTORIES *******
 *****************************
 global directory "../.."
 global MWI_IHS_W4_raw_data 					"$directory\Malawi IHS\Malawi IHS Wave 4\Raw DTA Files\IHS" 
@@ -195,6 +195,7 @@ global MWI_W4_poverty_under_npl (((164191*340.2)/340.2)/365) //see calculation a
 //Divide  by # of days in year (365) to get daily amount
 global MWI_W4_poverty_under_215 (2.15 * (1.3356160357 * 241.9305267))  //WB's (PPP) poverty threshold of $2.15 multiplied by globals
 global MWI_W4_poverty_under_300 (3.00 * ($MWI_W4_infl_adj * $MWI_W4_cons_ppp_dollar)) //WB's new poverty threshold of $3.00
+global MWI_W4_poverty_under_420 (4.20 * ($MWI_W4_infl_adj * $MWI_W4_cons_ppp_dollar)) //Alternative higher poverty threshold
 
 ********************************************************************************
 *THRESHOLDS FOR WINSORIZATION -- RH, Complete 7/15/21 - not checked
@@ -397,10 +398,10 @@ save "${MWI_IHS_IHPS_W4_appended_data}/ag_mod_p.dta", replace
 
 use "${MWI_IHS_W4_raw_data}\householdgeovariables_ihs5.dta", clear
 rename case_id y4_hhid
+append using "${MWI_IHPS_W4_raw_data}\householdgeovariables_y4.dta"
 merge m:1 y4_hhid using "${MWI_IHS_IHPS_W4_created_data}\MWI_IHS_IHPS_W4_hhid_merger.dta", nogen keep(1 3) 
 ren case_id_aux hhid
 drop y4_hhid
-append using "${MWI_IHPS_W4_raw_data}\householdgeovariables_y4.dta"
 save "${MWI_IHS_IHPS_W4_appended_data}\householdgeovariables_ihs5", replace
 
 use "${MWI_IHS_W4_raw_data}/ihs5_consumption_aggregate.dta", clear 
@@ -465,6 +466,7 @@ keep hhid stratum district ta ea rural region weight pweight panel
 //replace case_id = y4_hhid if case_id == " " //y4_hhid uniquely identifies in this section
 lab var rural "1=Household lives in a rural area"
 save "${MWI_IHS_IHPS_W4_created_data}\MWI_IHS_IHPS_W4_hhids.dta", replace
+
 
 ********************************************************************************
 * WEIGHTS * 
@@ -666,9 +668,9 @@ save "${MWI_IHS_IHPS_W4_created_data}\MWI_IHS_IHPS_W4_plot_areas.dta", replace
 use "${MWI_IHS_IHPS_W4_appended_data}\householdgeovariables_ihs5.dta", clear
 ren ea_lat_mod latitude
 ren ea_lon_mod longitude
-keep hhid latitude longitude
-gen GPS_level = "hhid"
-save "${MWI_IHS_IHPS_W4_created_data}\MWI_IHS_IHPS_W4_hh_coords.dta", replace
+keep hhid ea latitude longitude dist*
+gen GPS_level = "ea"
+save "${MWI_IHS_IHPS_W4_created_data}\MWI_IHS_IHPS_W4_geovars.dta", replace
 
 ********************************************************************************
 *PLOT DECISION MAKERS 
@@ -5859,6 +5861,7 @@ gen rcsi_Rasch = rcsi_1cat + rcsi_2cat + rcsi_3cat + (rcsi_5cat!=0)*2 + rcsi_4ca
 keep ea_id hhid days_nofd rcsi* int*
 merge 1:1 hhid using "${MWI_IHS_IHPS_W4_created_data}/MWI_IHS_IHPS_W4_months_food_insufficient.dta", nogen
 save "${MWI_IHS_IHPS_W4_created_data}/MWI_IHS_IHPS_W4_food_insecurity.dta", replace			
+
 ***************************************************************************
 *HOUSEHOLD ASSETS* - RH complete 8/24/21; CG checked/updated/complete 11.28.2023
 ***************************************************************************
@@ -5872,12 +5875,53 @@ la var value_assets "Value of household assets"
 save "${MWI_IHS_IHPS_W4_created_data}\MWI_IHS_IHPS_W4_hh_assets.dta", replace 
 	
 ********************************************************************************
+*POVERTY INDICES
+********************************************************************************
+//Adapted from Nigeria W5 (see that wave for full suite)
+	********************************
+	*INDIVIDUAL ACCESS TO EDUCATION* 
+	********************************
+//ALT: Alkire & Ul Haq identify individual deprivation of education as being eligible up to the 8th year of education but not in school. For south Asia, this is typically age 6-14. In Nigeria, the primary schooling duration is 9 years, typically starting at age 5. Ergo, the age range should be extended to 5-14.
+
+//They also introduce the concept of a pioneer child, which is one that has had at least 6 years of schooling but lives in a household where the parents do not.
+use "${MWI_IHS_IHPS_W4_appended_data}/HH_MOD_C.dta", clear
+gen indiv=PID
+replace indiv = pid if pid!=.
+drop if hh_c02=="X" //Remove from dataset if the respondent is too young to attend school.
+merge 1:1 hhid indiv using "${MWI_IHS_IHPS_W4_created_data}/MWI_IHS_IHPS_W4_person_ids.dta", nogen keep(1 3)
+gen years_school = hh_c09
+replace years_school = 0 if hh_c06==2
+//Nothing here for the panel households.
+recode years_school (1=0) (2=8) (3=10) (4 5=12) (6=14) (7=16) (8=18) (9=19) 
+preserve 
+keep if hh_head==1
+save "${MWI_IHS_IHPS_W4_created_data}/MWI_IHS_IHPS_W4_hh_head_education.dta", replace
+restore
+gen in_school = age>=5 & age<=14 & hh_c11==1
+gen school_eligible = age>=5 & age<=14
+gen adult_ed = years_school*(age>=15)
+gen child_ed = years_school*(age<15)
+gen missing_data = adult_ed==. | child_ed==.
+gen hh_mmbrs = 1
+collapse (sum) tot_missing=missing_data hh_mmbrs in_school school_eligible (max) adult_ed child_ed, by(hhid)
+gen prop_missing = tot_missing/hh_mmbrs 
+gen pioneer_child = adult_ed < 6 & child_ed >= 6
+gen dep_att = in_school < school_eligible //Households that have no children are considered not deprived in attendance. 
+gen dep_edyr = adult_ed < 6 & child_ed < 6
+replace dep_edyr = . if tot_missing > 0.33 //No missing values.
+save "${MWI_IHS_IHPS_W4_created_data}/MWI_IHS_IHPS_W4_mpi_edu.dta", replace
+//Cannot construct the death of a child indicator.
+
+	
+********************************************************************************
 *HOUSEHOLD VARIABLES
 ********************************************************************************
 //setting up empty variable list: create these with a value of missing and then recode all of these to missing at the end of the HH section (some may be recoded to 0 in this section)
 global empty_vars ""
 //use "${MWI_IHS_IHPS_W4_created_data}/MWI_IHS_IHPS_W4_hhids.dta", clear
 use "${MWI_IHS_IHPS_W4_created_data}/MWI_IHS_IHPS_W4_weights.dta", clear
+//GPS
+merge 1:1 hhid using "${MWI_IHS_IHPS_W4_created_data}\MWI_IHS_IHPS_W4_geovars.dta", nogen
 
 *Gross crop income 
 merge 1:1 hhid using "${MWI_IHS_IHPS_W4_created_data}/MWI_IHS_IHPS_W4_hh_crop_production.dta", nogen
@@ -6737,6 +6781,8 @@ gen poverty_under_npl = daily_percap_cons < $MWI_W4_poverty_under_npl
 la var poverty_under_npl "Household per-capita consumption is below the 2017 national poverty line."
 gen poverty_under_300 = daily_percap_cons < $MWI_W4_poverty_under_300
 la var poverty_under_300 "Household per-capita consumption is below $3.00 in 2021 $PPP"
+gen poverty_under_420 = daily_percap_cons < $MWI_W4_poverty_under_420
+la var poverty_under_420 "Household per-capita consumption is below $4.20 in 2021 $PPP"
 
 *average consumption expenditure of the bottom 40% of the rural consumption expenditure distribution
 *First, generating variable that reports the individuals in the bottom 40% of rural consumption expenditures
@@ -6783,7 +6829,7 @@ keep hhid fhh clusterid strataid *weight* *wgt* region district ta ea rural farm
 */ *_exp* poverty_under_* *value_crop_production* *value_harv* *value_crop_sales* *value_sold* *kg_harvest* *total_planted_area* *total_harv_area* /*
 */ *all_area_* grew_* agactivities_hh ag_hh crop_hh livestock_hh fishing_hh *_milk_produced* *eggs_total_year *value_eggs_produced* /*
 */ *value_livestock_products* *value_livestock_sales* *total_cons* nb_cattle_today nb_largerum_today nb_cows_today nb_smallrum_today nb_poultry_today nb_chickens_today bottom_40_percap bottom_40_peraeq /*
-*/ ccf_loc ccf_usd ccf_1ppp ccf_2ppp *sales_livestock_products area_plan* area_harv*  value_pro* *_rate* *value_sal* *inter* panel
+*/ ccf_loc ccf_usd ccf_1ppp ccf_2ppp *sales_livestock_products area_plan* area_harv*  value_pro* *_rate* *value_sal* *inter* panel dist* latitude longitude
 
 recode nb_cows_today nb_smallrum_today nb_chickens_today (.=0) if ag_hh==1
 gen ssp = (farm_area <= 2 & farm_area != 0) & (nb_cows_today <= 10 & nb_smallrum_today <= 10 & nb_chickens_today <= 50) if ag_hh==1
