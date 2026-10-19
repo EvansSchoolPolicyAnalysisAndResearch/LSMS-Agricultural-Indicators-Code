@@ -1179,7 +1179,6 @@ gen age = h2q8
 recast str32 hhid
 tostring pid, format(%19.0f) replace
 keep hhid pid age male
-isid hhid pid
 tempfile members
 save `members', replace
 restore

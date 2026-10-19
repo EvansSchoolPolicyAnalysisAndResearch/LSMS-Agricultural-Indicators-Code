@@ -773,7 +773,6 @@ keep HHID PID age male
 *rename HHId hhid
 duplicates list HHID PID
 duplicates drop  HHID PID, force // Is this allowed? otherwise I can't do the rest of this haha - 20 deleted
-isid HHID PID 
 ren HHID hhid
 tempfile members
 save `members', replace
@@ -1105,7 +1104,7 @@ keep if strmatch(input,"orgfert") | strmatch(input,"inorg") | strmatch(input,"pe
 		gen pest_kg = qty*strmatch(input, "pest")
 		gen inorg_fert_kg = qty*strmatch(input, "inorg")
 		gen org_fert_kg = qty if itemcode >=5 & itemcode!=.
-		collapse (sum) *kg, by(hhid parcel_id plot_id season)
+		collapse (sum) qty (sum) *kg, by(hhid parcel_id plot_id season input)
 		la var inorg_fert_kg "Kg inorganic fertilizer used"
 		la var org_fert_kg "Kg organic fertilizer used"
 		la var n_kg "Kg of nitrogen applied"
@@ -1489,9 +1488,10 @@ label variable cost_vaccines_livestock 		/*
 label variable cost_hired_labor_livestock	"Cost for hired labor for livestock"
 
 * Save to disk
-save "${Uganda_NPS_W2_created_data}/Uganda_NPS_W2_livestock_expenses.dta", /*
-	*/ replace
-
+save "${Uganda_NPS_W2_created_data}/Uganda_NPS_W2_livestock_expenses.dta", replace
+reshape long cost_, i(hhid) j(input) string
+rename cost_ val_total
+save "${Uganda_NPS_W2_created_data}/Uganda_NPS_W2_livestock_expenses_long.dta", replace //Use for AgQuery
 
   /**********************/
  /* Livestock Products */

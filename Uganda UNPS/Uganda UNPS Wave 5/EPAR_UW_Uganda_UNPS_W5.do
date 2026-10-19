@@ -810,7 +810,6 @@ gen male = h2q3 == 1
 gen age = h2q8
 keep HHID pid age male
 destring pid, replace ignore ("P" "-") //need to destring so we can add it to the other data below, as it contains letters and characters not in the version we created above
-isid HHID pid
 rename HHID hhid
 tempfile members
 save `members', replace
@@ -920,7 +919,6 @@ gen valanmlimp = .
 	ren a10q7 qtymechexp //number of rented machinery/tools
 	ren a10q8 valmechexp //total value of rented machinery/tools, not per-item
 	collapse (sum) valmechimp valmechexp, by(HHID) //combine values for all tools, don't combine quantities since there are many varying types of tools 
-	isid HHID //check for duplicate hhids, which there shouldn't be after the collapse
 	tempfile rawmechexpense
 	ren HHID hhid
 	save `rawmechexpense', replace

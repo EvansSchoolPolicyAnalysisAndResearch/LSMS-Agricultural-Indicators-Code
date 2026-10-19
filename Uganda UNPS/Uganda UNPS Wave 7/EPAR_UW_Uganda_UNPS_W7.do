@@ -1008,7 +1008,6 @@ ren s10q03aa qtymechexp //number of rented machinery/tools
 ren s10q08a valmechexp //total value of rented machinery/tools, not per-item
 *collapse (sum) valmechimp valmechexp, by(hhid) //combine values for all tools, don't combine quantities since there are many varying types of tools 
 collapse (sum) qtymechimp qtymechexp valmechimp valmechexp, by(hhid)
-isid hhid //check for duplicate hhids, which there shouldn't be after the collapse
 tempfile rawmechexpense
 save `rawmechexpense', replace
 restore
