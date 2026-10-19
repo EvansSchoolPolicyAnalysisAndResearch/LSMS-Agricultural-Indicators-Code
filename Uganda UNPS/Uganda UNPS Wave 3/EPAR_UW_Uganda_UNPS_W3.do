@@ -2799,11 +2799,12 @@ replace season = 2 if season == .
 gen imprv_seed_use = (a4aq13==2) if a4aq13!=.
 replace imprv_seed_use= (a4bq13==2) if imprv_seed_use==. & a4bq13!=.
 ren imprv_seed_use all_imprv_seed_use
-save "${Uganda_NPS_W3_created_data}/Uganda_NPS_W3_farmer_improvedseed_use_temp.dta", replace
+tempfile farmer_improvedseed_use_temp
+save `farmer_improvedseed_use_temp'
 
 *Use of seed by crops
 forvalues k=1/$nb_topcrops {
-	use "${Uganda_NPS_W3_created_data}/Uganda_NPS_W3_farmer_improvedseed_use_temp.dta", clear
+	use `farmer_improvedseed_use_temp'
 	local c : word `k' of $topcrop_area
 	local cn : word `k' of $topcropname_area
 	*Adding adoption of improved maize seeds
@@ -2816,19 +2817,27 @@ forvalues k=1/$nb_topcrops {
 	tostring HHID, format(%18.0f) replace
     tostring indiv, format(%18.0f) replace
 	collapse (max) all_imprv_seed_use  all_imprv_seed_`cn' /*all_hybrid_seed_`cn'*/  `cn'_farmer, by (HHID indiv)
-	save "${Uganda_NPS_W3_created_data}/Uganda_NPS_W3_farmer_improvedseed_use_temp_`cn'.dta", replace
+	
+    tempfile tf_`cn'
+    save `tf_`cn''
 }
 
+//DA: load tempfile
+local crop1 : word 1 of $topcropname_area
+use `tf_`crop1'', clear
 *Combining all crop disaggregated files together
 foreach v in $topcropname_area {
-	merge 1:1 HHID indiv all_imprv_seed_use using "${Uganda_NPS_W3_created_data}/Uganda_NPS_W3_farmer_improvedseed_use_temp_`v'.dta", nogen
+	// DA: don' want duplicates of the first crop
+	if "`v'" != "`crop1'" {
+		merge 1:1 HHID indiv all_imprv_seed_use using `tf_`v'', nogen
+	}
 }	 
 drop if indiv==""
 merge 1:1 HHID indiv using "${Uganda_NPS_W3_created_data}/Uganda_NPS_W3_person_ids.dta", nogen
 lab var all_imprv_seed_use "1 = Individual farmer (plot manager) uses improved seeds"
 foreach v in $topcropname_area {
 	lab var all_imprv_seed_`v' "1 = Individual farmer (plot manager) uses improved seeds - `v'"
-	*lab var all_hybrid_seed_`v' "1 = Individual farmer (plot manager) uses hybrid seeds - `v'"
+// 	lab var all_hybrid_seed_`v' "1 = Individual farmer (plot manager) uses hybrid seeds - `v'"
 	lab var `v'_farmer "1 = Individual farmer (plot manager) grows `v'"
 }
 

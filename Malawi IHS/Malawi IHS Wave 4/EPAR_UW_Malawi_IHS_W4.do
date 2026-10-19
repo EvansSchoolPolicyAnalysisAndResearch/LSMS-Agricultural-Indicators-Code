@@ -4229,11 +4229,11 @@ gen farmer_ = 1
 reshape wide all_imprv_seed_ all_hybrid_seed_ farmer_, i(hhid indiv female) j(crop_name) string
 recode farmer_* (.=0)
 ren farmer_* *_farmer
-save "${MWI_IHS_IHPS_W4_created_data}\MWI_IHS_IHPS_W4_farmer_improved_hybrid_seed_use.dta", replace
+save "${MWI_IHS_IHPS_W4_created_data}\MWI_IHS_IHPS_W4_farmer_improvedseed_use.dta", replace
 collapse (max) all_hybrid_seed_* all_imprv_seed_*, by(hhid)
 ren all_hybrid_seed_* hybrid_seed_*
 ren all_imprv_seed_* imprv_seed_*
-save "${MWI_IHS_IHPS_W4_created_data}\MWI_IHS_IHPS_W4_improved_hybrid_seed_use.dta", replace
+save "${MWI_IHS_IHPS_W4_created_data}\MWI_IHS_IHPS_W4_improvedseed_use.dta", replace
 
 use "${MWI_IHS_IHPS_W4_created_data}\MWI_IHS_IHPS_W4_plot_cost_inputs_long.dta", clear
 keep if inlist(input, "inorg", "orgfert", "pest", "herb")
@@ -6077,7 +6077,7 @@ merge 1:1 hhid using "${MWI_IHS_IHPS_W4_created_data}/MWI_IHS_IHPS_W4_weights", 
 //merge 1:1 hhid using "${MWI_IHS_IHPS_W4_created_data}/MWI_IHS_IHPS_W4_fert_use.dta", nogen //Now in inputs
 merge 1:1 hhid using "${MWI_IHS_IHPS_W4_created_data}/MWI_IHS_IHPS_W4_vaccine.dta", nogen
 merge 1:1 hhid using "${MWI_IHS_IHPS_W4_created_data}/MWI_IHS_IHPS_W4_input_use.dta", nogen 
-merge 1:1 hhid using "${MWI_IHS_IHPS_W4_created_data}/MWI_IHS_IHPS_W4_improved_hybrid_seed_use.dta", nogen
+merge 1:1 hhid using "${MWI_IHS_IHPS_W4_created_data}/MWI_IHS_IHPS_W4_improvedseed_use.dta", nogen
 merge 1:1 hhid using "${MWI_IHS_IHPS_W4_created_data}/MWI_IHS_IHPS_W4_any_ext.dta", nogen
 merge 1:1 hhid using "${MWI_IHS_IHPS_W4_created_data}/MWI_IHS_IHPS_W4_fin_serv.dta", nogen
 recode use_fin_serv* ext_reach* use_* vac_animal (.=0)
@@ -6869,7 +6869,7 @@ merge 1:1 hhid indiv using "${MWI_IHS_IHPS_W4_created_data}/MWI_IHS_IHPS_W4_make
 merge 1:1 hhid indiv using "${MWI_IHS_IHPS_W4_created_data}/MWI_IHS_IHPS_W4_ownasset.dta", nogen  keep(1 3)
 merge m:1 hhid using "${MWI_IHS_IHPS_W4_created_data}/MWI_IHS_IHPS_W4_weights.dta", nogen keep (1 3) 
 merge 1:1 hhid indiv using "${MWI_IHS_IHPS_W4_created_data}/MWI_IHS_IHPS_W4_farmer_input_use.dta", nogen  keep(1 3)
-merge 1:1 hhid indiv using "${MWI_IHS_IHPS_W4_created_data}/MWI_IHS_IHPS_W4_farmer_improved_hybrid_seed_use.dta", nogen  keep(1 3)
+merge 1:1 hhid indiv using "${MWI_IHS_IHPS_W4_created_data}/MWI_IHS_IHPS_W4_farmer_improvedseed_use.dta", nogen  keep(1 3)
 merge 1:1 hhid indiv using "${MWI_IHS_IHPS_W4_created_data}/MWI_IHS_IHPS_W4_farmer_vaccine.dta", nogen  keep(1 3)
 
 *Land rights - data not available

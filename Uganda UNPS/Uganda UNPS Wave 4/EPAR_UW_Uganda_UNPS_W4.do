@@ -2889,9 +2889,7 @@ forvalues k=1/$nb_topcrops {
 	gen all_imprv_seed_`cn'=use_imprv_seed if crop_code==`c'  
 	*gen all_hybrid_seed_`cn' =. 
 	*We also need a variable that indicates if farmer (plot manager) grows crop
-	gen `cn'_farmer= crop_code==`c' 
-	
-	save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_farmer_improvedseed_use_temp_`cn'.dta", replace // Would it be helpful to save this as tempfile? 
+	gen `cn'_farmer= crop_code==`c'
 }
 
 collapse (max) all_imprv_seed_use=use_imprv_seed  all_imprv_seed_*  *_farmer, by (hhid indiv)
@@ -2906,7 +2904,7 @@ foreach v in $topcropname_area {
 }
 
 lab var farm_manager "1=Indvidual is listed as a manager for at least one plot" 
-save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_farmer_improvedseed_use.dta", replace 
+save "${Uganda_NPS_W4_created_data}/Uganda_NPS_W4_farmer_improvedseed_use.dta", replace
 
 ********************************************************************************
 **                             PLOT MANAGER        	                          **

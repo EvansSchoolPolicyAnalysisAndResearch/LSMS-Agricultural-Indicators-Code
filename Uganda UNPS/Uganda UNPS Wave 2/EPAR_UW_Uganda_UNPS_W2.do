@@ -2767,7 +2767,7 @@ merge 1:1 hhid personid using /*
 * merge of gender data and therefore have farm_manager == .
 recode farm_manager (.=0)
 duplicates drop hhid PID, force /*1 duplicate dropped*/
-save "${Uganda_NPS_W2_created_data}/Uganda_NPS_W2_farmer_improved_seed_use", replace
+save "${Uganda_NPS_W2_created_data}/Uganda_NPS_W2_farmer_improvedseed_use", replace
 //Continue
 
 ********************************************************************************
@@ -2801,19 +2801,19 @@ save "${Uganda_NPS_W2_created_data}/Uganda_NPS_W2_imprvseed_crop.dta", replace
 restore
 
 merge m:m hhid parcel_id using "${Uganda_NPS_W2_created_data}/Uganda_NPS_W2_dm_ids.dta", nogen keep(1 3) // SAW personids is at the plot season level while input quantities at the plot level
-preserve
-ren use_imprv_seed all_imprv_seed_
-gen all_hybrid_seed_ =.
-collapse (max) all*, by(hhid personid female crop_code)
-merge m:1 crop_code using "${Uganda_NPS_W2_created_data}/Uganda_NPS_W2_cropname_table.dta", nogen keep(3)
-*decode crop_code, gen(crop_name)
-drop crop_code
-gen farmer_=1
-reshape wide all_imprv_seed_ all_hybrid_seed_ farmer_, i(hhid personid female) j(crop_name) string
-recode farmer_* (.=0)
-ren farmer_* *_farmer
-save "${Uganda_NPS_W2_created_data}/Uganda_NPS_W2_farmer_improvedseed_use.dta", replace
-restore
+// preserve
+// ren use_imprv_seed all_imprv_seed_
+// gen all_hybrid_seed_ =.
+// collapse (max) all*, by(hhid personid female crop_code)
+// merge m:1 crop_code using "${Uganda_NPS_W2_created_data}/Uganda_NPS_W2_cropname_table.dta", nogen keep(3)
+// *decode crop_code, gen(crop_name)
+// drop crop_code
+// gen farmer_=1
+// reshape wide all_imprv_seed_ all_hybrid_seed_ farmer_, i(hhid personid female) j(crop_name) string
+// recode farmer_* (.=0)
+// ren farmer_* *_farmer
+// save "${Uganda_NPS_W2_created_data}/Uganda_NPS_W2_farmer_improvedseed_use.dta", replace
+// restore
 
 
 collapse (max) use_*, by(hhid personid PID female)
@@ -4924,7 +4924,7 @@ merge 1:1 hhid personid using "${Uganda_NPS_W2_created_data}/Uganda_NPS_W2_contr
 merge 1:1 hhid personid using "${Uganda_NPS_W2_created_data}/Uganda_NPS_W2_ownasset.dta", nogen keep(1 3)
 merge m:1 hhid using "${Uganda_NPS_W2_created_data}/Uganda_NPS_W2_hhsize.dta", nogen keep(1 3)
 merge 1:1 hhid personid using "${Uganda_NPS_W2_created_data}/Uganda_NPS_W2_farmer_fert_use.dta", nogen keep(1 3) 
-merge 1:1 hhid personid using "${Uganda_NPS_W2_created_data}/Uganda_NPS_W2_farmer_improved_seed_use.dta", nogen keep(1 3)
+merge 1:1 hhid personid using "${Uganda_NPS_W2_created_data}/Uganda_NPS_W2_farmer_improvedseed_use.dta", nogen keep(1 3)
 merge 1:1 hhid personid using "${Uganda_NPS_W2_created_data}/Uganda_NPS_W2_farmer_vaccine.dta", nogen keep(1 3)
 merge m:1 hhid using "${Uganda_NPS_W2_created_data}/Uganda_NPS_W2_hhids.dta", nogen keep(1 3)
 
