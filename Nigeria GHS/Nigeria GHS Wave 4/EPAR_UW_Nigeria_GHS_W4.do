@@ -4,7 +4,7 @@
 
 *Author(s)		: Didier Alia & C. Leigh Anderson; uw.eparx@uw.edu
 
-*Date			: March 31st, 2025
+*Date			: October 19th, 2026
 
 *Dataset Version: NGA_2018_GHSP-W4_v03_M 
 ----------------------------------------------------------------------------------------------------------------------------------------------------*/
@@ -169,7 +169,7 @@ global Nigeria_GHS_W4_CoNA_diet (134.21 * 1.24)
 ********************************************************************************
 global wins_lower_thres 1    						//  Threshold for winzorization at the bottom of the distribution of continous variables
 global wins_upper_thres 99							//  Threshold for winzorization at the top of the distribution of continous variables
-
+global yield_ar_thr 0.05 //Minimum size of plots (ha) to be included in yield calculations.
 
 ********************************************************************************
 *GLOBALS OF PRIORITY CROPS //change these globals if you are interested in different crops
@@ -349,6 +349,7 @@ ren sa1q11 area_size2 //GPS measurement, no units in file
 ren s11aq4c area_meas_sqm
 //ren sa1q9c area_meas_sqm2
 gen cultivate = s11b1q27 ==1 
+gen rented_out = inlist(s11b1q28, 2, 3, 4)
 *assuming new plots are cultivated
 //replace cultivate = 1 if sa1q1aa==1
 //replace cultivate = 1 if sa1q3==1 //ALT: This has changed to respondent ID for w4
@@ -825,25 +826,18 @@ use "${Nigeria_GHS_W4_raw_data}/sect11f_plantingW4.dta", clear
 	*merging in conversion factors
 	merge m:1 cropcode unit size condition using "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_cf.dta", keep(1 3) nogen //Only 169 obs of units unmerged. 
 	replace conv_fact=1 if conv_fact==. & unit==1
-	gen quant_harv_kg = quantity_harvested * sa3iq6_conv
-	replace quant_harv_kg = quantity_harvested * sa3iiiq13_conv if quant_harv_kg == .
-	replace quant_harv_kg = quantity_harvested * conv_fact if quant_harv_kg == .
-	gen no_units = missing(quant_harv_kg) & (!missing(quantity_harvested) & quantity_harvested!=0)
-	//gen quant_harv_kg= quantity_harvested*conv_fact
+	gen kg_harv = quantity_harvested * sa3iq6_conv
+	replace kg_harv = quantity_harvested * sa3iiiq13_conv if kg_harv == .
+	replace kg_harv = quantity_harvested * conv_fact if kg_harv == .
+	gen no_units = missing(kg_harv) & (!missing(quantity_harvested) & quantity_harvested!=0)
+	//gen kg_harv= quantity_harvested*conv_fact
 	ren sa3iq6a val_harvest_est
 	replace val_harvest_est = sa3iiiq14 if val_harvest_est==.
 	//ALT 09.28.22: I'm going to keep the grower-estimated valuation in here even though it's likely inaccurate for comparison purposes.
 	gen val_unit_est = val_harvest_est/quantity_harvested
-	gen val_kg_est = val_harvest_est/quant_harv_kg
+	gen val_kg_est = val_harvest_est/kg_harv
 	merge m:1 hhid using "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_weights.dta", nogen keep(1 3)
 	gen plotweight = ha_planted*weight_pop_rururb
-	//IMPLAUSIBLE ENTRIES - at least 100x the typical yield
-	foreach var in quantity_harvested quant_harv_kg val_harvest_est val_unit_est val_kg_est {
-	replace `var' = . if (hhid == 299005 & plot_id == 2 & cropcode == 1020) | /* 2000 heaps of cassava on 0.003 ha 
-	*/ (hhid == 339038 & plot_id == 2 & cropcode == 2190) | /* 5 tons of pumpkins on 0.0075 ha, an area smaller than my apartment
-	*/ (hhid == 229068 & plot_id == 2 & cropcode == 1121) | /* 17 tons of yams on 0.144 ha
-	*/ (hhid == 120058 & plot_id == 3 & cropcode == 1121) //14 tons of yams on 0.1 ha.
-	}
 	gen obs=quantity_harvested>0 & quantity_harvested!=.
 
 foreach i in zone state lga ea hhid {
@@ -869,17 +863,17 @@ foreach i in country zone state lga ea {
 	replace price_unit_hh = price_unit if price_unit_hh==.
 	replace price_kg_hh = price_kg if price_kg_hh==.
 	gen value_harvest = price_unit * quantity_harvested
-	replace value_harvest = price_kg * quant_harv_kg if value_harvest == .
+	replace value_harvest = price_kg * kg_harv if value_harvest == .
 	replace value_harvest = val_harvest_est if value_harvest == .
 	gen value_harvest_hh= price_unit_hh*quantity_harvested 
-	replace value_harvest_hh=price_kg_hh*quant_harv_kg if value_harvest_hh==.
+	replace value_harvest_hh=price_kg_hh*kg_harv if value_harvest_hh==.
 	replace value_harvest_hh=value_harvest if value_harvest==.
 	
 //A few situations (mainly cocoa) where the grower estimated price is substantially below the area median.	
 
 	//Replacing conversions for unknown units
 	replace val_unit_est = value_harvest/quantity_harvested if val_unit_est==.
-	replace val_kg_est = value_harvest/quant_harv_kg if val_kg_est == .
+	replace val_kg_est = value_harvest/kg_harv if val_kg_est == .
 
 preserve
 //ALT note to double check and see if the changes to valuation mess this up.
@@ -910,27 +904,27 @@ restore
 	ren sa3iq6d2a condition
 	ren sa3iq6d1 quantity_harvested
 	//replace quantity_harvested = . if hhid == 220016 & plot_id==2 & cropcode==1121 //One obs of 2000 pickups on a quarter of a hectare. Planting estimate was 1 pickup; likely a unit typo. //ALT: Excluded by the 9.30.24 update
-	gen quant_harv_kg2 = quantity_harvested * sa3iq6d_conv
-	replace quant_harv_kg2 = quantity_harvested * conv_fact if same_unit == 1
+	gen kg_harv2 = quantity_harvested * sa3iq6d_conv
+	replace kg_harv2 = quantity_harvested * conv_fact if same_unit == 1
 	drop conv_fact
 	merge m:1 cropcode unit size condition using "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_cf.dta", nogen keep(1 3)
-	replace quant_harv_kg2= quantity_harvested*conv_fact if quant_harv_kg2 == .
+	replace kg_harv2= quantity_harvested*conv_fact if kg_harv2 == .
 	gen val_harv2 = 0
 	gen val_harv2_hh=0
-	recode quant_harv_kg2 quantity_harvested value_harvest (.=0) //ALT 02.10.22: This is causing people with "still to harvest" values getting missing where they should have something.
+	recode kg_harv2 quantity_harvested value_harvest (.=0) //ALT 02.10.22: This is causing people with "still to harvest" values getting missing where they should have something.
 	replace val_harv2=quantity_harvested*price_unit if val_harv2==0 & same_unit==1  //Use household price for consistency. (see line 959)
-	replace val_harv2=quant_harv_kg*price_kg if val_harv2==0 
+	replace val_harv2=kg_harv*price_kg if val_harv2==0 
 	replace val_harv2_hh = quantity_harvested*price_unit_hh 
-	replace val_harv2_hh = quant_harv_kg * price_kg_hh if val_harv2_hh==0
+	replace val_harv2_hh = kg_harv * price_kg_hh if val_harv2_hh==0
 	gen missing_unit =val_harv2 == 0
 
-	replace quant_harv_kg = quant_harv_kg+quant_harv_kg2 if sa3iq3==1
-	replace quant_harv_kg = quant_harv_kg2 if sa3iq3==1 & quant_harv_kg==. //this annoying two-step here to deal with how stata processes missing values and the desire to avoid introducing spurious 0s.
+	replace kg_harv = kg_harv+kg_harv2 if sa3iq3==1
+	replace kg_harv = kg_harv2 if sa3iq3==1 & kg_harv==. //this annoying two-step here to deal with how stata processes missing values and the desire to avoid introducing spurious 0s.
 	replace value_harvest = value_harvest+val_harv2 if sa3iq3==1 
 	replace value_harvest = val_harv2 if sa3iq3==1 & value_harvest==.
 	replace value_harvest_hh = value_harvest_hh + val_harv2_hh if sa3iq3==1
 	replace value_harvest_hh = val_harv2_hh if sa3iq3==1 & value_harvest==.
-	replace ha_harvest = ha_planted if sa3iq3==1 & !inlist(quant_harv_kg2,0,.) & !inlist(sa3iq4c, 1, .)
+	replace ha_harvest = ha_planted if sa3iq3==1 & !inlist(kg_harv2,0,.) & !inlist(sa3iq4c, 1, .)
 	replace cropcode = 1124 if crop_code_11f==1124 //Removing three-leaved yams from yams. 
 	gen lost_crop=inrange(sa3iq4,1,5) & s11fq0==1
 	gen lost_drought = sa3iq4==1 | sa3iq4c==2
@@ -938,14 +932,14 @@ restore
 	gen lost_pest = sa3iq4==3 | sa3iq4c==4
 	gen no_harvest = sa3iq4 >= 6 & sa3iq4 <=10
 	preserve
-		gen ha_harv_yld= ha_harvest if ha_planted >=0.05 & !no_units & !no_harvest
-		gen ha_plan_yld = ha_planted if ha_planted >=0.05 & !no_units & !no_harvest
-		keep if ha_plan_yld!=.
-		collapse (sum) ha_plan_yld ha_harv_yld, by(hhid plot_id cropcode)
+		gen ha_harv_yd= ha_harvest if ha_planted >=0.05 & !no_units & !no_harvest
+		gen ha_plan_yd = ha_planted if ha_planted >=0.05 & !no_units & !no_harvest
+		keep if ha_plan_yd!=.
+		collapse (sum) ha_plan_yd ha_harv_yd, by(hhid plot_id cropcode)
 		tempfile yield_vars
 		save `yield_vars'
 	restore
-	collapse (sum) quant_harv_kg value_harvest* /*val_harvest_est*/ ha_planted ha_harvest number_trees_planted percent_field (max) no_units lost_pest lost_flood lost_drought no_harvest use_imprv_seed, by(zone state lga sector ea hhid plot_id cropcode purestand field_size gps_meas)
+	collapse (sum) kg_harv value_harvest* /*val_harvest_est*/ ha_planted ha_harvest number_trees_planted percent_field (max) no_units lost_pest lost_flood lost_drought no_harvest use_imprv_seed, by(zone state lga sector ea hhid plot_id cropcode purestand field_size gps_meas)
 	bys hhid plot_id : gen count_crops = _N
 	recode ha_planted (0=.)
 	replace purestand = 0 if count_crops > 1 & purestand==1 //Three plots no longer considered monocropped after the disaggregation.
@@ -953,12 +947,12 @@ restore
 	bys hhid plot_id : gen percent_inputs = percent_field/percent_area
 	drop percent_area //Assumes that inputs are +/- distributed by the area planted. Probably not true for mixed tree/field crops, but reasonable for plots that are all field crops
 	//Labor should be weighted by growing season length, though. 
-	replace ha_harvest=. if (ha_harvest==0 & no_harvest==1) | (ha_harvest==0 & quant_harv_kg>0 & quant_harv_kg!=.)
-	replace value_harvest =. if value_harvest==0 & (no_harvest==1 | (quant_harv_kg!=0 & quant_harv_kg!=.))
-	replace quant_harv_kg = . if quant_harv_kg==0 & no_harvest==1
+	replace ha_harvest=. if (ha_harvest==0 & no_harvest==1) | (ha_harvest==0 & kg_harv>0 & kg_harv!=.)
+	replace value_harvest =. if value_harvest==0 & (no_harvest==1 | (kg_harv!=0 & kg_harv!=.))
+	replace kg_harv = . if kg_harv==0 & no_harvest==1
 	drop no_harvest
-	drop if (ha_planted==0 | ha_planted==.) & (ha_harvest==0 | ha_harvest==.) & (quant_harv_kg==0 | quant_harv_kg==.)
-	merge 1:1 hhid plot_id cropcode using `yield_vars'
+	drop if (ha_planted==0 | ha_planted==.) & (ha_harvest==0 | ha_harvest==.) & (kg_harv==0 | kg_harv==.)
+	merge 1:1 hhid plot_id cropcode using `yield_vars', nogen
 	merge m:1 hhid plot_id using "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_plot_decision_makers.dta", nogen keep(1 3) keepusing(dm*)
 		//We remove small planted areas from the sample for yield, as these areas are likely undermeasured/underestimated and cause substantial outliers. The harvest quantities are retained for farm income and production estimates. 
 	save "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_all_plots.dta",replace
@@ -969,8 +963,8 @@ restore
 **Creating median crop prices at different geographic levels to use for imputation**
 use "${Nigeria_GHS_W4_raw_data}/secta3ii_harvestw4.dta", clear
 //ren cropcode crop_code Note to do this @ end.
-ren sa3iiq6 sales_value
-recode sales_value (.=0)
+ren sa3iiq6 value_sold
+recode value_sold (.=0)
 /*DYA*/ ren sa3iiq5a quantity_sold
 /*DYA*/ ren sa3iiq1c unit
 		ren sa3iiq1d size
@@ -985,31 +979,32 @@ gen kg_sold= quantity_sold*conv_fact
 recode cropcode (2170=2030) (2142 = 2141) (1121 1122 1123 /*1124*/=1120) //Only things that carry over from W3 are bananas/plantains, yams, and peppers. The generic pepper category 2040 in W3 is missing from this wave. 10.09.24: Excluding three leaved yams.
 label define CROPCODE 1120 "1120. YAM", replace
 ren cropcode crop_code
-collapse (sum) sales_value kg_sold, by (hhid crop_code)
-lab var sales_value "Value of sales of this crop"
-save "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_cropsales_value.dta", replace 
-
+collapse (sum) value_sold kg_sold, by (hhid crop_code)
+lab var value_sold "Value of sales of this crop"
+//save "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_cropsales_value.dta", replace 
+tempfile salevalue
+save `salevalue'
 
 use "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_all_plots.dta", clear
-ren cropcode crop_code
-collapse (sum) value_harvest, by (hhid crop_code) 
-merge 1:1 hhid crop_code using "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_cropsales_value.dta"
-recode  value_harvest sales_value  (.=0)
-replace value_harvest = sales_value if sales_value>value_harvest & sales_value!=. /* In a few cases, sales value reported exceeds the estimated value of crop harvest */
-ren sales_value value_crop_sales 
-collapse (sum) value_harvest value_crop_sales, by (hhid crop_code)
-ren value_harvest value_crop_production 
-lab var value_crop_production "Gross value of crop production, summed over main and short season"
-lab var value_crop_sales "Value of crops sold so far, summed over main and short season"
+ren cropcode crop_code //To fix
+collapse (sum) value_harv=value_harvest , by (hhid crop_code) 
+//merge 1:1 hhid crop_code using "${Nigeria_GHS_W1_created_data}/Nigeria_GHS_W1_cropsales_value.dta", nogen
+merge 1:1 hhid crop_code using `salevalue', nogen keep(1 3) //A few sales reports without production numbers //TBD
+recode  value_harv value_sold  (.=0)
+replace value_harv = value_sold if value_sold > value_harv & value_sold!=. /* In a few cases, sales value reported exceeds the estimated value of crop harvest */
+collapse (sum) value_harv value_sold, by (hhid crop_code) /*Can add other crop details to this collapse */
+//ren value_harvest value_harv_hh
+lab var value_harv "Gross value of crop production"
+lab var value_sold "Value of crops sold"
 save "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_hh_crop_values_production.dta", replace 
 
 //Legacy code 
-collapse (sum) value_crop_production value_crop_sales, by (hhid)
-lab var value_crop_production "Gross value of crop production for this household"
-lab var value_crop_sales "Value of crops sold so far"
-gen proportion_cropvalue_sold = value_crop_sales / value_crop_production
-lab var proportion_cropvalue_sold "Proportion of crop value produced that has been sold"
-replace proportion_cropvalue_sold = . if proportion_cropvalue_sold > 1 //HS 4/12/23: Where proportion is greater than 1 (i.e. where value sold >0 but value harvested = 0), repace with empty "."
+collapse (sum) value_harv_hh=value_harv value_sold_hh=value_sold, by (hhid)
+lab var value_harv_hh "Gross value of crop production for this household"
+lab var value_sold_hh "Value of crops sold so far"
+recode value_sold_hh (.=0)
+gen proportion_cropvalue_sold = value_sold_hh / value_harv_hh
+replace proportion_cropvalue_sold = . if proportion_cropvalue_sold > 1
 save "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_hh_crop_production.dta", replace
 
 *Crops lost post-harvest
@@ -1698,7 +1693,7 @@ use "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_all_plots.dta", clear
 	replace p_units = p_units/field_size
 	replace k_units = k_units/field_size
 	replace n_units_org = n_units_org/field_size
-	gen kg_ha = quant_harv_kg/field_size 
+	gen kg_ha = kg_harv/field_size 
 	gen yield_unit_n = kg_ha/n_units
 	la var n_units "Nitrogen kg/ha"
 	la var p_units "Phosphorus kg/ha"
@@ -1729,7 +1724,7 @@ use "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_all_plots.dta", clear
 	//File now has 2550 unique entries after omitting the crops that were "replaced" - it should be noted that some these were grown in mixed plots and only one crop was lost. Which is confusing.
 	merge 1:1 hhid plot_id using "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_plot_decision_makers.dta", nogen keep(1 3) keepusing(dm_gender)
 	ren ha_planted monocrop_ha
-	ren quant_harv_kg kg_harv_mono
+	ren kg_harv kg_harv_mono
 	ren value_harvest val_harv_mono
 	
 	* HS 4/14/23: Not recognizing topcrop = "yam" because there are "1121. YAM, WHITE", "1122. YAM, YELLOW", "1123. WATER YAM", "1124. YAM, THREE LEAVED"
@@ -2529,92 +2524,29 @@ save "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_land_rental_income.dta", rep
 ********************************************************************************
 * FARM SIZE/LAND SIZE *
 ********************************************************************************
-//ALT 01.04.20: This section seems to run the same in W4 as it does in W3. Minimal modifications.
-use "${Nigeria_GHS_W4_raw_data}/secta3i_harvestw4.dta", clear
-gen cultivated = 1
-merge m:1 hhid plotid using "${Nigeria_GHS_W4_raw_data}/sect11b1_plantingw4.dta", nogen keep(1 3)
-ren s11b1q27 cultivated_this_year
-preserve 
-use "${Nigeria_GHS_W4_raw_data}/sect11f_plantingw4.dta", clear
-gen cultivated = 1 if (s11fq7!=. & s11fq7!=0) |  (s11fq11a!=. & s11fq11a!=0)
-collapse (max) cultivated, by (hhid plotid)
-tempfile tree
-save `tree', replace
-restore
-append using `tree'
-
-replace cultivated = 1 if cultivated_this_year==1 & cultivated==.
-ren plotid plot_id
-collapse (max) cultivated, by (hhid plot_id)
+use "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_all_plots.dta", clear
+collapse (sum) ha_planted, by(hhid plot_id)
+gen cultivated=1 //Anything that ends up in all plots has been cultivated, although ha_planted is sometimes unknown
+merge 1:1 hhid plot_id using "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_plot_areas.dta", nogen keepusing(field_size rented_out)
+replace cultivated=0 if cultivated==. | rented_out==1
 lab var cultivated "1= Parcel was cultivated in this data set"
-save "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_parcels_cultivated.dta", replace
-
-use "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_plot_areas.dta", clear
-merge m:1 hhid plot_id using "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_parcels_cultivated.dta"
-keep if cultivated==1
-collapse (sum) field_size, by (hhid plot_id)
-save "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_plot_sizes.dta", replace
-collapse (sum) field_size, by (hhid)
-ren field_size farm_area
-lab var farm_area "Land size (denominator for land productivitiy), in hectares" /* Uses measures */
+//save "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_parcels_cultivated.dta", replace
+gen cultivated_area=ha_planted 
+replace cultivated_area=field_size if ha_planted==. & cultivated==1
+gen farm_area=field_size if cultivated==1 | rented_out==0
+replace farm_area=cultivated_area if farm_area==.
+gen hh_agland=field_size
+replace hh_agland=cultivated_area if farm_area==.
+collapse (sum) cultivated_area farm_area hh_agland, by (hhid)
+la var cultivated_area "Actively cultivated area (ha)"
+la var farm_area "All area held by household (ha)"
+la var hh_agland "All area owned by household, including area rented out (ha)"
 save "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_land_size.dta", replace
-
-*All Agricultural Land
-use "${Nigeria_GHS_W4_raw_data}/sect11b1_plantingw4.dta", clear
-ren plotid plot_id
-gen agland = (s11b1q27==1 | s11b1q28==1 | s11b1q28==6) // Cultivated, fallow, or pasture
-merge m:1 hhid plot_id using "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_parcels_cultivated.dta", nogen keep(1 3)
-preserve 
-use "${Nigeria_GHS_W4_raw_data}/sect11f_plantingw4.dta", clear
-gen cultivated = 1 if (s11fq7!=. & s11fq7!=0) |  (s11fq11a!=. & s11fq11a!=0)
-collapse (max) cultivated, by (hhid plotid)
-ren plotid plot_id
-tempfile tree
-save `tree', replace
-restore
-append using `tree'
-replace agland=1 if cultivated==1
-keep if agland==1
-collapse (max) agland, by (hhid plot_id)
-keep hhid plot_id agland
-lab var agland "1= Plot was cultivated, left fallow, or used for pasture"
-save "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_parcels_agland.dta", replace
-
-use "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_plot_areas.dta", clear
-merge 1:1 hhid plot_id using "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_parcels_agland.dta", nogen
-keep if agland==1
-collapse (sum) field_size, by (hhid)
-ren field_size farm_size_agland
-lab var farm_size_agland "Land size in hectares, including all plots cultivated, fallow, or pastureland"
-save "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_farmsize_all_agland.dta", replace
-
-*Total land holding including cultivated and rented out
-use "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_plot_areas.dta", clear
-collapse (sum) field_size, by (hhid)
-ren field_size land_size_total
-lab var land_size_total "Total land size in hectares, including rented in and rented out plots"
-save "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_land_size_total.dta", replace
 
 ********************************************************************************
 *LAND SIZE
 ********************************************************************************
-use "${Nigeria_GHS_W4_raw_data}/sect11b1_plantingw4.dta", clear
-ren plotid plot_id
-gen rented_out = inlist(s11b1q28, 2,3,4) //=1 if plot was rented out, sharecropped out, or given out for free.
-drop if rented_out==1
-gen plot_held=1
-keep hhid plot_id plot_held
-lab var plot_held "1= Plot was NOT rented out in 2018"
-save "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_parcels_held.dta", replace
-
-use "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_plot_areas.dta", clear
-merge 1:1 hhid plot_id using "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_parcels_held.dta", nogen
-keep if plot_held==1
-collapse (sum) field_size, by (hhid)
-ren field_size land_size
-lab var land_size "Land size in hectares, including all plots listed by the household (and not rented out)"
-save "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_land_size_all.dta", replace 
-//ALT 01.04.20: The original variable for rented_out was s11b1q29, which wasn't asked in W4
+//captured above
 
 ********************************************************************************
 *FARM LABOR
@@ -4252,7 +4184,7 @@ use "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_all_plots.dta", clear
 ren cropcode crop_code
 drop if hhid== 200156 | hhid==200190 | hhid==310091 // households that have an area planted or harvested but indicated that they rented out or did not cultivate 
 gen grew_=1
-gen harvested_ = !no_units & ((quant_harv_kg!=0 & quant_harv_kg!=.) | (ha_harvest!=0 & ha_harvest!=.))
+gen harvested_ = !no_units & ((kg_harv!=0 & kg_harv!=.) | (ha_harvest!=0 & ha_harvest!=.))
 ren no_units no_units_
 ren ha_harvest ha_harv_
 collapse (max) grew_ harvested_ no_units_ ha_harv_, by(hhid crop_code)
@@ -4270,9 +4202,12 @@ save `grew_crops'
 use "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_all_plots.dta", clear
 ren cropcode crop_code
 gen no_harvest=ha_harvest==.
-ren quant_harv_kg harvest 
-ren ha_plan_yld area_plan
-ren ha_harv_yld area_harv 
+gen kg_plan_yd = kg_harv if ha_plan_yd!=0 & ha_plan_yd!=.
+gen kg_harv_yd = kg_harv if ha_harv_yd!=0 & ha_harv_yd!=.
+ren kg_harv harvest 
+ren ha_planted area_plan
+ren ha_harvest area_harv
+ 
 gen mixed = "inter"  //Note to adjust this for lost crops 
 replace mixed="pure" if purestand==1
 gen dm_gender2="unknown"
@@ -4280,7 +4215,7 @@ replace dm_gender2="male" if dm_gender==1
 replace dm_gender2="female" if dm_gender==2
 replace dm_gender2="mixed" if dm_gender==3
 
-foreach i in harvest area_plan area_harv {	
+foreach i in harvest area_plan area_harv kg_plan_yd kg_harv_yd ha_plan_yd ha_harv_yd {	
 	foreach j in inter pure {
 		gen `i'_`j'=`i' if mixed == "`j'"
 		foreach k in male female mixed {
@@ -4293,10 +4228,27 @@ foreach i in harvest area_plan area_harv {
 	}
 }
 
-collapse (sum) harvest* area* (max) no_harvest lost_*, by(hhid crop_code)
-unab vars : harvest* area*
+collapse (sum) harvest* area* ha_plan_yd* ha_harv_yd* kg_harv_yd* kg_plan_yd* (max) no_harvest lost_*, by(hhid crop_code)
+unab vars : harvest* area* ha_plan_yd* ha_harv_yd* kg_harv_yd* kg_plan_yd* 
 foreach var in `vars' {
 	replace `var' = . if `var'==0 & no_harvest==1
+}
+
+
+foreach i in inter pure {
+	capture confirm var yd_plan_`i' 
+	if _rc {
+		replace ha_plan_yd_`i'=. if ha_plan_yd_`i'==0
+		replace kg_plan_yd_`i' = . if ha_plan_yd_`i'==.
+		replace ha_harv_yd_`i'=. if ha_plan_yd_`i'==.
+		replace kg_harv_yd_`i'=. if ha_plan_yd_`i'==.
+	}
+	foreach j in male female mixed {
+		replace ha_plan_yd_`i'_`j' = . if ha_plan_yd_`i'_`j'==0
+		replace kg_plan_yd_`i'_`j' = . if ha_plan_yd_`i'_`j'==.
+		replace ha_harv_yd_`i'_`j' = . if ha_plan_yd_`i'_`j'==. 
+		replace kg_harv_yd_`i'_`j' = . if ha_plan_yd_`i'_`j'==.
+	}
 }
 
 replace area_plan = . if area_plan==0
@@ -4326,10 +4278,10 @@ use "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_crop_harvest_area_yield.dta",
 *Value of crop production
 merge m:1 crop_code using "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_cropname_table.dta", nogen keep(1 3)
 merge m:1 hhid crop_code using "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_hh_crop_values_production.dta", nogen keep(1 3) // HS 4/14/23: Switched 1:1 to m:1 to allow for multiple yam observations following recode of yam varietis to just yam
-ren value_crop_production value_harv_
-ren value_crop_sales value_sold_
+ren value_harv value_harv_
+ren value_sold value_sold_
 ren no_harvest no_harvest_
-foreach i in harvest area lost{
+foreach i in harvest area lost kg_harv kg_plan ha_plan ha_harv {
 	ren `i'* `i'*_
 }
 gen total_planted_area_ = area_plan_
@@ -4340,8 +4292,8 @@ drop crop_code
 unab vars : *_
 reshape wide `vars', i(hhid) j(crop_name) string
 //merge 1:1 hhid using "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_trees.dta"
-collapse (sum) harvest* area_harv* area_plan* total_planted_area* total_harv_area* kg_harvest* value_harv* value_sold* (max) lost* no_harvest*, by (hhid)
-recode harvest* area_harv* area_plan* kg_harvest* total_planted_area* total_harv_area* value_harv* value_sold* (0=.)
+//collapse (sum) harvest* area_harv* area_plan* total_planted_area* total_harv_area* kg_harvest* value_harv* value_sold* (max) lost* no_harvest*, by (hhid)
+//recode harvest* area_harv* area_plan* kg_harvest* total_planted_area* total_harv_area* value_harv* value_sold* (0=.)
 egen kg_harvest = rowtotal(kg_harvest_*)
 la var kg_harvest "Quantity harvested of all crops (kgs) (household) (summed accross all seasons)" 
 
@@ -4400,7 +4352,7 @@ foreach p of global topcropname_area {
 	lab var no_units_`p' "1= no conversion factor to kg or units for `p'"
 	replace no_harvest_`p' =1 if !no_harvest_`p' & total_harv_area_`p'==. & ha_harv_`p' > 0
 }
-drop ha_harv_*
+//drop ha_harv_*
 /* No longer necessary
 replace grew_banana =1 if  number_trees_planted_banana!=0 & number_trees_planted_banana!=. 
 replace grew_cassav =1 if number_trees_planted_cassava!=0 & number_trees_planted_cassava!=. 
@@ -4720,9 +4672,7 @@ replace type_commodity=	"Out"	if crop_code==	9999
 
 
 preserve
-collapse (sum) value_crop_production value_crop_sales, by( hhid commodity) 
-ren value_crop_production value_pro
-ren value_crop_sales value_sal
+collapse (sum) value_pro=value_harv value_sal=value_sold, by( hhid commodity) 
 separate value_pro, by(commodity)
 separate value_sal, by(commodity)
 //Topcrop abbrs:
@@ -4780,9 +4730,7 @@ save "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_hh_crop_values_production_gr
 restore
 
 *type of commodity
-collapse (sum) value_crop_production value_crop_sales, by( hhid type_commodity) 
-ren value_crop_production value_pro
-ren value_crop_sales value_sal
+collapse (sum) value_pro=value_harv value_sal=value_sold, by( hhid type_commodity) 
 separate value_pro, by(type_commodity)
 separate value_sal, by(type_commodity)
 foreach s in pro sal {
@@ -4822,9 +4770,14 @@ save "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_hh_crop_values_production_ty
 *Area planted
 *Bringing in area planted for LRS
 //ALT: Wave 3 code seems to run okay without modification
-use "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_hh_crop_area_plan.dta", clear
+use "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_all_plots.dta", clear
+ren cropcode crop_code //to fix.
 *Some households have crop observations, but the area planted=0. These are permanent crops. Right now they are not included in the SDI unless they are the only crop on the plot, but we could include them by estimating an area based on the number of trees planted
-drop if area_plan==0
+ren ha_planted area_plan // to fix
+drop if area_plan==0 | area_plan==.
+gen area_plan_male = area_plan if dm_gender==1
+gen area_plan_female= area_plan if dm_gender==2
+gen area_plan_mixed = area_plan if dm_gender==3
 *generating area planted of each crop as a proportion of the total area
 preserve 
 collapse (sum) area_plan_hh=area_plan area_plan_female_hh=area_plan_female area_plan_male_hh=area_plan_male area_plan_mixed_hh=area_plan_mixed, by(hhid)
@@ -6120,12 +6073,12 @@ save "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_mpi_indicators.dta", replace
 ********************************************************************************
 //setting up empty variable list: create these with a value of missing and then recode all of these to missing at the end of the HH section (some may be recoded to 0 in this section)
 global empty_vars ""
-use "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_hhids.dta", clear
-merge 1:1 hhid using "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_hh_adulteq.dta", nogen keep(1 3)
+use "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_weights.dta", clear
+
 *Gross crop income 
 merge 1:1 hhid using "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_hh_crop_production.dta", nogen keep(1 3)
 merge 1:1 hhid using "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_crop_losses.dta", nogen keep(1 3)
-recode value_crop_production crop_value_lost (.=0)
+recode value_harv_hh (.=0)
 
 *Start DYA 9.13.2020 
 * Production by group and type of crops
@@ -6138,7 +6091,7 @@ merge 1:1 hhid using "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_hh_cost_inpu
 *Crop costs
 //Merge in summarized crop costs:
 gen crop_production_expenses = cost_expli_hh
-gen crop_income = value_crop_production - crop_production_expenses - crop_value_lost
+gen crop_income = value_harv_hh - crop_production_expenses - crop_value_lost
 lab var crop_production_expenses "Crop production expenditures (explicit)"
 lab var crop_income "Net crop revenue (value of production minus crop expenses)"
 *top crop costs by area planted
@@ -6260,16 +6213,16 @@ drop other_income
 
 *Farm size
 merge 1:1 hhid using  "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_land_size.dta", nogen keep(1 3)
-merge 1:1 hhid using  "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_land_size_all.dta", nogen keep(1 3)
-merge 1:1 hhid using  "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_farmsize_all_agland.dta", nogen keep(1 3)
-merge 1:1 hhid using "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_land_size_total.dta", nogen
-recode land_size (.=0)
-recode farm_size_agland (.=0)
-gen  farm_size_0_0=farm_size_agland==0
-gen  farm_size_0_1=farm_size_agland>0 & farm_size_agland<=1
-gen  farm_size_1_2=farm_size_agland>1 & farm_size_agland<=2
-gen  farm_size_2_4=farm_size_agland>2 & farm_size_agland<=4
-gen  farm_size_4_more=farm_size_agland>4
+//merge 1:1 hhid using  "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_land_size_all.dta", nogen keep(1 3)
+//merge 1:1 hhid using  "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_farmsize_all_agland.dta", nogen keep(1 3)
+//merge 1:1 hhid using "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_land_size_total.dta", nogen
+//recode land_size (.=0)
+recode hh_agland (.=0)
+gen  farm_size_0_0=hh_agland==0
+gen  farm_size_0_1=hh_agland>0 & hh_agland<=1
+gen  farm_size_1_2=hh_agland>1 & hh_agland<=2
+gen  farm_size_2_4=hh_agland>2 & hh_agland<=4
+gen  farm_size_4_more=hh_agland>4
 lab var farm_size_0_0 "1=Household has no farm"
 lab var farm_size_0_1 "1=Household farm size > 0 Ha and <=1 Ha"
 lab var farm_size_1_2 "1=Household farm size > 1 Ha and <=2 Ha"
@@ -6295,7 +6248,7 @@ ren use_hybrid_seed hybrid_seed_use
 recode use_fin_serv* ext_reach* use_inorg_fert imprv_seed_use vac_animal (.=0)
 replace vac_animal=. if tlu_today==0 
 replace use_inorg_fert=. if farm_area==0 | farm_area==. // Area cultivated this year
-recode ext_reach* (0 1=.) if (value_crop_production==0 & livestock_income==0 & (farm_area==0 | farm_area==.) &  tlu_today==0) //ALT 01.26.21: Changed & to | for farm_area
+recode ext_reach* (0 1=.) if (value_harv_hh==0 & livestock_income==0 & (farm_area==0 | farm_area==.) &  tlu_today==0) //ALT 01.26.21: Changed & to | for farm_area
 replace imprv_seed_use=. if farm_area==.
 global empty_vars $empty_vars hybrid_seed*
 
@@ -6376,17 +6329,16 @@ global empty_vars $empty_vars water_source*
 merge 1:1 hhid using "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_shannon_diversity_index.dta", nogen keep(1 3)
 
 *Farm Production 
-recode value_crop_production value_livestock_products value_slaughtered value_lvstck_sold (.=0)
-egen value_farm_production = rowtotal(value_crop_production value_livestock_products value_slaughtered value_lvstck_sold)
+recode value_harv_hh value_livestock_products value_slaughtered value_lvstck_sold (.=0)
+egen value_farm_production = rowtotal(value_harv_hh value_livestock_products value_slaughtered value_lvstck_sold)
 lab var value_farm_production "Total value of farm production (crops + livestock products)"
-egen value_farm_prod_sold = rowtotal(value_crop_sales sales_livestock_products value_livestock_sales)
+egen value_farm_prod_sold = rowtotal(value_sold_hh sales_livestock_products value_livestock_sales)
 lab var value_farm_prod_sold "Total value of farm production that is sold" 
 
 
 *Agricultural households
-recode value_farm_production crop_income livestock_income farm_area tlu_today land_size farm_size_agland value_farm_prod_sold (.=0)
-//ALT 06.18.2020: Note to revisit this. Ayala says it's oddly high.
-gen ag_hh = (value_crop_production!=0 | livestock_income!=0 | farm_area!=0 | tlu_today!=0)
+recode value_harv_hh crop_income livestock_income farm_area tlu_today hh_agland value_farm_prod_sold (.=0)
+gen ag_hh = (value_harv_hh!=0 | livestock_income!=0 | farm_area!=0 | tlu_today!=0)
 replace value_farm_production=. if ag_hh==0
 replace value_farm_prod_sold=. if ag_hh==0
 recode nb* tlu* *tlu (.=0) if ag_hh==1 //ALT 10.08.24: Issue causing SSP to be too low; consider other variables if needed
@@ -6404,11 +6356,11 @@ gen agactivities_hh =ag_hh==1 | (agwage_income!=0 & agwage_income!=.)
 lab var agactivities_hh "1=Household has some land cultivated, livestock, crop income, livestock income, or ag wage income"
 
 *Creating crop households and livestock households
-gen crop_hh = (value_crop_production!=0  | farm_area!=0)
+gen crop_hh = (value_harv_hh!=0  | farm_area!=0)
 lab var crop_hh "1= Household has some land cultivated or some crop income"
 gen livestock_hh = (livestock_income!=0 | tlu_today!=0)
 lab  var livestock_hh "1= Household has some livestock or some livestock income"
-recode farm_size_agland (.=0) if crop_hh==0 & livestock_hh==1 //Livestock-only households. 
+recode hh_agland (.=0) if crop_hh==0 & livestock_hh==1 //Livestock-only households. 
 //recode fishing_income (.=0)
 gen fishing_hh = . //(fishing_income!=0)
 global empty_vars $empty_vars fishing_hh
@@ -6423,14 +6375,14 @@ forvalues k=1(1)$nb_topcrops {
 	recode value_harv_`cn' value_sold_`cn' kg_harvest_`cn' total_planted_area_`cn' total_harv_area_`cn' `cn'_exp (nonmissing=.) if grew_`cn'==0
 }
 drop no_harvest_* lost_pest* lost_flood_* lost_drought* no_units*
-*all rural households engaged in livestcok production of a given species
+*all rural households engaged in livestock production of a given species
 foreach i in lrum srum poultry pigs equine camels{
 	recode lost_disease_`i' ls_exp_vac_`i' disease_animal_`i' feed_grazing_`i' water_source_nat_`i' water_source_const_`i' water_source_cover_`i' lvstck_housed_`i' (nonmissing=.) if lvstck_holding_`i'==0
 	recode lost_disease_`i' ls_exp_vac_`i' disease_animal_`i' feed_grazing_`i' water_source_nat_`i' water_source_const_`i' water_source_cover_`i' lvstck_housed_`i'(.=0) if lvstck_holding_`i'==1	
 }
 *households engaged in crop production
-recode cost_expli_hh value_crop_production value_crop_sales labor_hired labor_family labor_nonhired farm_size_agland all_area_harvested all_area_planted  encs num_crops_hh multiple_crops (.=0) if crop_hh==1
-recode cost_expli_hh value_crop_production value_crop_sales labor_hired labor_family labor_nonhired farm_size_agland all_area_harvested all_area_planted  encs num_crops_hh multiple_crops (nonmissing=.) if crop_hh==0
+recode cost_expli_hh value_harv_hh value_sold_hh labor_hired labor_family hh_agland all_area_harvested all_area_planted  encs num_crops_hh multiple_crops (.=0) if crop_hh==1
+recode cost_expli_hh value_harv_hh value_sold_hh labor_hired labor_family hh_agland all_area_harvested all_area_planted  encs num_crops_hh multiple_crops (nonmissing=.) if crop_hh==0
 *all rural households engaged in livestock production 
 recode animals_lost12months* mean_12months* livestock_expenses disease_animal feed_grazing water_source_nat water_source_const water_source_cover lvstck_housed (.=0) if livestock_hh==1
 recode animals_lost12months* mean_12months* livestock_expenses disease_animal feed_grazing water_source_nat water_source_const water_source_cover lvstck_housed (nonmissing=.) if livestock_hh==0		
@@ -6453,8 +6405,8 @@ gen wage_paid_aglabor_all = wage_paid_aglabor //ALT 06.23.2020: Added
 
 global gender "female male mixed" //ALT 06.23.2020: 'All' is included in the gender list in the final summary statistics file, and some variables don't get generated if it's not included here.
 *Variables winsorized at the top 1% only 
-global wins_var_top1 /*
-*/ value_crop_production value_crop_sales value_harv* value_sold* kg_harvest* kg_harv_mono* total_planted_area* total_harv_area* /*
+global wins_var_top1 /* Revisit the kg_harv/kg_plan
+*/ value_harv* value_sold* kg_harv* kg_plan* total_planted_area* total_harv_area* /*
 */ labor_hired labor_family labor_nonhired /*
 */ animals_lost12months mean_12months lost_disease* /*			
 */ liters_milk_produced costs_dairy /*	
@@ -6475,7 +6427,7 @@ foreach v of varlist $wins_var_top1 {
 	gen w_`v'=`v'
 	replace  w_`v' = r(r1) if  w_`v' > r(r1) &  w_`v'!=.
 	local l`v' : var lab `v'
-	lab var  w_`v'  "`l`v'' - Winzorized top 1%"
+	lab var  w_`v'  "`l`v'' - Winzorized top $wins_upper_thres%"
 }
 
 *Variables winsorized at the top 1% only - for variables disaggregated by the gender of the plot manager
@@ -6492,25 +6444,25 @@ foreach v of varlist $wins_var_top1_gender {
 	gen w_`v'=`v'
 	replace  w_`v' = r(r1) if  w_`v' > r(r1) &  w_`v'!=.
 	local l`v' : var lab `v'
-	lab var  w_`v'  "`l`v'' - Winzorized top 1%"
+	lab var  w_`v'  "`l`v'' - Winzorized top $wins_upper_thres%"
 	
 	*some variables are disaggreated by gender of plot manager. For these variables, we use the top 1% percentile to winsorize gender-disagregated variables
 	foreach g of global gender {
 		gen w_`v'_`g'=`v'_`g'
 		replace  w_`v'_`g' = r(r1) if w_`v'_`g' > r(r1) & w_`v'_`g'!=.
 		local l`v'_`g' : var lab `v'_`g'
-		lab var  w_`v'_`g'  "`l`v'_`g'' - Winzorized top 1%"
+		lab var  w_`v'_`g'  "`l`v'_`g'' - Winzorized top $wins_upper_thres%"
 	}
 }
 
 drop *wage_paid_aglabor_mixed
 egen w_labor_total=rowtotal(w_labor_hired w_labor_family w_labor_nonhired)
 local llabor_total : var lab labor_total 
-lab var w_labor_total "`labor_total' - Winzorized top 1%"
+lab var w_labor_total "`labor_total' - Winzorized top $wins_upper_thres%"
 
 *Variables winsorized both at the top 1% and bottom 1% 
 global wins_var_top1_bott1  /* 
-*/ farm_area farm_size_agland all_area_harvested all_area_planted ha_planted /*
+*/ farm_area hh_agland all_area_harvested all_area_planted ha_planted /*
 */ crop_income livestock_income fishing_income self_employment_income nonagwage_income agwage_income transfers_income all_other_income total_cons percapita_cons daily_percap_cons peraeq_cons daily_peraeq_cons /* 
 */ *_monocrop_ha* dist_agrodealer land_size_total
 
@@ -6520,7 +6472,7 @@ foreach v of varlist $wins_var_top1_bott1 {
 	replace w_`v'= r(r1) if w_`v' < r(r1) & w_`v'!=. & w_`v'!=0  /* we want to keep actual zeros */
 	replace w_`v'= r(r2) if  w_`v' > r(r2)  & w_`v'!=.		
 	local l`v' : var lab `v'
-	lab var  w_`v'  "`l`v'' - Winzorized top and bottom 1%"
+	lab var  w_`v'  "`l`v'' - Winzorized top and bottom $wins_upper_thres/$wins_lower_thres%"
 	*some variables  are disaggreated by gender of plot manager. For these variables, we use the top and bottom 1% percentile to winsorize gender-disagregated variables
 	if "`v'"=="ha_planted" {
 		foreach g of global gender {
@@ -6528,7 +6480,7 @@ foreach v of varlist $wins_var_top1_bott1 {
 			replace w_`v'_`g'= r(r1) if w_`v'_`g' < r(r1) & w_`v'_`g'!=. & w_`v'_`g'!=0  /* we want to keep actual zeros */
 			replace w_`v'_`g'= r(r2) if  w_`v'_`g' > r(r2)  & w_`v'_`g'!=.		
 			local l`v'_`g' : var lab `v'_`g'
-			lab var  w_`v'_`g'  "`l`v'_`g'' - Winzorized top and bottom 1%"		
+			lab var  w_`v'_`g'  "`l`v'_`g'' - Winzorized top and bottom $wins_upper_thres/$wins_lower_thres%"		
 		}		
 	}
 }
@@ -6544,12 +6496,12 @@ foreach v of varlist $wins_var_top1 {
 	foreach r of local list_levels {
 		_pctile `v' [aw=weight_pop_rururb] if zone==`r', p($wins_upper_thres)  
 		scalar p1_lev_`r'=r(r1)
-		di "Top 1% by zone  _`r' " p1_lev_`r'
+		di "Top $wins_upper_thres% by zone  _`r' " p1_lev_`r'
 		di min(p1_lev_`r',p1_nat)
 		replace  w_`v' = min(p1_lev_`r',p1_nat) if zone==`r' & w_`v' > min(p1_lev_`r',p1_nat) &  w_`v'!=.
 	}
 	local l`v' : var lab `v'
-	lab var  w_`v'  "`l`v'' - Winzorized top 1%"
+	lab var  w_`v'  "`l`v'' - Winzorized top $wins_upper_thres%"
 }	
 
 * By gender 
@@ -6601,7 +6553,7 @@ lab var w_labor_total "`labor_total' - Winsorized top 1%"
 //ALT 05.04.23 update to regional winsorization
 
 global wins_var_top1_bott1  /* 
-*/ farm_area farm_size_agland all_area_harvested all_area_planted ha_planted /*
+*/ farm_area hh_agland all_area_harvested all_area_planted ha_planted /*
 */ crop_income livestock_income fishing_income self_employment_income nonagwage_income agwage_income transfers_income all_other_income /*
 */ total_cons percapita_cons daily_percap_cons peraeq_cons daily_peraeq_cons /* 
 */ *_monocrop_ha* dist_agrodealer
@@ -6641,7 +6593,7 @@ foreach v of varlist $wins_var_top1_bott1 {
 
 *area_harv and area_plan are also winsorized both at the top 1% and bottom 1% because we need to analyze at the crop level 
 global allyield male female mixed inter inter_male inter_female inter_mixed pure pure_male pure_female pure_mixed
-global wins_var_top1_bott1_2 area_harv  area_plan harvest 	
+global wins_var_top1_bott1_2 area_harv area_plan harvest ha_plan_yd ha_harv_yd
 levelsof zone, local(list_levels)
 foreach v of global wins_var_top1_bott1_2 {
 	foreach c of global topcropname_area {
@@ -6657,7 +6609,7 @@ foreach v of global wins_var_top1_bott1_2 {
 			replace w_`v'_`c'=  min(p2_lev_`r',p2_nat) if zone==`r' & w_`v'_`c' >  min(p2_lev_`r',p2_nat)  & w_`v'_`c'!=.		
 		}		
 		local l`v'_`c'  : var lab `v'_`c'
-		lab var  w_`v'_`c' "`l`v'_`c'' - Winzorized top and bottom 1%"
+		lab var  w_`v'_`c' "`l`v'_`c'' - Winzorized top and bottom $wins_upper_thres/$wins_lower_thres%"
 		* now use pctile from area for all to trim gender/inter/pure area
 		foreach g of global allyield {
 			gen w_`v'_`g'_`c'=`v'_`g'_`c'
@@ -6666,7 +6618,7 @@ foreach v of global wins_var_top1_bott1_2 {
 				replace w_`v'_`g'_`c' =  min(p2_lev_`r',p2_nat) if zone==`r' & (w_`v'_`g'_`c' >  min(p2_lev_`r',p2_nat) & w_`v'_`g'_`c' !=.) 
 			}
 			local l`v'_`g'_`c'  : var lab `v'_`g'_`c'
-			lab var  w_`v'_`g'_`c' "`l`v'_`g'_`c'' - Winzorized top and bottom 1%"
+			lab var  w_`v'_`g'_`c' "`l`v'_`g'_`c'' - Winzorized top $wins_upper_thres% and bottom $wins_lower_thres%"
 			
 		}
 	}
@@ -6723,28 +6675,28 @@ lab var cost_explicit_hh_ha "Explicit costs (per ha) of crop production (househo
 *generate yield and weights for yields  using winsorized values 
 *Yield by Area Planted
 foreach c of global topcropname_area {
-	gen yield_pl_`c'=w_harvest_`c'/w_area_plan_`c'
+	gen yield_pl_`c'=w_kg_plan_yd_`c'/w_ha_plan_yd_`c'
 	lab var  yield_pl_`c' "Yield by area planted of `c' (kgs/ha) (household)" 
-	gen ar_pl_wgt_`c' =  weight*w_area_plan_`c'		
+	gen ar_pl_wgt_`c' =  weight*w_ha_plan_yd_`c'		
 	lab var ar_pl_wgt_`c' "Planted area-adjusted weight for `c' (household)"
 	foreach g of global allyield  {
-		gen yield_pl_`g'_`c'=w_harvest_`g'_`c'/w_area_plan_`g'_`c'
+		gen yield_pl_`g'_`c'=w_kg_plan_yd_`g'_`c'/w_kg_plan_yd_`g'_`c'
 		lab var  yield_pl_`g'_`c'  "Yield  by area planted of `c' -  (kgs/ha) (`g')" 
-		gen ar_pl_wgt_`g'_`c' =  weight*w_area_plan_`g'_`c'
+		gen ar_pl_wgt_`g'_`c' =  weight*w_ha_plan_yd_`g'_`c'
 		lab var ar_pl_wgt_`g'_`c' "Harvested area-adjusted weight for `c' (`g')"
 	}
 }
  
  *Yield by Area Harvested
 foreach c of global topcropname_area {
-	gen yield_hv_`c'=w_harvest_`c'/w_area_harv_`c'
+	gen yield_hv_`c'=w_kg_harv_yd_`c'/w_ha_harv_yd_`c'
 	lab var  yield_hv_`c' "Yield by area harvested of `c' (kgs/ha) (household)" 
-	gen ar_h_wgt_`c' =  weight*w_area_harv_`c'
+	gen ar_h_wgt_`c' =  weight*w_kg_harv_yd_`c'
 	lab var ar_h_wgt_`c' "Harvested area-adjusted weight for `c' (household)"
 	foreach g of global allyield  {
-		gen yield_hv_`g'_`c'=w_harvest_`g'_`c'/w_area_harv_`g'_`c'
+		gen yield_hv_`g'_`c'=w_kg_harv_yd_`g'_`c'/w_ha_harv_yd_`g'_`c'
 		lab var  yield_hv_`g'_`c'  "Yield by area harvested of `c' -  (kgs/ha) (`g')" 
-		gen ar_h_wgt_`g'_`c' =  weight*w_area_harv_`g'_`c'
+		gen ar_h_wgt_`g'_`c' =  weight*w_ha_harv_yd_`g'_`c'
 		lab var ar_h_wgt_`g'_`c' "Harvested area-adjusted weight for `c' (`g')"
 	}
 }
@@ -6782,8 +6734,8 @@ gen cost_expli_hh_ha = w_cost_expli_hh / w_ha_planted
 lab var cost_expli_hh_ha "Explicit costs (per ha) of crop production (household level)"
 
 *land and labor productivity
-gen land_productivity = w_value_crop_production/w_farm_area
-gen labor_productivity = w_value_crop_production/w_labor_total 
+gen land_productivity = w_value_harv_hh/w_farm_area
+gen labor_productivity = w_value_harv_hh/w_labor_total 
 lab var land_productivity "Land productivity (value production per ha cultivated)"
 lab var labor_productivity "Labor productivity (value production per labor-day)"   
 
@@ -6793,7 +6745,7 @@ la var liters_per_largeruminant "Average quantity (liters) per year (household)"
 global empty_vars $empty_vars liters_per_largeruminant		
 
 *crop value sold
-gen w_proportion_cropvalue_sold = w_value_crop_sales /  w_value_crop_production
+gen w_proportion_cropvalue_sold = w_value_sold_hh /  w_value_harv_hh
 replace w_proportion_cropvalue_sold = 1 if w_proportion_cropvalue_sold > 1 & w_proportion_cropvalue_sold != .
 lab var w_proportion_cropvalue_sold "Proportion of crop value produced (winsorized) that has been sold"
 
@@ -6998,14 +6950,14 @@ foreach i in lrum srum poultry{
 }
 
 *households engaged in crop production
-recode w_proportion_cropvalue_sold w_farm_size_agland w_labor_family w_labor_hired /*
+recode w_proportion_cropvalue_sold w_hh_agland w_labor_family w_labor_hired /*
 */ imprv_seed_use use_inorg_fert w_labor_productivity w_land_productivity /*
 */ w_inorg_fert_rate w_cost_expli_hh w_cost_expli_hh_ha w_cost_expli_ha w_cost_total_ha /*
-*/ w_value_crop_production w_value_crop_sales w_all_area_planted w_all_area_harvested (.=0) if crop_hh==1
-recode w_proportion_cropvalue_sold w_farm_size_agland w_labor_family w_labor_hired /*
+*/ w_value_harv_hh w_value_sold_hh w_all_area_planted w_all_area_harvested (.=0) if crop_hh==1
+recode w_proportion_cropvalue_sold w_hh_agland w_labor_family w_labor_hired /*
 */ imprv_seed_use use_inorg_fert w_labor_productivity w_land_productivity /*
 */ w_inorg_fert_rate w_cost_expli_hh w_cost_expli_hh_ha w_cost_expli_ha w_cost_total_ha /*
-*/ w_value_crop_production w_value_crop_sales w_all_area_planted w_all_area_harvested (nonmissing= . ) if crop_hh==0
+*/ w_value_harv_hh w_value_sold_hh w_all_area_planted w_all_area_harvested (nonmissing= . ) if crop_hh==0
 		
 *hh engaged in crop or livestock production
 recode ext_reach* (.=0) if (crop_hh==1 | livestock_hh==1)
@@ -7043,6 +6995,8 @@ recode w_eggs_total_year value_eggs_produced (.=0) if egg_hh==1
 recode w_eggs_total_year value_eggs_produced (nonmissing=.) if egg_hh==0
   
 *Identify smallholder farmers (RULIS definition)
+//name kludge 
+gen land_size = hh_agland
 global small_farmer_vars land_size tlu_today total_income 
 foreach p of global small_farmer_vars {
 	gen `p'_aghh = `p' if ag_hh==1
@@ -7050,6 +7004,7 @@ foreach p of global small_farmer_vars {
 	gen small_`p' = (`p' <= r(r1))
 	replace small_`p' = . if ag_hh!=1
 }
+drop land_size
 gen small_farm_household = (small_land_size==1 & small_tlu_today==1 & small_total_income==1)
 replace small_farm_household = . if ag_hh != 1
 sum small_farm_household if ag_hh==1 
@@ -7150,13 +7105,13 @@ foreach v of varlist $empty_vars {
 // Removing intermediate variables to get below 5,000 vars
 keep hhid fhh clusterid strataid weight *weight_pop_rururb* *_weight* *wgt* zone state lga ea rural farm_size* *total_income* /*
 */ *percapita_income* *percapita_cons* *daily_percap_cons* *peraeq_cons* *daily_peraeq_cons* /*
-*/ *income* *share* *proportion_cropvalue_sold *farm_size_agland hh_members adulteq *labor_family *labor_hired use_* vac_* /*
+*/ *income* *share* *proportion_cropvalue_sold *hh_agland hh_members adulteq *labor_family *labor_hired use_* vac_* /*
 */ feed* water* lvstck_housed* ext_* use_fin_* lvstck_holding* *mortality_rate* *lost_disease* disease* any_imp* formal_land_rights_hh /*
 */ *livestock_expenses* *ls_exp_vac* *prop_farm_prod_sold /*DYA.10.26.2020*/ *hrs_*   months_food_insec *value_assets* hhs_* *dist_agrodealer /*
 */ encs* num_crops_* multiple_crops* imprv_seed_* hybrid_seed_* *labor_total *farm_area *labor_productivity* *land_productivity* /*
 */ *wage_paid_aglabor* *labor_hired ar_h_wgt_* *yield_hv_* ar_pl_wgt_* *yield_pl_* *liters_per_* milk_animals poultry_owned *costs_dairy* *cost_per_lit* /*
 */ *egg_poultry_year* *rate* *ha_planted* *cost_expli_hh* *cost_expli_ha* *monocrop_ha* *kg_harv_mono* *cost_total_ha* /*
-*/ *_exp* poverty* *value_crop_production* *value_harv* *value_crop_sales* *value_sold* *kg_harvest* *total_planted_area* *total_harv_area* /*
+*/ *_exp* poverty*  *value_harv* *value_sold* *kg_harvest* *total_planted_area* *total_harv_area* /*
 */ *all_area_* grew_* agactivities_hh ag_hh crop_hh livestock_hh fishing_hh *_milk_produced* *eggs_total_year *value_eggs_produced* /*
 */ *value_livestock_products* *value_livestock_sales* *total_cons* nb_cattle_today /*HKS 6.6.23*/ nb_largerum_t nb_smallrum_t nb_chickens_t  *sales_livestock_products nb_cows_today lvstck_holding_srum  nb_smallrum_today nb_chickens_today nb_poultry_today bottom_40_percap bottom_40_peraeq /*
 */ ccf_loc ccf_usd ccf_1ppp ccf_2ppp *sales_livestock_products  *value_pro* *value_sal* *inter* *pure* *value_farm*
@@ -7190,7 +7145,7 @@ capture label define instrument 11 "Tanzania NPS Wave 1" 12 "Tanzania NPS Wave 2
 label values instrument instrument	
 *saveold "${Nigeria_GHS_W4_final_data}/Nigeria_GHS_W4_household_variables.dta", replace
 
-gen ssp = (farm_size_agland <= 2 & farm_size_agland != 0) & (nb_largerum_today <= 10 & nb_smallrum_today <= 10 & nb_chickens_today <= 50) & ag_hh==1 // HKS 6.16.23
+gen ssp = (hh_agland <= 2 & hh_agland != 0) & (nb_largerum_today <= 10 & nb_smallrum_today <= 10 & nb_chickens_today <= 50) & ag_hh==1 // HKS 6.16.23
 saveold "${Nigeria_GHS_W4_final_data}/Nigeria_GHS_W4_household_variables.dta", replace
 
 ********************************************************************************
@@ -7318,9 +7273,9 @@ merge m:1 hhid using "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_weights.dta"
 //merge 1:1 hhid plot_id using "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_plot_decision_makers", keep (1 3) nogen // Bring in the gender file
 merge 1:1 plot_id hhid using "${Nigeria_GHS_W4_created_data}/Nigeria_GHS_W4_plot_farmlabor.dta", keep (1 3) nogen
 
-/*DYA.12.2.2020*/ merge m:1 hhid using "${Nigeria_GHS_W4_final_data}/Nigeria_GHS_W4_household_variables.dta", nogen keep (1 3) keepusing(ag_hh fhh farm_size_agland)
-/*DYA.12.2.2020*/ recode farm_size_agland (.=0) 
-/*DYA.12.2.2020*/ gen rural_ssp=(farm_size_agland<=4 & farm_size_agland!=0) & rural==1 
+/*DYA.12.2.2020*/ merge m:1 hhid using "${Nigeria_GHS_W4_final_data}/Nigeria_GHS_W4_household_variables.dta", nogen keep (1 3) keepusing(ag_hh fhh hh_agland)
+/*DYA.12.2.2020*/ recode hh_agland (.=0) 
+/*DYA.12.2.2020*/ gen rural_ssp=(hh_agland<=4 & hh_agland!=0) & rural==1 
 
 keep if cultivate==1
 ren field_size  area_meas_hectares

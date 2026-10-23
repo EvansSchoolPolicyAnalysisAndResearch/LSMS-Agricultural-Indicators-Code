@@ -1104,7 +1104,7 @@ keep if strmatch(input,"orgfert") | strmatch(input,"inorg") | strmatch(input,"pe
 		gen pest_kg = qty*strmatch(input, "pest")
 		gen inorg_fert_kg = qty*strmatch(input, "inorg")
 		gen org_fert_kg = qty if itemcode >=5 & itemcode!=.
-		collapse (sum) qty (sum) *kg, by(hhid parcel_id plot_id season input)
+		collapse (sum) qty (sum) *kg, by(hhid parcel_id plot_id season)
 		la var inorg_fert_kg "Kg inorganic fertilizer used"
 		la var org_fert_kg "Kg organic fertilizer used"
 		la var n_kg "Kg of nitrogen applied"

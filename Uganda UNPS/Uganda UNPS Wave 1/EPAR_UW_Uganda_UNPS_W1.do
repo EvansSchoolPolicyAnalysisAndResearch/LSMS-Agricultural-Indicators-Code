@@ -578,8 +578,7 @@ gen value_harvest=quant_harv_kg*price_unit
 gen value_lost=quant_lost_kg*price_unit
 collapse (sum) quant_harv_kg quant_sold_kg quant_lost_kg value_harvest value_lost (mean) price_unit, by(hhid parcel_id plot_id crop_code season)
 *Checking price_unit mean and sd for each type of crop ->  bys crop_code: sum price_unit
-tempfile crop_value
-save `crop_value'
+save "${Uganda_NPS_W1_created_data}/Uganda_NPS_W1_crop_value.dta", replace
 
 **********************************
 ** Plot Variables **
@@ -685,10 +684,10 @@ replace conversion_sold = A5bq6c if conversion_sold ==.
 gen kg_harvest = qty_harvest * conversion 
 ** Used A5aq6d as conversion factor since questionnaire labelled that as the conversion to kgs 
 replace s_conv_factor_sold = sn_conv_factor_sold if region!=. //  We merge the national standard conversion factor for those hhid with missing regional info. 
-gen kgs_sold = qty_sold*s_conv_factor_sold
+gen kg_sold = qty_sold*s_conv_factor_sold
 
 recode crop_code (811 812 = 810) (741 742 744 = 740) (224 = 223) //740 is bananas, which is being reduced from different types to just bananas. Same for peas (220).
-collapse (sum) value_sold kgs_sold, by (hhid crop_code)
+collapse (sum) value_sold kg_sold, by (hhid crop_code)
 lab var value_sold "Value of sales of this crop"
 save "${Uganda_NPS_W1_created_data}/Uganda_NPS_W1_cropsales_value.dta", replace
 
@@ -700,7 +699,7 @@ recode value_harvest value_sold (.=0)
 
 replace value_harvest = value_sold if value_sold>value_harvest & value_sold!=. /* In a few cases, sales value reported exceeds the estimated value of crop harvest */
 ren value_sold value_crop_sales 
-collapse (sum) value_harvest value_crop_sales kgs_sold quant_harv_kg, by (hhid crop_code)
+collapse (sum) value_harvest value_crop_sales kg_sold quant_harv_kg, by (hhid crop_code)
 ren value_harvest value_crop_production
 lab var value_crop_production "Gross value of crop production, summed over main and short season"
 lab var value_crop_sales "Value of crops sold so far, summed over main and short season"
@@ -1548,7 +1547,7 @@ la var `cn'_monocrop_ha_`g' "Total `cn' monocrop hectares on `g' managed plots -
 la var kg_harv_mono_`cn'_`g' "Total kilograms of `cn' harvested on `g' managed plots - Household"
 la var val_harv_mono_`cn'_`g' "Total value of `cn' harvested on `g' managed plots - Household"
 }
-collapse (sum) *monocrop* kgs_harv* val_harv*, by(hhid /*season*/)
+collapse (sum) *monocrop* kg_harv* val_harv*, by(hhid /*season*/)
 save "${Uganda_NPS_W1_created_data}/Uganda_NPS_W1_`cn'_monocrop_hh_area.dta", replace
 restore
 }
@@ -3635,10 +3634,10 @@ drop crop_code kg_sold quant_harv_kg
 
 unab vars : *_
 reshape wide `vars', i(hhid) j(crop_name) string
-collapse (sum) harvest* /*area_harv**/  area_plan* total_planted_area* /*total_harv_area**/ kgs_harvest* value_harv* value_sold* /*number_trees_planted**/  , by(hhid) 
-recode harvest*   /*area_harv**/ area_plan* kgs_harvest* total_planted_area* /*total_harv_area**/ value_harv* value_sold* (0=.)
-egen kgs_harvest = rowtotal(kgs_harvest_*)
-la var kgs_harvest "Quantity harvested of all crops (kgs) (household) (summed accross all seasons)" 
+collapse (sum) harvest* /*area_harv**/  area_plan* total_planted_area* /*total_harv_area**/ kg_harvest* value_harv* value_sold* /*number_trees_planted**/  , by(hhid) 
+recode harvest*   /*area_harv**/ area_plan* kg_harvest* total_planted_area* /*total_harv_area**/ value_harv* value_sold* (0=.)
+egen kg_harvest = rowtotal(kg_harvest_*)
+la var kg_harvest "Quantity harvested of all crops (kgs) (household) (summed accross all seasons)" 
 
 
 *rename variables 
@@ -4140,7 +4139,7 @@ merge 1:1 hhid using  "${Uganda_NPS_W1_created_data}/Uganda_NPS_W1_input_use.dta
 *SAW: This Input Use dataset comes from the Plot Manager section that is constructed in the Nigeria Wave 3 do file which includes fert use and improved seed use along pesticides and fertilizers into one single dataset. We might want to construct this section in Uganda for fewer lines of code in the future. (It comes adter the Fertilizer Use and Improved Seed sections in Uganda)
 merge 1:1 hhid using  "${Uganda_NPS_W1_created_data}/Uganda_NPS_W1_imprvseed_crop.dta", nogen keep(1 3)
 merge 1:1 hhid using  "${Uganda_NPS_W1_created_data}/Uganda_NPS_W1_any_ext.dta", nogen keep(1 3)
-*merge 1:1 hhid using  "${UGA_W3_created_data}/Uganda_NPS_LSMS_ISA_W3_fin_serv.dta", nogen keep(1 3) // SAW Not Available for Uganda Wave 3 dta missing
+merge 1:1 hhid using  "${Uganda_NPS_W1_created_data}/Uganda_NPS_W1_fin_serv.dta", nogen keep(1 3) 
 ren use_imprv_seed imprv_seed_use //ALT 02.03.22: Should probably fix code to align this with other inputs.
 ren use_hybrid_seed hybrid_seed_use
 recode *use_fin_serv* ext_reach* use_inorg_fert imprv_seed_use vac_animal (.=0)

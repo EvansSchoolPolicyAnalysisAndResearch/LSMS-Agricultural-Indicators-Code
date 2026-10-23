@@ -153,7 +153,7 @@ capture ssc install findname  // need this user-written ado file for some comman
 //set directories
 *These paths correspond to the folders where the raw data files are located and where the created data and final data will be stored.
 
-global directory ""
+global directory "../.."
 global Uganda_NPS_W3_raw_data 	"$directory/Uganda UNPS/Uganda UNPS Wave 3/Raw DTA Files"
 global Uganda_NPS_W3_created_data "$directory/Uganda UNPS/Uganda UNPS Wave 3/Final DTA Files/created_data"
 global Uganda_NPS_W3_final_data  "$directory/Uganda UNPS/Uganda UNPS Wave 3/Final DTA Files/final_data"
@@ -210,7 +210,7 @@ global wins_95_thres 95								//Threshold for winzorization at the top of the d
 
 global topcropname_area "maize cassav beans fldpea swtptt fmillt sybea banana coffee grdnt sorgum"
 *global topcropname_area "maize rice wheat sorgum fmillt cowpea grdnt beans yam swtptt cassav banana cotton sunflr pigpea coffee irptt" // SAW Original code - we take cowpea and pigpea out to run code
-global topcrop_area "130 630 210 221 620 141 320 740 810 310 150"
+global topcrop_area       "130 630 210 221 620 141 320 740 810 310 150"
 global comma_topcrop_area "130, 630, 210, 221, 620, 141, 320, 740, 810, 310, 150"
 global topcropname_area_full "maize cassava beans fieldpeas sweetpotato fingermillet soyabeans banana coffee groundnut sorghum"
 global nb_topcrops : list sizeof global(topcropname_area) // Gets the current length of the global macro list "topcropname_area"
@@ -769,9 +769,9 @@ merge m:1 crop_code sold_unit_code  using "${Uganda_NPS_conv_factors}/UG_Conv_fa
  
 *We create Quantity Sold (kg using standard  conversion factor table for each crop- unit and region). 
 replace s_conv_factor_sold = sn_conv_factor_sold if region==. //  We merge the national standard conversion factor for those hhid with missing regional info. 
-gen kgs_sold = qty_sold*s_conv_factor_sold
+gen kg_sold = qty_sold*s_conv_factor_sold
 recode crop_code  (741 742 744 = 740) //740 is bananas, which is being reduced from different types to just bananas. Same for peas (220).
-collapse (sum) value_sold kgs_sold, by (hhid crop_code)
+collapse (sum) value_sold kg_sold, by (hhid crop_code)
 lab var value_sold "Value of sales of this crop"
 save "${Uganda_NPS_W3_created_data}/Uganda_NPS_W3_cropsales_value.dta", replace
 
@@ -782,7 +782,7 @@ merge 1:1 hhid crop_code using "${Uganda_NPS_W3_created_data}/Uganda_NPS_W3_crop
 recode value_harvest value_sold (.=0)
 replace value_harvest = value_sold if value_sold>value_harvest & value_sold!=. /* In a few cases, sales value reported exceeds the estimated value of crop harvest */
 ren value_sold value_crop_sales 
-collapse (sum) value_harvest value_crop_sales kgs_sold quant_harv_kg, by (hhid crop_code)
+collapse (sum) value_harvest value_crop_sales kg_sold quant_harv_kg, by (hhid crop_code)
 ren value_harvest value_crop_production
 lab var value_crop_production "Gross value of crop production, summed over main and short season"
 lab var value_crop_sales "Value of crops sold so far, summed over main and short season"
@@ -1617,7 +1617,7 @@ la var `cn'_monocrop_ha_`g' "Total `cn' monocrop hectares on `g' managed plots -
 la var kg_harv_mono_`cn'_`g' "Total kilograms of `cn' harvested on `g' managed plots - Household"
 la var val_harv_mono_`cn'_`g' "Total value of `cn' harvested on `g' managed plots - Household"
 }
-collapse (sum) *monocrop* kgs_harv* val_harv*, by(hhid /*season*/)
+collapse (sum) *monocrop* kg_harv* val_harv*, by(hhid /*season*/)
 save "${Uganda_NPS_W3_created_data}/Uganda_NPS_W3_`cn'_monocrop_hh_area.dta", replace
 restore
 }
@@ -2815,6 +2815,10 @@ gen season=1
 append using "${Uganda_NPS_W3_raw_data}/AGSEC4B"
 ren HHID hhid
 replace season = 2 if season == .
+	gen double indiv = a4aq6_1
+	replace indiv= a4bq6_1 if indiv==.
+	tostring hhid, format(%18.0f) replace
+    tostring indiv, format(%18.0f) replace
 gen imprv_seed_use = (a4aq13==2) if a4aq13!=.
 replace imprv_seed_use= (a4bq13==2) if imprv_seed_use==. & a4bq13!=.
 recode cropID (811 812 = 810) (741 742 744 = 740) (224 = 223)  //  Same for bananas (740)
@@ -2822,66 +2826,32 @@ label define cropID 740 "Bananas", modify //need to add new codes to the value l
 label values cropID cropID //apply crop labels to crop_code_master
 
 *Use of seed by type of crop
+
 forvalues k=1/$nb_topcrops {
 	local c : word `k' of $topcrop_area
 	local cn : word `k' of $topcropname_area
 	
 	gen imprv_seed_`cn'=imprv_seed_use if cropID==`c'
 	gen hybrid_seed_`cn'=.
+	gen `cn'_farmer=cropID==`c'
 }
-collapse (max) imprv_seed_* /*hybrid_seed_**/, by(hhid)
+preserve
+collapse (max) imprv_seed_* hybrid_seed_*, by(hhid)
 lab var imprv_seed_use "1 = Household uses improved seed"
 foreach v in $topcropname_area {
 	lab var imprv_seed_`v' "1= Household uses improved `v' seed"
-	*lab var hybrid_seed_`v' "1= Household uses improved `v' seed"
+	lab var hybrid_seed_`v' "1= Household uses hybrid `v' seed (n/a)"
 }
-*SAW No information found on hybrid seeds.
-replace imprv_seed_banana = . 
-save "${Uganda_NPS_W3_created_data}/Uganda_NPS_W3_improvedseed_use.dta", replace
+restore
 
-*Seed adoption by farmers ( a farmer is an individual listed as plot manager)
-use "${Uganda_NPS_W3_raw_data}/AGSEC4A", clear
-gen season=1
-append using "${Uganda_NPS_W3_raw_data}/AGSEC4B"
-ren HHID hhid
-replace season = 2 if season == .
-gen imprv_seed_use = (a4aq13==2) if a4aq13!=.
-replace imprv_seed_use= (a4bq13==2) if imprv_seed_use==. & a4bq13!=.
-ren imprv_seed_use all_imprv_seed_use
-tempfile farmer_improvedseed_use_temp
-save `farmer_improvedseed_use_temp'
-
-*Use of seed by crops
-forvalues k=1/$nb_topcrops {
-	use `farmer_improvedseed_use_temp'
-	local c : word `k' of $topcrop_area
-	local cn : word `k' of $topcropname_area
-	*Adding adoption of improved maize seeds
-	gen all_imprv_seed_`cn'=all_imprv_seed_use if cropID==`c'  
-	*gen all_hybrid_seed_`cn' =. 
-	*We also need a variable that indicates if farmer (plot manager) grows crop
-	gen `cn'_farmer= cropID==`c' 
-	gen double indiv = a4aq6_1
-	replace indiv= a4bq6_1 if indiv==.
-	tostring hhid, format(%18.0f) replace
-    tostring indiv, format(%18.0f) replace
-	collapse (max) all_imprv_seed_use  all_imprv_seed_`cn' /*all_hybrid_seed_`cn'*/  `cn'_farmer, by (hhid indiv)
-	save "${Uganda_NPS_W3_created_data}/Uganda_NPS_W3_farmer_improvedseed_use_temp_`cn'.dta", replace
-}
-
-//DA: load tempfile
-local crop1 : word 1 of $topcropname_area
-use `tf_`crop1'', clear
-*Combining all crop disaggregated files together
-foreach v in $topcropname_area {
-	merge 1:1 hhid indiv all_imprv_seed_use using "${Uganda_NPS_W3_created_data}/Uganda_NPS_W3_farmer_improvedseed_use_temp_`v'.dta", nogen
-}	 
+ren imprv_seed_* all_imprv_seed_*
+ren hybrid_seed_* all_hybrid_seed_* 
+collapse (max) all_imprv_seed_* all_hybrid_seed_* *farmer, by(hhid indiv)
 drop if indiv==""
-merge 1:1 hhid indiv using "${Uganda_NPS_W3_created_data}/Uganda_NPS_W3_person_ids.dta", nogen
 lab var all_imprv_seed_use "1 = Individual farmer (plot manager) uses improved seeds"
 foreach v in $topcropname_area {
 	lab var all_imprv_seed_`v' "1 = Individual farmer (plot manager) uses improved seeds - `v'"
-// 	lab var all_hybrid_seed_`v' "1 = Individual farmer (plot manager) uses hybrid seeds - `v'"
+ 	lab var all_hybrid_seed_`v' "1 = Individual farmer (plot manager) uses hybrid seeds - `v' (n/a)"
 	lab var `v'_farmer "1 = Individual farmer (plot manager) grows `v'"
 }
 
@@ -3781,10 +3751,10 @@ gen kg_harvest_ = harvest_
 drop crop_code kg_sold quant_harv_kg  // SAW 1.9.23 need to drop this 2 vars to make reshape possible
 unab vars : *_
 reshape wide `vars', i(hhid) j(crop_name) string
-collapse (sum) harvest* area_harv*  area_plan* total_planted_area* /*total_harv_area**/ kgs_harvest* value_harv* value_sold* /*number_trees_planted**/  , by(hhid) 
-recode harvest*  area_harv* area_plan* kgs_harvest* total_planted_area* /*total_harv_area**/ value_harv* value_sold* (0=.)
-egen kgs_harvest = rowtotal(kgs_harvest_*)
-la var kgs_harvest "Quantity harvested of all crops (kgs) (household) (summed accross all seasons)" 
+collapse (sum) harvest* area_harv*  area_plan* total_planted_area* /*total_harv_area**/ kg_harvest* value_harv* value_sold* /*number_trees_planted**/  , by(hhid) 
+recode harvest*  area_harv* area_plan* kg_harvest* total_planted_area* /*total_harv_area**/ value_harv* value_sold* (0=.)
+egen kg_harvest = rowtotal(kg_harvest_*)
+la var kg_harvest "Quantity harvested of all crops (kgs) (household) (summed accross all seasons)" 
 
 *ren variable
 foreach p of global topcropname_area {

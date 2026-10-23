@@ -526,16 +526,26 @@ foreach instrument of global list_instruments {
 		if "`missing_var'"!="" { 
 			qui replace ar_pl_wgt_`v'=1
 		}
-		qui tabstat w_yield_pl_`v' [aw=ar_pl_wgt_`v'] if rural==1, stat(mean sd p25 p50 p75  min max N) col(stat) save
+				capture qui tabstat w_yield_pl_`v' [aw=ar_pl_wgt_`v'] if rural==1, stat(mean sd p25 p50 p75  min max N) col(stat) save
+		if _rc {
 		matrix temp4=r(StatTotal)'
+		} 
+		else {
+			matrix temp4=.
+		}
 		local missing_var ""
 		qui findname w_yield_pl_`v' if rural==1,  all(@==.) local (missing_var)
 		if "`missing_var'"!="" { 
 			qui replace w_yield_pl_`v'=0
 		}
-		qui svyset clusterid [pweight=ar_pl_wgt_`v'], strata(strataid) singleunit(centered) // get standard errors of the mean	
-		qui svy, subpop(if rural==1): mean w_yield_pl_`v'
-		matrix final_indicator4b=final_indicator4b\(temp4,el(r(table),2,1))	
+		if el(temp4,1,1)!=. {
+			qui svyset clusterid [pweight=ar_pl_wgt_`v'], strata(strataid) singleunit(centered) // get standard errors of the mean	
+			qui svy, subpop(if rural==1): mean w_yield_pl_`v'
+			matrix final_indicator4b=final_indicator4b\(temp4,el(r(table),2,1))	
+		} 
+		else {
+			matrix final_indicator4b=final_indicator4b\(.,.,.,.,.,.,.,.,.)
+		}
 	}
 	matrix final_indicator4a =final_indicator4a[2..rowsof(final_indicator4a), .]
 	matrix final_indicator4b =final_indicator4b[2..rowsof(final_indicator4b), .]
